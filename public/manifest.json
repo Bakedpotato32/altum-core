@@ -1,0 +1,17 @@
+{
+  "name": "Altum Core Student Portal",
+  "short_name": "AltumCore",
+  "description": "Premium Educational Portal for Students",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050508",
+  "theme_color": "#050508",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5968/5968263.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
