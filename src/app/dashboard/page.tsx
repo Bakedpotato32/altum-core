@@ -1,56 +1,111 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Calendar, Star, ArrowUpRight, Zap } from 'lucide-react';
+import { Calendar, Star, ArrowUpRight, Zap, Loader2, MessageSquare, Trophy, ChevronRight, Crown, ListChecks } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/lib/LanguageContext'; // IMPORT HOOK
 
 export default function Dashboard() {
-  const [liveNotice, setLiveNotice] = useState("Loading updates...");
+  const router = useRouter();
+  const { t, lang } = useLanguage(); // GET TRANSLATION FUNCTION
+  const [student, setStudent] = useState<any>(null);
+  const [liveNotice, setLiveNotice] = useState("...");
+  const [loading, setLoading] = useState(true);
+  const [rank, setRank] = useState<number | string>('--');
 
-  // Load the notice from localStorage
   useEffect(() => {
-    const savedNotice = localStorage.getItem('altum_notice');
-    if (savedNotice) {
-      setLiveNotice(savedNotice);
-    } else {
-      setLiveNotice("Welcome to Altum Core. No new notices today.");
+    const role = localStorage.getItem('role');
+    if (role === 'admin') {
+      router.push('/admin');
+      return;
     }
-  }, []);
+
+    const activeId = localStorage.getItem('studentId');
+    if (!activeId) { router.push('/login'); return; }
+
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      const { data: studentData } = await supabase.from('students').select('*').eq('id', activeId).single();
+      const { data: noticeData } = await supabase.from('config').select('value').eq('key', 'global_notice').single();
+      
+      if (studentData) {
+        setStudent(studentData);
+        const { data: allScores } = await supabase.from('test_scores').select('student_id, marks_obtained, total_marks');
+        if (allScores) {
+          const studentStats: any = {};
+          allScores.forEach(s => {
+            if (!studentStats[s.student_id]) studentStats[s.student_id] = { got: 0, total: 0 };
+            studentStats[s.student_id].got += Number(s.marks_obtained);
+            studentStats[s.student_id].total += Number(s.total_marks);
+          });
+          const rankedList = Object.keys(studentStats)
+            .map(id => ({ id, avg: (studentStats[id].got / studentStats[id].total) * 100 }))
+            .sort((a, b) => b.avg - a.avg);
+          const myRank = rankedList.findIndex(item => item.id === activeId) + 1;
+          setRank(myRank > 0 ? myRank : '--');
+        }
+      }
+      if (noticeData) setLiveNotice(noticeData.value);
+      setLoading(false);
+    };
+    fetchDashboardData();
+  }, [router]);
+
+  if (loading || !student) return <div className="h-svh bg-[var(--background)] flex items-center justify-center"><Loader2 className="text-blue-500 animate-spin" /></div>;
 
   return (
-    <div className="px-6 pt-28">
-      {/* Notice Board - Now Dynamic */}
-      <div className="mb-8 relative p-6 bg-[#0f0f12] border border-white/10 backdrop-blur-xl rounded-[32px] shadow-2xl">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-[9px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full">Notice Board</span>
-          <span className="text-[8px] font-bold text-zinc-600 tracking-tighter uppercase">Live Sync</span>
+    <div className="px-6 pt-28 pb-32 min-h-screen font-sans bg-transparent">
+      
+      <div className="mb-8 flex justify-between items-end">
+        <div>
+          <h1 className="text-[var(--text)] text-3xl font-black italic uppercase leading-tight tracking-tighter">
+            {t('welcome')}, <span className="text-blue-500">{student.name.split(' ')[0]}</span>
+          </h1>
+          <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[3px] mt-1 italic">{student.class} {t('student')} • {t('id')}: {student.id}</p>
         </div>
-        <p className="text-sm font-bold text-zinc-200 leading-relaxed italic uppercase">
-          "{liveNotice}"
-        </p>
+        <div className="p-3 bg-[var(--card)] rounded-2xl border border-[var(--border)]"><Crown className="text-yellow-500" size={20} /></div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-6 bg-[#0f0f12] border border-white/10 rounded-[32px] shadow-lg">
-          <Calendar size={20} className="text-blue-500 mb-4" />
-          <p className="text-[9px] font-black uppercase text-zinc-500 tracking-widest">Attendance</p>
-          <div className="flex items-baseline gap-1 mt-1">
-            <h4 className="text-2xl font-black italic text-white">92%</h4>
-            <ArrowUpRight size={12} className="text-green-500" />
+      <div className="mb-6 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] shadow-sm overflow-hidden">
+        <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-2">{t('liveNotice')}</p>
+        <p className="text-sm font-bold text-[var(--text)] leading-relaxed italic uppercase tracking-tight">"{liveNotice}"</p>
+      </div>
+
+      <div onClick={() => router.push('/leaderboard')} className="mb-4 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm">
+        <div className="flex items-center gap-5">
+          <div className="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-500/20"><Trophy size={28} /></div>
+          <div>
+            <p className="text-yellow-500 text-[9px] font-black uppercase tracking-[3px]">{t('rank')}</p>
+            <h3 className="text-2xl font-black italic text-[var(--text)] tracking-tighter uppercase">#{rank}</h3>
           </div>
         </div>
-        <div className="p-6 bg-[#0f0f12] border border-white/10 rounded-[32px] shadow-lg">
-          <Star size={20} className="text-orange-500 mb-4" />
-          <p className="text-[9px] font-black uppercase text-zinc-500 tracking-widest">Core Rating</p>
-          <h4 className="text-2xl font-black italic mt-1 text-white">88<span className="text-xs text-zinc-600">/100</span></h4>
-        </div>
+        <ChevronRight size={16} className="text-zinc-400" />
       </div>
 
-      {/* Activity Card */}
-      <div className="mt-4 p-6 bg-gradient-to-br from-blue-600 to-blue-800 rounded-[32px] relative overflow-hidden shadow-[0_20px_40px_rgba(37,99,235,0.25)]">
-        <Zap size={80} className="absolute right-[-10px] bottom-[-10px] text-white/10 rotate-12" />
-        <h3 className="text-lg font-black italic uppercase text-white mb-1">Daily Streak</h3>
-        <p className="text-white/60 text-xs font-bold mb-4">You're on a 5 day roll!</p>
-        <button className="px-6 py-2 bg-white text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Keep Going</button>
+      <div onClick={() => router.push('/syllabus')} className="mb-4 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 border border-red-500/10"><ListChecks size={22} /></div>
+          <div><h4 className="text-[9px] font-black uppercase text-zinc-500 tracking-widest leading-none mb-1">{t('syllabus')}</h4><p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{t('trackProgress')}</p></div>
+        </div>
+        <ArrowUpRight size={18} className="text-zinc-400" />
+      </div>
+
+      <div onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')} className="mb-6 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-95 transition-all relative">
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-12 h-12 bg-[#25d366] rounded-2xl flex items-center justify-center text-white shadow-lg"><MessageSquare size={22} fill="currentColor" /></div>
+          <div><h4 className="text-[9px] font-black uppercase text-[#25d366] tracking-widest mb-1">{t('support')}</h4><p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{t('whatsappGroup')}</p></div>
+        </div>
+        <ArrowUpRight size={18} className="text-zinc-400" />
+      </div>
+
+      {/* FIXED LAB CARD */}
+      <div className="p-8 bg-blue-600 rounded-[40px] relative overflow-hidden shadow-xl mb-6 active:scale-[0.98] transition-all">
+        <Zap size={100} className="absolute right-[-15px] bottom-[-15px] text-white/10 rotate-12" />
+        <div className="relative z-10">
+            <h3 className="text-xl font-black italic uppercase text-white mb-1 tracking-tighter">{t('altumLab')}</h3>
+            <p className="text-blue-100/60 text-[10px] font-black mb-6 uppercase tracking-[3px]">{t('performanceMode')}</p>
+            <button className="px-8 py-3 bg-white text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-[3px] shadow-xl font-bold">{t('launchLab')}</button>
+        </div>
       </div>
     </div>
   );

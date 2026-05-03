@@ -2,15 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --background: #050508;
+  --card: #0f0f12;
+  --text: #ffffff;
+  --text-muted: #71717a;
+  --border: rgba(255, 255, 255, 0.05);
+  --accent: #3b82f6;
+}
+
+.light-mode {
+  --background: #f4f7f6;
+  --card: #ffffff;
+  --text: #09090b;
+  --text-muted: #71717a;
+  --border: rgba(0, 0, 0, 0.06);
+  --accent: #2563eb;
+}
+
 html, body {
-  background-color: #050505 !important;
-  color: white;
+  background-color: var(--background) !important;
+  color: var(--text);
   margin: 0;
   padding: 0;
   height: 100%;
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
 }
 
 /* Force hide scrollbars */
 *::-webkit-scrollbar {
   display: none !important;
+}
+
+/* Ensure all cards transition smoothly */
+div, section, nav, header {
+  transition: background-color 0.4s ease, border-color 0.4s ease;
 }

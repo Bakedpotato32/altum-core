@@ -1,0 +1,177 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Search, ChevronLeft, Trash2, Loader2, X, ShieldCheck, Plus, Filter } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+export default function StudentLedger() {
+  const [students, setStudents] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClass, setSelectedClass] = useState("All"); // New filter state
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const router = useRouter();
+
+  const [newName, setNewName] = useState("");
+  const [newClass, setNewClass] = useState("10th");
+  const [isEnrolling, setIsEnrolling] = useState(false);
+
+  const allClasses = ['All', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+
+  useEffect(() => { fetchStudents(); }, []);
+
+  async function fetchStudents() {
+    setLoading(true);
+    const { data } = await supabase.from('students').select('*').order('name', { ascending: true });
+    if (data) setStudents(data);
+    setLoading(false);
+  }
+
+  const generateSecureID = () => {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    let res = '';
+    for (let i = 0; i < 2; i++) res += letters.charAt(Math.floor(Math.random() * letters.length));
+    for (let i = 0; i < 4; i++) res += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    return res;
+  };
+
+  const handleEnroll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setIsEnrolling(true);
+    
+    const newID = generateSecureID();
+    
+    const { error } = await supabase.from('students').insert([{ 
+      id: newID, 
+      name: newName.trim(), 
+      class: newClass, 
+      attendance: 0 
+    }]);
+
+    if (!error) { 
+      setNewName(""); 
+      setShowAddModal(false); 
+      fetchStudents(); 
+    } else { 
+      alert("Error: " + error.message); 
+    }
+    setIsEnrolling(false);
+  };
+
+  async function deleteStudent(id: string, name: string) {
+    if (confirm(`Remove ${name}?`)) {
+      const { error } = await supabase.from('students').delete().eq('id', id);
+      if (!error) setStudents(students.filter(s => s.id !== id));
+    }
+  }
+
+  // UPDATED FILTER LOGIC: Checks both Search Term AND Class Filter
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.id.includes(searchTerm.toUpperCase());
+    const matchesClass = selectedClass === 'All' || s.class === selectedClass;
+    return matchesSearch && matchesClass;
+  });
+
+  return (
+    <div className="min-h-screen bg-transparent p-6 pt-28 font-sans text-[var(--text)] pb-40">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <button onClick={() => router.back()} className="p-2 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all shadow-sm">
+          <ChevronLeft size={20} />
+        </button>
+        <div>
+          <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">Student <span className="text-blue-500">Ledger</span></h1>
+          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1 italic">{filteredStudents.length} Records Shown</p>
+        </div>
+      </div>
+
+      <button onClick={() => setShowAddModal(true)} className="w-full mb-6 py-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+        <Plus size={18} className="text-blue-500" />
+        <span className="text-[10px] font-black uppercase tracking-[2px] text-blue-500">Enroll New Student</span>
+      </button>
+
+      <div className="relative mb-4">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+        <input 
+          type="text" placeholder="SEARCH BY NAME OR ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest outline-none text-[var(--text)] shadow-sm focus:border-blue-500 transition-colors"
+        />
+      </div>
+
+      {/* NEW FEATURE: Horizontal Scrollable Class Filter */}
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x">
+        {allClasses.map(cls => (
+          <button
+            key={cls}
+            onClick={() => setSelectedClass(cls)}
+            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all snap-start flex items-center gap-2
+              ${selectedClass === cls 
+                ? 'bg-blue-600 text-white shadow-[0_4px_15px_rgba(59,130,246,0.3)] border border-blue-500' 
+                : 'bg-[var(--card)] text-zinc-500 border border-[var(--border)] active:scale-95'}`}
+          >
+            {cls === 'All' && <Filter size={12} />}
+            {cls === 'All' ? 'All Classes' : `${cls} Standard`}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-[35px] overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-[var(--border)] bg-zinc-500/5 flex justify-between text-[9px] font-black uppercase tracking-[3px] text-zinc-500 text-center">
+          <span className="w-1/3 text-left">Student</span>
+          <span className="w-1/4">Attnd.</span>
+          <span className="w-10"></span>
+        </div>
+        <div className="divide-y divide-[var(--border)]">
+          {loading ? (
+            <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="p-10 text-center text-zinc-500 text-xs font-black uppercase tracking-widest">No students found</div>
+          ) : (
+            filteredStudents.map((student) => (
+              <div key={student.id} className="p-5 flex items-center justify-between">
+                <div className="w-1/3 text-left">
+                  <p className="text-sm font-black italic uppercase text-[var(--text)] leading-tight">{student.name}</p>
+                  <p className="text-[9px] text-blue-500 font-black tracking-widest mt-0.5">#{student.id}</p>
+                  <p className="text-[7px] text-zinc-500 uppercase font-bold tracking-tighter italic">{student.class} Standard</p>
+                </div>
+                <div className="w-1/4 text-center">
+                  <span className={`text-xs font-black italic ${parseInt(student.attendance) < 75 ? 'text-orange-500' : 'text-green-500'}`}>
+                    {student.attendance}%
+                  </span>
+                </div>
+                <button onClick={() => deleteStudent(student.id, student.name)} className="text-zinc-400 p-2 hover:text-red-500 transition-colors">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Add Student Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-6 backdrop-blur-md bg-black/40">
+          <form onSubmit={handleEnroll} className="relative w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-[40px] p-8 shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-black italic uppercase text-[var(--text)]">Enroll <span className="text-blue-500">New</span></h2>
+              <button type="button" onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-[var(--text)] transition-colors"><X size={24}/></button>
+            </div>
+            <div className="space-y-6">
+              <input required type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="STUDENT FULL NAME" className="w-full bg-zinc-500/5 border border-[var(--border)] rounded-2xl py-5 px-6 text-xs font-black uppercase text-[var(--text)] outline-none focus:border-blue-500 transition-colors" />
+              <select value={newClass} onChange={(e) => setNewClass(e.target.value)} className="w-full bg-zinc-500/5 border border-[var(--border)] rounded-2xl py-5 px-6 text-xs font-black uppercase text-[var(--text)] outline-none appearance-none focus:border-blue-500 transition-colors">
+                {allClasses.filter(c => c !== 'All').map(cls => (
+                  <option key={cls} value={cls} className="bg-[var(--card)] text-[var(--text)]">{cls} Grade</option>
+                ))}
+              </select>
+              <button type="submit" disabled={isEnrolling} className="w-full bg-blue-600 text-white py-6 rounded-[28px] flex items-center justify-center gap-3 font-black uppercase tracking-[3px] text-xs shadow-[0_10px_20px_rgba(59,130,246,0.3)] active:scale-95 transition-all">
+                {isEnrolling ? <Loader2 className="animate-spin" /> : <>Complete Enrollment <ShieldCheck size={18}/></>}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}

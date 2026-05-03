@@ -1,80 +1,100 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Bell, Save, Plus, Users, LogOut } from 'lucide-react';
+import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, MessageSquare, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
+  const [studentCount, setStudentCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const router = useRouter();
 
-  // Load existing notice on mount
   useEffect(() => {
-    const savedNotice = localStorage.getItem('altum_notice');
-    if (savedNotice) setNotice(savedNotice);
+    // 🛡️ ULTIMATE SECURITY BOUNCER
+    // If a student tries to bypass the UI and type the URL manually, this kicks them out instantly.
+    const role = localStorage.getItem('role');
+    if (role !== 'admin') {
+      window.location.href = '/login';
+      return; // Stops the rest of the code from running
+    }
+
+    const fetchAdminData = async () => {
+      const { data: noticeData } = await supabase.from('config').select('value').eq('key', 'global_notice').maybeSingle();
+      if (noticeData) setNotice(noticeData.value);
+      const { count } = await supabase.from('students').select('*', { count: 'exact', head: true });
+      if (count) setStudentCount(count);
+    };
+    fetchAdminData();
   }, []);
 
-  const handleUpdateNotice = () => {
-    localStorage.setItem('altum_notice', notice);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleUpdateNotice = async () => {
+    const { error } = await supabase.from('config').upsert({ key: 'global_notice', value: notice });
+    if (!error) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push('/login'); // Changed to router.push for smooth native transition
   };
 
   return (
-    <div className="px-6 pt-28 pb-32 min-h-svh bg-[#050508]">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+    // Increased pb-32 to pb-40 to ensure scrolling clears the bottom nav
+    <div className="px-6 pt-28 pb-40 min-h-svh bg-transparent font-sans text-[var(--text)]">
+      <div className="flex justify-between items-center mb-8 px-2">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-600/20 rounded-2xl border border-blue-500/30">
+          <div className="p-3 bg-blue-600/10 rounded-2xl border border-blue-500/20 shadow-sm">
             <ShieldCheck className="text-blue-500" size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-black italic uppercase text-white tracking-tighter">Admin <span className="text-blue-500">Core</span></h2>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[4px]">Management Console</p>
+            <h2 className="text-2xl font-black italic uppercase text-[var(--text)] tracking-tighter">Admin <span className="text-blue-500">Core</span></h2>
+            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[4px]">Mahuli Node</p>
           </div>
         </div>
-        <button onClick={() => router.push('/')} className="p-3 bg-white/5 rounded-xl text-zinc-500">
+        <button onClick={handleLogout} className="p-3 bg-[var(--card)] rounded-xl text-zinc-500 border border-[var(--border)] active:scale-90 transition-all">
           <LogOut size={20} />
         </button>
       </div>
 
-      {/* Notice Editor */}
-      <div className="p-6 bg-[#0f0f12] border border-white/10 rounded-[35px] shadow-2xl mb-8">
+      <div className="p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] shadow-sm mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <Bell className="text-orange-400" size={18} />
-          <h4 className="text-xs font-black uppercase tracking-widest text-white">Global Notice Board</h4>
+          <Bell className="text-orange-500" size={18} />
+          <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text)]">Broadcast Board</h4>
         </div>
-        
         <textarea 
           value={notice}
           onChange={(e) => setNotice(e.target.value)}
-          placeholder="Enter news or alerts for students..."
-          className="w-full h-32 bg-black/40 border border-white/5 rounded-2xl p-4 text-sm font-bold text-zinc-300 focus:border-blue-500/50 outline-none transition-all resize-none mb-4"
+          className="w-full h-24 bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-bold text-[var(--text)] focus:border-blue-500 outline-none transition-all resize-none mb-4 shadow-inner"
         />
-
-        <button 
-          onClick={handleUpdateNotice}
-          className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95
-            ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white shadow-blue-900/20'}
-          `}
-        >
-          {saved ? "Successfully Updated!" : <><Save size={16} /> Update Board</>}
+        <button onClick={handleUpdateNotice} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white shadow-blue-500/20'}`}>
+          {saved ? "Cloud Synced!" : <><Save size={16} /> Update Board</>}
         </button>
       </div>
 
-      {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-6 bg-[#0f0f12] border border-white/10 rounded-[32px]">
-          <Plus size={20} className="text-green-500 mb-3" />
-          <h5 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">New Study</h5>
-          <p className="text-sm font-black text-white italic">Materials</p>
-        </div>
-        <div className="p-6 bg-[#0f0f12] border border-white/10 rounded-[32px]">
-          <Users size={20} className="text-purple-500 mb-3" />
-          <h5 className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Student</h5>
-          <p className="text-sm font-black text-white italic">Ledger</p>
+        <AdminCard onClick={() => router.push('/admin/ledger')} icon={<UserPlus className="text-purple-500" />} label="Enrollment" title="Ledger" detail={`${studentCount} Students`} />
+        <AdminCard onClick={() => router.push('/admin/attendance')} icon={<CalendarIcon className="text-blue-500" />} label="Attendance" title="Cloud Hub" detail="Roll Call" />
+        <AdminCard onClick={() => router.push('/admin/marks')} icon={<Trophy className="text-yellow-500" />} label="Academic" title="Marks Entry" detail="Log Scores" />
+        <AdminCard onClick={() => router.push('/admin/upload')} icon={<UploadCloud className="text-green-500" />} label="Library" title="PDF Vault" detail="Sync Notes" />
+        <AdminCard onClick={() => router.push('/admin/syllabus')} icon={<ListChecks className="text-red-500" />} label="Planning" title="Syllabus" detail="Track Progress" />
+        <div className="p-6 bg-[var(--card)]/30 border border-dashed border-[var(--border)] rounded-[32px] flex items-center justify-center opacity-40">
+           <Plus size={20} className="text-[var(--text)]" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function AdminCard({ onClick, icon, label, title, detail }: any) {
+  return (
+    <div onClick={onClick} className="p-6 bg-[var(--card)] border border-[var(--border)] rounded-[32px] active:scale-95 transition-all cursor-pointer shadow-sm hover:border-blue-500/30">
+      <div className="mb-4">{icon}</div>
+      <h5 className="text-[9px] font-black uppercase text-zinc-500 tracking-widest leading-none mb-1">{label}</h5>
+      <p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{title}</p>
+      <p className="text-[9px] font-bold mt-2 uppercase text-blue-500/80">{detail}</p>
     </div>
   );
 }

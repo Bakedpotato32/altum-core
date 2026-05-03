@@ -1,29 +1,60 @@
+
 'use client';
 import React from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
+import { Book, ChevronLeft, ArrowRight } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
-export default function SubjectSelection() {
-  const { class: className } = useParams();
+export default function SubjectVault() {
+  const router = useRouter();
+  const params = useParams();
+  const { t } = useLanguage();
+  const studentClass = params.class; 
+
+  const subjects = [
+    { name: "English", id: "english" },
+    { name: "Science", id: "science" },
+    { name: "Mathematics", id: "mathematics" },
+    { name: "Social Studies", id: "social-studies" }
+  ];
 
   return (
-    <main className="h-screen bg-[#050505] text-white p-6 relative overflow-hidden">
-       <Link href="/Materials" className="text-zinc-500 text-sm font-bold uppercase tracking-widest mb-8 block">← Back to Hub</Link>
-       <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-2 underline decoration-blue-500 decoration-4 underline-offset-8">Class {className}</h1>
-       <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-10">Choose Subject</p>
+    <div className="px-6 pt-28 pb-32 min-h-svh bg-transparent font-sans">
+      <div className="max-w-md mx-auto space-y-8">
+        
+        <button onClick={() => router.push('/Materials')} className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-4">
+          <ChevronLeft size={14} /> {t('backToHub')}
+        </button>
 
-       <Link href={`/Materials/${className}/english`}>
-         <div className="p-6 rounded-[28px] bg-white/5 border border-white/10 flex items-center justify-between active:scale-95 transition-all">
-           <div className="flex items-center gap-5">
-             <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-2xl">📖</div>
-             <div>
-               <h3 className="font-bold text-lg italic">English</h3>
-               <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Core Curriculum</p>
-             </div>
-           </div>
-           <span className="text-blue-500">→</span>
-         </div>
-       </Link>
-    </main>
+        <div>
+          <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[var(--text)]">
+            {t('classWord')} <span className="text-blue-500">{studentClass}</span>
+          </h1>
+          <p className="text-blue-500 text-[10px] font-black uppercase tracking-[3px] mt-1">{t('selectSubjectVault')}</p>
+        </div>
+
+        <div className="space-y-4">
+          {subjects.map((sub) => (
+            <button 
+              key={sub.id}
+              onClick={() => router.push(`/Materials/${studentClass}/${sub.id}`)}
+              className="w-full p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm group"
+            >
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
+                  <Book size={20} />
+                </div>
+                <div className="text-left">
+                  {/* Keep Subject names in English since they are IDs/proper nouns, but translate the subtitle */}
+                  <h3 className="text-lg font-black italic uppercase text-[var(--text)] leading-none">{sub.name}</h3>
+                  <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mt-1">{t('coreResources')}</p>
+                </div>
+              </div>
+              <ArrowRight className="text-zinc-800 group-hover:text-blue-500 transition-colors" size={16} />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
