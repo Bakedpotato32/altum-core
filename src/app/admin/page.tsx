@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, MessageSquare, Plus } from 'lucide-react';
+import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, Users, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -8,28 +8,60 @@ export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
   const [studentCount, setStudentCount] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [assignedClass, setAssignedClass] = useState<string | null>(null);
+  const [staffName, setStaffName] = useState<string | null>(null);
   const router = useRouter();
 
+  // 🚀 Sanitizer: Converts "5th" or "5TH" to "5"
+  const sanitizeClass = (cls: string | null) => {
+    if (!cls) return "";
+    return cls.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
+  };
+
   useEffect(() => {
-    // 🛡️ ULTIMATE SECURITY BOUNCER
-    // If a student tries to bypass the UI and type the URL manually, this kicks them out instantly.
     const role = localStorage.getItem('role');
-    if (role !== 'admin') {
-      window.location.href = '/login';
-      return; // Stops the rest of the code from running
+    const userClass = localStorage.getItem('assignedClass');
+    const name = localStorage.getItem('staffName');
+    
+    if (role !== 'principal' && role !== 'teacher') {
+      router.push('/login');
+      return;
     }
 
+    setUserRole(role);
+    setAssignedClass(userClass);
+    setStaffName(name);
+
     const fetchAdminData = async () => {
-      const { data: noticeData } = await supabase.from('config').select('value').eq('key', 'global_notice').maybeSingle();
+      const cleanClass = sanitizeClass(userClass);
+      const noticeKey = role === 'principal' ? 'global_notice' : `notice_class_${cleanClass}`;
+      
+      const { data: noticeData } = await supabase
+        .from('config')
+        .select('value')
+        .eq('key', noticeKey)
+        .maybeSingle();
+      
       if (noticeData) setNotice(noticeData.value);
-      const { count } = await supabase.from('students').select('*', { count: 'exact', head: true });
-      if (count) setStudentCount(count);
+
+      let query = supabase.from('students').select('*', { count: 'exact', head: true });
+      if (role === 'teacher') {
+        query = query.eq('class', userClass);
+      }
+      
+      const { count } = await query;
+      if (count !== null) setStudentCount(count);
     };
     fetchAdminData();
-  }, []);
+  }, [router]);
 
   const handleUpdateNotice = async () => {
-    const { error } = await supabase.from('config').upsert({ key: 'global_notice', value: notice });
+    const role = localStorage.getItem('role');
+    const cleanClass = sanitizeClass(assignedClass);
+    const noticeKey = role === 'principal' ? 'global_notice' : `notice_class_${cleanClass}`;
+
+    const { error } = await supabase.from('config').upsert({ key: noticeKey, value: notice });
     if (!error) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -38,11 +70,10 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     localStorage.clear();
-    router.push('/login'); // Changed to router.push for smooth native transition
+    router.push('/login');
   };
 
   return (
-    // Increased pb-32 to pb-40 to ensure scrolling clears the bottom nav
     <div className="px-6 pt-28 pb-40 min-h-svh bg-transparent font-sans text-[var(--text)]">
       <div className="flex justify-between items-center mb-8 px-2">
         <div className="flex items-center gap-3">
@@ -50,8 +81,12 @@ export default function AdminDashboard() {
             <ShieldCheck className="text-blue-500" size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-black italic uppercase text-[var(--text)] tracking-tighter">Admin <span className="text-blue-500">Core</span></h2>
-            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[4px]">Mahuli Node</p>
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter">
+              {userRole === 'principal' ? 'Master' : 'Staff'} <span className="text-blue-500">Core</span>
+            </h2>
+            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-[4px]">
+              {userRole === 'principal' ? `Admin: ${staffName}` : `Teacher: Class ${assignedClass}`}
+            </p>
           </div>
         </div>
         <button onClick={handleLogout} className="p-3 bg-[var(--card)] rounded-xl text-zinc-500 border border-[var(--border)] active:scale-90 transition-all">
@@ -62,21 +97,27 @@ export default function AdminDashboard() {
       <div className="p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] shadow-sm mb-8">
         <div className="flex items-center gap-3 mb-4">
           <Bell className="text-orange-500" size={18} />
-          <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text)]">Broadcast Board</h4>
+          <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text)]">
+            {userRole === 'principal' ? 'Global Broadcast' : 'Class Notice'}
+          </h4>
         </div>
         <textarea 
           value={notice}
           onChange={(e) => setNotice(e.target.value)}
           className="w-full h-24 bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-bold text-[var(--text)] focus:border-blue-500 outline-none transition-all resize-none mb-4 shadow-inner"
+          placeholder="Type update here..."
         />
-        <button onClick={handleUpdateNotice} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white shadow-blue-500/20'}`}>
+        <button onClick={handleUpdateNotice} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'}`}>
           {saved ? "Cloud Synced!" : <><Save size={16} /> Update Board</>}
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+        {userRole === 'principal' && (
+          <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users className="text-cyan-400" />} label="Management" title="Staff Hub" detail="Manage Teachers" />
+        )}
         <AdminCard onClick={() => router.push('/admin/ledger')} icon={<UserPlus className="text-purple-500" />} label="Enrollment" title="Ledger" detail={`${studentCount} Students`} />
-        <AdminCard onClick={() => router.push('/admin/attendance')} icon={<CalendarIcon className="text-blue-500" />} label="Attendance" title="Cloud Hub" detail="Roll Call" />
+        <AdminCard onClick={() => router.push('/admin/attendance')} icon={<CalendarIcon className="text-blue-500" />} label="Attendance" title="Roll Call" detail="Cloud Hub" />
         <AdminCard onClick={() => router.push('/admin/marks')} icon={<Trophy className="text-yellow-500" />} label="Academic" title="Marks Entry" detail="Log Scores" />
         <AdminCard onClick={() => router.push('/admin/upload')} icon={<UploadCloud className="text-green-500" />} label="Library" title="PDF Vault" detail="Sync Notes" />
         <AdminCard onClick={() => router.push('/admin/syllabus')} icon={<ListChecks className="text-red-500" />} label="Planning" title="Syllabus" detail="Track Progress" />

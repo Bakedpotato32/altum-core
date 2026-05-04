@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'; 
-import { Trophy, Zap, ArrowLeft, Loader2, CheckCircle2, Filter } from 'lucide-react';
+import { Trophy, Zap, ArrowLeft, Loader2, CheckCircle2, Filter, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function MarksEntry() {
@@ -17,12 +17,26 @@ export default function MarksEntry() {
   const [testName, setTestName] = useState('');
   const [marks, setMarks] = useState('');
   const [total, setTotal] = useState('');
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const classes = ["5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
 
   useEffect(() => {
+    const role = localStorage.getItem('role');
+    const assigned = localStorage.getItem('assignedClass');
+    setUserRole(role);
+
+    // 🛡️ Teacher Isolation Logic
+    if (role === 'teacher' && assigned) {
+      setSelectedClass(assigned);
+    }
+
     async function getStudents() {
-      const { data } = await supabase.from('students').select('id, name, class'); 
+      let query = supabase.from('students').select('id, name, class');
+      if (role === 'teacher' && assigned) {
+        query = query.eq('class', assigned);
+      }
+      const { data } = await query;
       if (data) setAllStudents(data);
     }
     getStudents();
@@ -33,8 +47,6 @@ export default function MarksEntry() {
       const filtered = allStudents.filter(s => s.class === selectedClass);
       setFilteredStudents(filtered);
       setSelectedStudent(''); 
-    } else {
-      setFilteredStudents([]);
     }
   }, [selectedClass, allStudents]);
 
@@ -46,8 +58,8 @@ export default function MarksEntry() {
     const { error } = await supabase.from('test_scores').insert([
       {
         student_id: selectedStudent,
-        subject,
-        test_name: testName,
+        subject: subject.toUpperCase(),
+        test_name: testName.toUpperCase(),
         marks_obtained: parseInt(marks),
         total_marks: parseInt(total),
       },
@@ -57,6 +69,8 @@ export default function MarksEntry() {
     if (!error) {
       setSuccess(true);
       setMarks('');
+      setSubject('');
+      setTestName('');
       setTimeout(() => setSuccess(false), 3000);
     }
   };
@@ -73,26 +87,29 @@ export default function MarksEntry() {
           <h1 className="text-3xl font-black italic tracking-tighter flex items-center gap-3 uppercase">
             <Trophy className="text-yellow-500" size={28} /> Marks Entry
           </h1>
-          <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[3px] mt-1 italic opacity-60">Secondary Education Node</p>
+          <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[3px] mt-1 italic opacity-60">Education Node</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           
-          <div className="bg-[var(--card)] rounded-[24px] border border-[var(--border)] p-1 px-4 flex items-center shadow-sm">
-            <Filter size={16} className="text-zinc-500" />
+          {/* STEP 1: CLASS SELECTION (LOCKED FOR TEACHERS) */}
+          <div className={`bg-[var(--card)] rounded-[24px] border border-[var(--border)] p-1 px-4 flex items-center shadow-sm ${userRole === 'teacher' ? 'opacity-70' : ''}`}>
+            {userRole === 'teacher' ? <Lock size={16} className="text-blue-500" /> : <Filter size={16} className="text-zinc-500" />}
             <select 
               required
+              disabled={userRole === 'teacher'}
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full bg-transparent p-4 text-sm font-bold text-[var(--text)] outline-none appearance-none"
             >
-              <option value="" className="bg-[var(--card)]">Step 1: Select Class</option>
+              <option value="">{userRole === 'teacher' ? `Locked: Class ${selectedClass}` : 'Step 1: Select Class'}</option>
               {classes.map(c => (
                 <option key={c} value={c} className="bg-[var(--card)] text-[var(--text)]">Class {c}</option>
               ))}
             </select>
           </div>
 
+          {/* STEP 2: STUDENT SELECTION (FILTERED AUTOMATICALLY) */}
           <div className={`bg-[var(--card)] rounded-[24px] border transition-all p-1 px-4 shadow-sm ${selectedClass ? 'border-blue-500' : 'border-[var(--border)] opacity-50'}`}>
             <select 
               required
