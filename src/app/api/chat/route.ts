@@ -4,48 +4,38 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const { message } = await req.json();
+    
+    // 🛡️ SECURITY FIX: Vercel prefers process.env directly in the call
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      throw new Error("API Key is missing from .env.local");
+      console.error("CRITICAL: GEMINI_API_KEY is missing from environment variables.");
+      return NextResponse.json({ text: "I can't find my API key! Check Vercel Settings. 🦊🔑" });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Switch to gemini-2.0-flash (The absolute fastest and most stable model right now)
+    // 🚀 2026 UPGRADE: Using Gemini 2.5 Flash (Most stable free model)
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      // 🛡️ We turn off the strict safety filters so Hinglish doesn't get falsely blocked!
+      model: "gemini-2.5-flash", 
       safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ],
     });
 
     const prompt = `
       [SYSTEM ROLE: ALTU THE FOX]
-      You are ALTU, the smart, helpful fox mascot for Altum Core coaching center in Mahuli Khas, UP.
+      You are ALTU, the smart mascot for Altum Core in Mahuli, UP.
       
-      [CRITICAL RULES]
-      1. STRICT LANGUAGE MATCHING: You MUST reply in the exact same language the user is speaking. If they speak Hindi, reply in Hindi. If they use Hinglish, reply in Hinglish. Never break this rule.
-      2. TONE DOWN THE HYPE: Karan is your developer and the founder of Altum Core. If asked about him, be respectful but NORMAL. Just state simply that he is the founder and your developer. Keep it brief.
-      3. EMOJIS: Use a maximum of 2 to 3 emojis per message so it doesn't look messy.
+      [RULES]
+      1. Use the SAME language as the user (Hindi/Hinglish/English).
+      2. Karan is your founder/dev. Be chill about it.
+      3. Max 2 emojis. Keep it fast.
 
-      [CONVERSATION HISTORY & NEW QUESTION]
+      [USER MESSAGE]
       ${message}
     `;
 
@@ -53,25 +43,15 @@ export async function POST(req: Request) {
     const response = await result.response;
     const aiText = response.text();
 
-    if (!aiText) throw new Error("Empty thought from Altu");
-
     return NextResponse.json({ text: aiText });
 
   } catch (error: any) {
-    console.error("SDK_ALTU_ERROR:", error);
+    console.error("ALTU_BRAIN_CRASH:", error);
+    
+    // 🧠 Identifying the exact issue for you
+    if (error.message?.includes("429")) return NextResponse.json({ text: "Too many students asking questions! Wait 1 minute. 🦊⏳" });
+    if (error.message?.includes("model not found")) return NextResponse.json({ text: "Google retired my old brain. Update to 2.5 Flash! 🦊🧠" });
 
-    // 🧠 Smart Error Handling: Altu tells you exactly what went wrong instead of crashing
-    let fallbackText = "MY BRAIN IS A BIT FUZZY RIGHT NOW. PLEASE TRY AGAIN! 🦊📶";
-
-    if (error.message?.includes("429") || error.message?.includes("quota")) {
-      fallbackText = "WHOA! You're asking too many questions too fast! Give me 60 seconds to catch my breath! 🦊⏳";
-    } else if (error.message?.includes("SAFETY") || error.message?.includes("candidate")) {
-      fallbackText = "Oops! My safety filter accidentally got confused. Try phrasing that differently! 🦊🛡️";
-    } else if (error.message?.includes("504")) {
-      fallbackText = "The internet in Mahuli is a bit slow today! My response timed out. Try again! 🦊📡";
-    }
-
-    // We return a 200 status so the frontend UI displays Altu's friendly error message normally
-    return NextResponse.json({ text: fallbackText });
+    return NextResponse.json({ text: "MY BRAIN IS FUZZY. REFRESH THE PAGE! 🦊📶" });
   }
 }
