@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 export const dict = {
   EN: {
@@ -14,7 +14,7 @@ export const dict = {
     support: "Support",
     whatsappGroup: "WhatsApp Group",
     altumLab: "Altum Lab",
-    altumCore: "Altum Core",
+    altumCore: "Winner's Academy", // Updated to Winner's Academy
     performanceMode: "Performance Mode",
     launchLab: "Launch Lab",
     standard: "Standard",
@@ -59,7 +59,7 @@ export const dict = {
     openingVault: "Opening Vault...",
     noFilesUploaded: "No files uploaded yet.",
 
-    // Profile & Attendance & Performance
+    // Profile & Attendance
     nodeId: "Node ID",
     attendance: "Attendance",
     consistencyPulse: "Consistency Pulse",
@@ -102,7 +102,7 @@ export const dict = {
     support: "सहायता",
     whatsappGroup: "व्हाट्सएप ग्रुप",
     altumLab: "अल्टम लैब",
-    altumCore: "अल्टम कोर",
+    altumCore: "विजेता अकादमी", // Hindi Rebrand
     performanceMode: "प्रदर्शन मोड",
     launchLab: "लैब शुरू करें",
     standard: "स्टैंडर्ड",
@@ -147,7 +147,7 @@ export const dict = {
     openingVault: "वॉल्ट खुल रहा है...",
     noFilesUploaded: "अभी तक कोई फ़ाइल अपलोड नहीं की गई है।",
 
-    // Profile & Attendance & Performance
+    // Profile & Attendance
     nodeId: "नोड आईडी",
     attendance: "उपस्थिति",
     consistencyPulse: "निरंतरता पल्स",
@@ -180,10 +180,39 @@ export const dict = {
   }
 };
 
-export const LanguageContext = createContext({
+// Default context structure
+const defaultContext = {
   lang: 'EN',
   t: (key: string) => key,
-  toggleLang: () => {} // <-- Added this
-});
+  toggleLang: () => {}
+};
+
+export const LanguageContext = createContext(defaultContext);
+
+export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
+  const [lang, setLang] = useState<'EN' | 'HI'>('EN');
+
+  // Load preference from local storage if available
+  useEffect(() => {
+    const savedLang = localStorage.getItem('app_lang') as 'EN' | 'HI';
+    if (savedLang) setLang(savedLang);
+  }, []);
+
+  const toggleLang = () => {
+    const newLang = lang === 'EN' ? 'HI' : 'EN';
+    setLang(newLang);
+    localStorage.setItem('app_lang', newLang);
+  };
+
+  const t = (key: string) => {
+    return dict[lang][key] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ lang, t, toggleLang }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
 
 export const useLanguage = () => useContext(LanguageContext);
