@@ -6,7 +6,6 @@ import { User, ArrowRight, Loader2, MessageSquare, Eye, EyeOff, Globe } from 'lu
 import { useLanguage } from '@/lib/LanguageContext';
 
 export default function LoginPage() {
-  // Grab toggleLang from our context!
   const { t, lang, toggleLang } = useLanguage(); 
   const [studentId, setStudentId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +18,7 @@ export default function LoginPage() {
     if (!enteredId) return;
     setLoading(true);
 
+    // Admin Access
     if (enteredId === 'AC5219A') {
       localStorage.clear();
       localStorage.setItem('role', 'admin'); 
@@ -44,17 +44,25 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-8 text-[var(--text)] font-sans relative">
       
-      {/* LANGUAGE TOGGLE FOR LOGIN PAGE */}
+      {/* LANGUAGE TOGGLE */}
       <div className="absolute top-10 right-6">
         <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-2 rounded-xl border bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all shadow-sm">
           <Globe size={14} className="text-blue-500" />
-          <span className="text-[10px] font-black uppercase text-[var(--text)]">{lang === 'EN' ? 'EN / हिन्दी' : 'हिन्दी / EN'}</span>
+          <span className="text-[10px] font-black uppercase text-[var(--text)]">
+            {lang === 'EN' ? 'EN / हिन्दी' : 'हिन्दी / EN'}
+          </span>
         </button>
       </div>
 
       <div className="w-full max-w-sm text-center">
-        <h1 className="text-5xl font-black italic uppercase tracking-tighter mb-2">ALTUM<span className="text-blue-500">CORE</span></h1>
-        <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[5px] mb-16 italic opacity-60">{t('portalAccess')}</p>
+        {/* REBRANDED LOGO: Added a tiny margin between the words for clarity */}
+        <h1 className="text-5xl font-black italic uppercase tracking-tighter mb-2">
+          WINNER'S <span className="text-blue-500 ml-1">ACADEMY</span>
+        </h1>
+        {/* Improved spacing for "PORTAL ACCESS" */}
+        <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[8px] mb-16 italic opacity-60">
+          {t('portalAccess')}
+        </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="bg-[var(--card)] border border-white/10 rounded-[32px] p-2 flex items-center group focus-within:border-blue-500 focus-within:bg-white/5 transition-all shadow-md">

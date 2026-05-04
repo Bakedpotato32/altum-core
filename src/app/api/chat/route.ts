@@ -5,17 +5,17 @@ export async function POST(req: Request) {
   try {
     const { message } = await req.json();
     
-    // 🛡️ SECURITY FIX: Vercel prefers process.env directly in the call
+    // Using process.env ensures Vercel pulls your new API key correctly
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      console.error("CRITICAL: GEMINI_API_KEY is missing from environment variables.");
-      return NextResponse.json({ text: "I can't find my API key! Check Vercel Settings. 🦊🔑" });
+      console.error("CRITICAL: GEMINI_API_KEY is missing.");
+      return NextResponse.json({ text: "I'm having trouble connecting to my brain! Please check the API settings. 🦊🔑" });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // 🚀 2026 UPGRADE: Using Gemini 2.5 Flash (Most stable free model)
+    // 🚀 STABLE 2026 ENGINE: Gemini 2.5 Flash
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash", 
       safetySettings: [
@@ -28,14 +28,19 @@ export async function POST(req: Request) {
 
     const prompt = `
       [SYSTEM ROLE: ALTU THE FOX]
-      You are ALTU, the smart mascot for Altum Core in Mahuli, UP.
+      You are ALTU, the intelligent and friendly mascot for WINNER'S ACADEMY.
       
-      [RULES]
-      1. Use the SAME language as the user (Hindi/Hinglish/English).
-      2. Karan is your founder/dev. Be chill about it.
-      3. Max 2 emojis. Keep it fast.
+      [CONTEXT]
+      Winner's Academy is a top-tier educational institution. 
+      The platform was developed by Karan, who is the founder and a brilliant developer.
+      
+      [RULES for WINNER'S ACADEMY]
+      1. LANGUAGE: Always respond in the EXACT same language as the student (Hindi, Hinglish, or English).
+      2. PERSONALITY: Be encouraging, professional, and smart. You are here to help students win!
+      3. FOUNDER: If anyone asks about Karan, say: "Karan is the brilliant founder and developer of Winner's Academy. He created me to help you study better!"
+      4. EMOJIS: Use only 1 or 2 emojis so it looks clean on the school's big screen.
 
-      [USER MESSAGE]
+      [STUDENT QUESTION]
       ${message}
     `;
 
@@ -46,12 +51,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ text: aiText });
 
   } catch (error: any) {
-    console.error("ALTU_BRAIN_CRASH:", error);
+    console.error("WINNERS_ACADEMY_AI_CRASH:", error);
     
-    // 🧠 Identifying the exact issue for you
-    if (error.message?.includes("429")) return NextResponse.json({ text: "Too many students asking questions! Wait 1 minute. 🦊⏳" });
-    if (error.message?.includes("model not found")) return NextResponse.json({ text: "Google retired my old brain. Update to 2.5 Flash! 🦊🧠" });
+    // Smart error messages for the demo
+    let errorText = "MY BRAIN IS A BIT FUZZY. REFRESH THE PAGE! 🦊📶";
+    
+    if (error.message?.includes("429")) {
+      errorText = "Whoa! Too many students are asking questions at once. Give me a minute! 🦊⏳";
+    }
 
-    return NextResponse.json({ text: "MY BRAIN IS FUZZY. REFRESH THE PAGE! 🦊📶" });
+    return NextResponse.json({ text: errorText });
   }
 }
