@@ -31,7 +31,6 @@ export default function Dashboard() {
       if (studentData) {
         setStudent(studentData);
 
-        // 🚀 Sanitizer: Search for "5" if class is "5th"
         const cleanClass = studentData.class.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
         const classNoticeKey = `notice_class_${cleanClass}`;
 
@@ -43,17 +42,28 @@ export default function Dashboard() {
         if (globalRes.data) setGlobalNotice(globalRes.data.value);
         if (classRes.data) setClassNotice(classRes.data.value);
 
-        const { data: allScores } = await supabase.from('test_scores').select('student_id, marks_obtained, total_marks');
+        // 🛡️ ISOLATED RANK LOGIC: Fetch ONLY classmates
+        const { data: classmates } = await supabase.from('students').select('id').eq('class', studentData.class);
+        const classmateIds = classmates ? classmates.map(c => c.id) : [activeId];
+
+        const { data: allScores } = await supabase.from('test_scores').select('student_id, marks_obtained, total_marks').in('student_id', classmateIds);
+        
         if (allScores) {
           const studentStats: any = {};
+          classmateIds.forEach(id => { studentStats[id] = { got: 0, total: 0 }; }); // Initialize
+          
           allScores.forEach(s => {
-            if (!studentStats[s.student_id]) studentStats[s.student_id] = { got: 0, total: 0 };
-            studentStats[s.student_id].got += Number(s.marks_obtained);
-            studentStats[s.student_id].total += Number(s.total_marks);
+            if (studentStats[s.student_id]) {
+              studentStats[s.student_id].got += Number(s.marks_obtained);
+              studentStats[s.student_id].total += Number(s.total_marks);
+            }
           });
+
           const rankedList = Object.keys(studentStats)
+            .filter(id => studentStats[id].total > 0) // Hide students with 0 tests
             .map(id => ({ id, avg: (studentStats[id].got / studentStats[id].total) * 100 }))
             .sort((a, b) => b.avg - a.avg);
+            
           const myRank = rankedList.findIndex(item => item.id === activeId) + 1;
           setRank(myRank > 0 ? myRank : '--');
         }

