@@ -19,119 +19,99 @@ export default function StudentLedger() {
 
   const allClasses = ['All', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
 
+  const sanitizeClass = (cls: string | null) => {
+    if (!cls) return "";
+    return cls.toLowerCase().replace(/(st|nd|rd|th|standard|class)/g, "").trim();
+  };
+
   useEffect(() => { 
     const role = localStorage.getItem('role');
     const assigned = localStorage.getItem('assignedClass');
     setUserRole(role);
 
     if (role === 'teacher' && assigned) {
-      setSelectedClass(assigned);
-      setNewClass(assigned);
+      const match = allClasses.find(c => sanitizeClass(c) === sanitizeClass(assigned)) || assigned;
+      setSelectedClass(match);
+      setNewClass(match);
     }
-    fetchStudents(role, assigned); 
+    fetchStudents(); 
   }, []);
 
-  async function fetchStudents(role: string | null, assigned: string | null) {
+  async function fetchStudents() {
     setLoading(true);
-    let query = supabase.from('students').select('*').order('name', { ascending: true });
-    if (role === 'teacher' && assigned) {
-      query = query.eq('class', assigned);
-    }
-    const { data } = await query;
+    // Fetch all then filter in JS to avoid string matching issues
+    const { data } = await supabase.from('students').select('*').order('name', { ascending: true });
     if (data) setStudents(data);
     setLoading(false);
   }
-
-  const generateSecureID = () => {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const numbers = '0123456789';
-    let res = '';
-    for (let i = 0; i < 2; i++) res += letters.charAt(Math.floor(Math.random() * letters.length));
-    for (let i = 0; i < 4; i++) res += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    return res;
-  };
 
   const handleEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
     setIsEnrolling(true);
-    const newID = generateSecureID();
+    const newID = 'MX' + Math.floor(1000 + Math.random() * 9000); // Simple ID gen
     const { error } = await supabase.from('students').insert([{ id: newID, name: newName.trim(), class: newClass, attendance: 0 }]);
     if (!error) { 
       setNewName(""); 
       setShowAddModal(false); 
-      fetchStudents(userRole, selectedClass); 
+      fetchStudents(); 
     }
     setIsEnrolling(false);
   };
 
-  async function deleteStudent(id: string, name: string) {
-    if (confirm(`Remove ${name}?`)) {
-      const { error } = await supabase.from('students').delete().eq('id', id);
-      if (!error) setStudents(students.filter(s => s.id !== id));
-    }
-  }
-
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.id.includes(searchTerm.toUpperCase());
-    const matchesClass = selectedClass === 'All' || s.class === selectedClass;
+    const cleanSelected = sanitizeClass(selectedClass);
+    const matchesClass = selectedClass === 'All' || sanitizeClass(s.class) === cleanSelected;
     return matchesSearch && matchesClass;
   });
 
   return (
     <div className="min-h-screen bg-transparent p-6 pt-28 font-sans text-[var(--text)] pb-40">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => router.back()} className="p-2 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all"><ChevronLeft size={20} /></button>
+        <button onClick={() => router.back()} className="p-2 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90"><ChevronLeft size={20} /></button>
         <div>
           <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">Student <span className="text-blue-500">Ledger</span></h1>
           <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1 italic">{filteredStudents.length} Records Shown</p>
         </div>
       </div>
 
-      <button onClick={() => setShowAddModal(true)} className="w-full mb-6 py-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+      <button onClick={() => setShowAddModal(true)} className="w-full mb-6 py-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl flex items-center justify-center gap-3 active:scale-95 shadow-sm">
         <Plus size={18} className="text-blue-500" />
         <span className="text-[10px] font-black uppercase tracking-[2px] text-blue-500">Enroll New Student</span>
       </button>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-        <input type="text" placeholder="SEARCH BY NAME OR ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest outline-none text-[var(--text)] focus:border-blue-500 transition-colors" />
-      </div>
-
-      {userRole === 'principal' && (
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-2">
+      {userRole === 'teacher' ? (
+        <div className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-500/5 border border-blue-500/20 rounded-xl w-fit">
+          <Lock size={12} className="text-blue-500" />
+          <span className="text-[9px] font-black uppercase text-blue-500 tracking-widest">Locked to Class {selectedClass}</span>
+        </div>
+      ) : (
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
           {allClasses.map(cls => (
-            <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedClass === cls ? 'bg-blue-600 text-white' : 'bg-[var(--card)] text-zinc-500 border border-[var(--border)]'}`}>
+            <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedClass === cls ? 'bg-blue-600 text-white shadow-lg' : 'bg-[var(--card)] text-zinc-500 border border-[var(--border)]'}`}>
               {cls === 'All' ? 'All Classes' : `${cls} Standard`}
             </button>
           ))}
         </div>
       )}
 
-      {userRole === 'teacher' && (
-        <div className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-500/5 border border-blue-500/20 rounded-xl w-fit">
-          <Lock size={12} className="text-blue-500" />
-          <span className="text-[9px] font-black uppercase text-blue-500 tracking-widest">Locked to Class {selectedClass}</span>
-        </div>
-      )}
-
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-[35px] overflow-hidden shadow-sm">
         <div className="divide-y divide-[var(--border)]">
-          {loading ? ( <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div> ) : filteredStudents.length === 0 ? (
-            <div className="p-10 text-center text-zinc-500 text-xs font-black uppercase tracking-widest">No students found</div>
-          ) : (
+          {loading ? <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div> : filteredStudents.length === 0 ? <div className="p-10 text-center text-zinc-500 text-xs font-black uppercase">No students found</div> :
             filteredStudents.map((student) => (
               <div key={student.id} className="p-5 flex items-center justify-between">
-                <div className="w-1/3 text-left">
+                <div className="text-left">
                   <p className="text-sm font-black italic uppercase text-[var(--text)] leading-tight">{student.name}</p>
-                  <p className="text-[9px] text-blue-500 font-black tracking-widest">#{student.id}</p>
-                  <p className="text-[7px] text-zinc-500 uppercase font-bold tracking-tighter italic">{student.class} Standard</p>
+                  <p className="text-[9px] text-blue-500 font-black tracking-widest">#{student.id} • {student.class}</p>
                 </div>
-                <div className="w-1/4 text-center"><span className={`text-xs font-black italic ${parseInt(student.attendance) < 75 ? 'text-orange-500' : 'text-green-500'}`}>{student.attendance}%</span></div>
-                <button onClick={() => deleteStudent(student.id, student.name)} className="text-zinc-400 p-2 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                <div className="text-right flex items-center gap-4">
+                  <span className={`text-xs font-black italic ${parseInt(student.attendance) < 75 ? 'text-orange-500' : 'text-green-500'}`}>{student.attendance}%</span>
+                  <button onClick={async () => { if(confirm("Remove?")) { await supabase.from('students').delete().eq('id', student.id); fetchStudents(); }}} className="text-zinc-400 p-2"><Trash2 size={16} /></button>
+                </div>
               </div>
             ))
-          )}
+          }
         </div>
       </div>
 
@@ -147,7 +127,7 @@ export default function StudentLedger() {
               <select disabled={userRole === 'teacher'} value={newClass} onChange={(e) => setNewClass(e.target.value)} className="w-full bg-zinc-500/5 border border-[var(--border)] rounded-2xl py-5 px-6 text-xs font-black uppercase text-[var(--text)] outline-none appearance-none">
                 {allClasses.filter(c => c !== 'All').map(cls => <option key={cls} value={cls}>{cls} Grade</option>)}
               </select>
-              <button type="submit" disabled={isEnrolling} className="w-full bg-blue-600 text-white py-6 rounded-[28px] flex items-center justify-center gap-3 font-black uppercase tracking-[3px] text-xs active:scale-95 transition-all">
+              <button type="submit" disabled={isEnrolling} className="w-full bg-blue-600 text-white py-6 rounded-[28px] flex items-center justify-center gap-3 font-black uppercase tracking-[3px] text-xs active:scale-95 transition-all shadow-lg">
                 {isEnrolling ? <Loader2 className="animate-spin" /> : <>Complete Enrollment <ShieldCheck size={18}/></>}
               </button>
             </div>

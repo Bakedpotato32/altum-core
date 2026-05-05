@@ -24,7 +24,7 @@ export default function LoginPage() {
       localStorage.setItem('role', 'principal'); // Gives you Master Admin rights
       localStorage.setItem('staffName', 'Karan (Developer)');
       localStorage.setItem('assignedClass', 'All');
-      router.push('/admin'); 
+      router.replace('/admin'); 
       return;
     }
 
@@ -41,7 +41,7 @@ export default function LoginPage() {
         localStorage.setItem('role', staffMember.role); 
         localStorage.setItem('staffName', staffMember.name);
         localStorage.setItem('assignedClass', staffMember.assigned_class);
-        router.push('/admin'); 
+        router.replace('/admin'); 
         return;
       }
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
         localStorage.setItem('studentId', student.id);
         localStorage.setItem('studentName', student.name);
         localStorage.setItem('studentClass', student.class);
-        router.push('/dashboard'); 
+        router.replace('/dashboard'); 
       } else {
         alert("ID not found or incorrect.");
         setLoading(false);

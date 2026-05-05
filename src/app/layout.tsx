@@ -8,6 +8,9 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Home, BookOpen, Bot, User, Moon, Sun, Globe } from 'lucide-react';
 import { LanguageContext, dict } from '@/lib/LanguageContext';
 
+// 🚀 Import the Native App Behavior ghost component
+import NativeAppBehavior from '@/components/NativeApp';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLogin = pathname === '/login' || pathname === '/';
@@ -23,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     const savedLang = localStorage.getItem('lang');
     const role = localStorage.getItem('role');
 
-    if (role === 'admin') {
+    if (role === 'principal' || role === 'teacher') {
       setHomePath('/admin');
     } else {
       setHomePath('/dashboard');
@@ -73,9 +76,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className="antialiased overflow-hidden font-sans bg-[var(--background)]">
+        
+        {/* 🚀 Inject the invisible back button trap here */}
+        <NativeAppBehavior />
+        
         <Script src="https://cdn.tailwindcss.com" strategy="afterInteractive" />
         
-        {/* <-- Passed toggleLang into the provider here --> */}
         <LanguageContext.Provider value={{ lang, t, toggleLang }}>
           {!isLogin && (
             <header className={`fixed top-0 left-0 right-0 px-6 pt-10 pb-4 z-[100] flex justify-between items-center backdrop-blur-md transition-all duration-500 bg-gradient-to-b ${isDarkMode ? 'from-[#050508] via-[#050508]/80' : 'from-[#f4f7f6] via-[#f4f7f6]/80'} to-transparent`}>
