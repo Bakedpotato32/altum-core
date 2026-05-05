@@ -1,3 +1,4 @@
+
 'use client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
@@ -32,7 +33,6 @@ function AttendanceForm() {
       const { data: holidayData } = await supabase.from('holidays').select('*').eq('date', dateStr).maybeSingle();
       if (holidayData) setIsHoliday(true);
 
-      // 🛡️ Smart Fetch: Get all students and filter in JS to ensure 6/6th match
       const { data: allStudents } = await supabase.from('students').select('*').order('name', { ascending: true });
       const { data: existingLogs } = await supabase.from('attendance_logs').select('*').eq('date', dateStr);
 
@@ -63,32 +63,51 @@ function AttendanceForm() {
 
   const saveToCloud = async () => {
     setSaving(true);
-    const cleanClass = sanitizeClass(className);
     await supabase.from('attendance_logs').delete().eq('date', dateStr).eq('class', className);
     
     const logs = students.map(s => ({
       date: dateStr,
       student_id: s.id,
-      class: className, // Saves using the label passed in URL
+      class: className, 
       status: attendance[s.id] ? 'present' : 'absent'
     }));
     
     const { error: logError } = await supabase.from('attendance_logs').insert(logs);
 
     if (!logError) {
-      for (const s of students) {
-        const { data: history } = await supabase.from('attendance_logs').select('status').eq('student_id', s.id);
-        if (history) {
-          const present = history.filter(h => h.status === 'present').length;
-          const total = history.length;
-          const newPerc = total > 0 ? Math.round((present / total) * 100) : 0;
-          await supabase.from('students').update({ attendance: newPerc }).eq('id', s.id);
-        }
-      }
+      await recalculateStudentPercentages();
       router.push('/admin/attendance');
     } else {
       alert("Error: " + logError.message);
       setSaving(false);
+    }
+  };
+
+  // 🚀 UNDO FUNCTION RESTORED
+  const undoAttendance = async () => {
+    if (!confirm("Are you sure you want to completely delete today's attendance records for this class?")) return;
+    setSaving(true);
+
+    const { error } = await supabase.from('attendance_logs').delete().eq('date', dateStr).eq('class', className);
+    
+    if (!error) {
+      await recalculateStudentPercentages();
+      router.push('/admin/attendance');
+    } else {
+      alert("Error undoing: " + error.message);
+      setSaving(false);
+    }
+  };
+
+  const recalculateStudentPercentages = async () => {
+    for (const s of students) {
+      const { data: history } = await supabase.from('attendance_logs').select('status').eq('student_id', s.id);
+      if (history) {
+        const present = history.filter(h => h.status === 'present').length;
+        const total = history.length;
+        const newPerc = total > 0 ? Math.round((present / total) * 100) : 0;
+        await supabase.from('students').update({ attendance: newPerc }).eq('id', s.id);
+      }
     }
   };
 
@@ -132,6 +151,13 @@ function AttendanceForm() {
           <button onClick={saveToCloud} disabled={saving} className="w-full bg-blue-600 text-white py-6 rounded-[32px] flex items-center justify-center gap-4 font-black uppercase tracking-[4px] shadow-xl active:scale-95 disabled:opacity-30">
             {saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Push to Cloud</>}
           </button>
+
+          {/* 🚀 UNDO BUTTON RESTORED */}
+          {hasExistingRecords && (
+            <button onClick={undoAttendance} disabled={saving} className="w-full bg-[var(--card)] text-red-500 py-5 rounded-[28px] flex items-center justify-center gap-3 font-black uppercase tracking-widest border border-red-500/20 active:scale-95 disabled:opacity-30 transition-all hover:bg-red-500/10">
+              {saving ? <Loader2 className="animate-spin" /> : <><Trash2 size={18} /> Undo Roll Call</>}
+            </button>
+          )}
         </div>
       )}
     </div>
