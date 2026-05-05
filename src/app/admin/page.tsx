@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, Users, Plus } from 'lucide-react';
+import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, Users, Plus, IndianRupee } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -13,7 +13,6 @@ export default function AdminDashboard() {
   const [staffName, setStaffName] = useState<string | null>(null);
   const router = useRouter();
 
-  // 🚀 Sanitizer: Converts "5th" or "5TH" to "5"
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
     return cls.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
@@ -37,18 +36,11 @@ export default function AdminDashboard() {
       const cleanClass = sanitizeClass(userClass);
       const noticeKey = role === 'principal' ? 'global_notice' : `notice_class_${cleanClass}`;
       
-      const { data: noticeData } = await supabase
-        .from('config')
-        .select('value')
-        .eq('key', noticeKey)
-        .maybeSingle();
-      
+      const { data: noticeData } = await supabase.from('config').select('value').eq('key', noticeKey).maybeSingle();
       if (noticeData) setNotice(noticeData.value);
 
       let query = supabase.from('students').select('*', { count: 'exact', head: true });
-      if (role === 'teacher') {
-        query = query.eq('class', userClass);
-      }
+      if (role === 'teacher') query = query.eq('class', userClass);
       
       const { count } = await query;
       if (count !== null) setStudentCount(count);
@@ -113,29 +105,30 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+        {/* 🛡️ ONLY PRINCIPAL SEES FINANCE AND STAFF MANAGEMENT */}
         {userRole === 'principal' && (
-          <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users className="text-cyan-400" />} label="Management" title="Staff Hub" detail="Manage Teachers" />
+          <>
+            <AdminCard onClick={() => router.push('/admin/fees')} icon={<IndianRupee className="text-emerald-500" />} label="Finance" title="Fee Ledger" detail="Collect & Setup" highlight />
+            <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users className="text-cyan-400" />} label="Management" title="Staff Hub" detail="Manage Teachers" />
+          </>
         )}
         <AdminCard onClick={() => router.push('/admin/ledger')} icon={<UserPlus className="text-purple-500" />} label="Enrollment" title="Ledger" detail={`${studentCount} Students`} />
         <AdminCard onClick={() => router.push('/admin/attendance')} icon={<CalendarIcon className="text-blue-500" />} label="Attendance" title="Roll Call" detail="Cloud Hub" />
         <AdminCard onClick={() => router.push('/admin/marks')} icon={<Trophy className="text-yellow-500" />} label="Academic" title="Marks Entry" detail="Log Scores" />
         <AdminCard onClick={() => router.push('/admin/upload')} icon={<UploadCloud className="text-green-500" />} label="Library" title="PDF Vault" detail="Sync Notes" />
         <AdminCard onClick={() => router.push('/admin/syllabus')} icon={<ListChecks className="text-red-500" />} label="Planning" title="Syllabus" detail="Track Progress" />
-        <div className="p-6 bg-[var(--card)]/30 border border-dashed border-[var(--border)] rounded-[32px] flex items-center justify-center opacity-40">
-           <Plus size={20} className="text-[var(--text)]" />
-        </div>
       </div>
     </div>
   );
 }
 
-function AdminCard({ onClick, icon, label, title, detail }: any) {
+function AdminCard({ onClick, icon, label, title, detail, highlight }: any) {
   return (
-    <div onClick={onClick} className="p-6 bg-[var(--card)] border border-[var(--border)] rounded-[32px] active:scale-95 transition-all cursor-pointer shadow-sm hover:border-blue-500/30">
+    <div onClick={onClick} className={`p-6 bg-[var(--card)] border rounded-[32px] active:scale-95 transition-all cursor-pointer shadow-sm ${highlight ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[var(--border)] hover:border-blue-500/30'}`}>
       <div className="mb-4">{icon}</div>
       <h5 className="text-[9px] font-black uppercase text-zinc-500 tracking-widest leading-none mb-1">{label}</h5>
       <p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{title}</p>
-      <p className="text-[9px] font-bold mt-2 uppercase text-blue-500/80">{detail}</p>
+      <p className={`text-[9px] font-bold mt-2 uppercase ${highlight ? 'text-emerald-500' : 'text-blue-500/80'}`}>{detail}</p>
     </div>
   );
 }
