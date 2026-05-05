@@ -8,13 +8,14 @@ export const dict = {
     student: "Student",
     id: "ID",
     liveNotice: "Live Notice",
+    update: "Update",
     rank: "Rank",
     syllabus: "Syllabus",
     trackProgress: "Track Progress",
     support: "Support",
     whatsappGroup: "WhatsApp Group",
     altumLab: "Altum Lab",
-    altumCore: "Winner's Academy", // Updated to Winner's Academy
+    altumCore: "Winner's Academy", 
     performanceMode: "Performance Mode",
     launchLab: "Launch Lab",
     standard: "Standard",
@@ -29,6 +30,8 @@ export const dict = {
     rankingsUpdate: "Rankings update after every test.",
     keepPushing: "Keep pushing for the",
     numberOneSpot: "#1 Spot",
+    unbeatable: "Unbeatable",
+    noTestData: "No test data available yet.",
 
     // AI Chat
     altuGreeting: "HI THERE! I'M ALTU. NEED HELP WITH SCIENCE OR ENGLISH TODAY?",
@@ -79,6 +82,23 @@ export const dict = {
     mockFinals: "Mock Finals",
     nextMilestone: "Next Milestone",
 
+    // Finance Node (NEW)
+    feeDiary: "Fee Diary",
+    financeNode: "Finance Node",
+    paidTill: "Paid Till",
+    dueSoon: "Due Soon",
+    overdue: "Overdue",
+    actionNeeded: "Action Needed",
+    pending: "PENDING",
+    currentStatus: "Current Status",
+    cleared: "Cleared",
+    paymentHistory: "Payment History",
+    noPaymentRecords: "No payment records found.",
+    overdueSince: "Overdue since",
+    pendingFor: "Pending for",
+    month: "Month",
+    months: "Months",
+
     // Syllabus
     backToDashboard: "Back to Dashboard",
     pulse: "Pulse",
@@ -92,87 +112,107 @@ export const dict = {
   },
   HI: {
     // General
-    welcome: "स्वागत है",
-    student: "छात्र",
-    id: "आईडी",
-    liveNotice: "ताज़ा सूचना",
+    welcome: "वेलकम",
+    student: "स्टूडेंट",
+    id: "ID",
+    liveNotice: "ज़रूरी नोटिस",
+    update: "अपडेट",
     rank: "रैंक",
-    syllabus: "पाठ्यक्रम",
-    trackProgress: "प्रगति देखें",
-    support: "सहायता",
+    syllabus: "सिलेबस",
+    trackProgress: "पढ़ाई का रिकॉर्ड",
+    support: "सपोर्ट",
     whatsappGroup: "व्हाट्सएप ग्रुप",
-    altumLab: "अल्टम लैब",
-    altumCore: "विजेता अकादमी", // Hindi Rebrand
-    performanceMode: "प्रदर्शन मोड",
-    launchLab: "लैब शुरू करें",
-    standard: "स्टैंडर्ड",
+    altumLab: "AI डाउट सॉल्वर",
+    altumCore: "विनर्स अकादमी", 
+    performanceMode: "फास्ट मोड",
+    launchLab: "लैब खोलें",
+    standard: "क्लास",
 
     // Leaderboard
-    dashboard: "डैशबोर्ड",
+    dashboard: "होम",
     hallOf: "हॉल ऑफ",
     fame: "फेम",
-    classRankings: "कक्षा रैंकिंग",
-    calculatingGreatness: "महानता की गणना हो रही है...",
-    aggregate: "कुल प्रतिशत",
-    rankingsUpdate: "हर परीक्षा के बाद रैंकिंग अपडेट होती है।",
-    keepPushing: "लगातार प्रयास करें",
-    numberOneSpot: "#1 स्थान के लिए",
+    classRankings: "क्लास की रैंकिंग",
+    calculatingGreatness: "रैंक निकाली जा रही है...",
+    aggregate: "टोटल %",
+    rankingsUpdate: "हर टेस्ट के बाद रैंक अपडेट होती है।",
+    keepPushing: "मेहनत करते रहो",
+    numberOneSpot: "नंबर 1 बनने के लिए",
+    unbeatable: "सबसे आगे",
+    noTestData: "अभी कोई टेस्ट का डेटा नहीं है।",
 
     // AI Chat
-    altuGreeting: "नमस्ते! मैं अल्टू हूँ। क्या आज आपको विज्ञान या अंग्रेजी में मदद चाहिए?",
-    networkError: "नेटवर्क त्रुटि। कृपया पुनः प्रयास करें! 🦊",
+    altuGreeting: "नमस्ते! मैं अल्टू हूँ। आज साइंस या इंग्लिश में कोई डाउट है?",
+    networkError: "नेटवर्क प्रॉब्लम है। फिर से कोशिश करें! 🦊",
     altuThinking: "अल्टू सोच रहा है...",
-    altuProcessing: "अल्टू प्रोसेस कर रहा है...",
-    typeDoubt: "अपना डाउट टाइप करें...",
+    altuProcessing: "जवाब ढूंढा जा रहा है...",
+    typeDoubt: "अपना डाउट यहाँ लिखें...",
 
     // Login
-    portalAccess: "पोर्टल एक्सेस",
-    studentId: "छात्र आईडी",
-    launchCore: "लॉन्च कोर",
-    help: "सहायता",
-    contactAdmin: "एडमिन से संपर्क करें",
-    getHelpWhatsApp: "व्हाट्सएप पर सहायता प्राप्त करें",
+    portalAccess: "स्टूडेंट लॉगिन",
+    studentId: "स्टूडेंट ID",
+    launchCore: "लॉगिन करें",
+    help: "मदद",
+    contactAdmin: "एडमिन से बात करें",
+    getHelpWhatsApp: "व्हाट्सएप पर मदद लें",
 
     // Materials / Vault
     study: "स्टडी",
     vault: "वॉल्ट",
-    digitalLibraryNode: "डिजिटल लाइब्रेरी नोड",
-    searchStandard: "स्टैंडर्ड खोजें...",
-    backToHub: "हब पर वापस जाएँ",
-    classWord: "कक्षा",
-    selectSubjectVault: "विषय वॉल्ट चुनें",
-    coreResources: "मुख्य संसाधन",
-    backTo: "वापस जाएँ",
-    resources: "संसाधन",
-    openingVault: "वॉल्ट खुल रहा है...",
-    noFilesUploaded: "अभी तक कोई फ़ाइल अपलोड नहीं की गई है।",
+    digitalLibraryNode: "डिजिटल लाइब्रेरी",
+    searchStandard: "क्लास खोजें...",
+    backToHub: "पीछे जाएँ",
+    classWord: "क्लास",
+    selectSubjectVault: "सब्जेक्ट चुनें",
+    coreResources: "स्टडी मटेरियल",
+    backTo: "पीछे जाएँ",
+    resources: "नोट्स",
+    openingVault: "नोट्स खुल रहे हैं...",
+    noFilesUploaded: "अभी कोई फाइल नहीं डाली गई है।",
 
     // Profile & Attendance
-    nodeId: "नोड आईडी",
-    attendance: "उपस्थिति",
-    consistencyPulse: "निरंतरता पल्स",
-    performance: "प्रदर्शन",
-    academicLedger: "शैक्षणिक लेज़र",
+    nodeId: "स्टूडेंट ID",
+    attendance: "हाज़िरी",
+    consistencyPulse: "हाज़िरी का रिकॉर्ड",
+    performance: "परफॉरमेंस",
+    academicLedger: "टेस्ट के नंबर",
     my: "मेरा",
     record: "रिकॉर्ड",
-    verifiedId: "सत्यापित आईडी",
-    present: "उपस्थित",
-    absent: "अनुपस्थित",
-    holiday: "अवकाश",
-    profile: "प्रोफ़ाइल",
-    aggregateScore: "कुल स्कोर",
-    status: "स्थिति",
-    activeLedger: "सक्रिय लेज़र",
-    recentTests: "हाल के टेस्ट",
-    mockFinals: "मॉक फाइनल्स",
-    nextMilestone: "अगला पड़ाव",
+    verifiedId: "वेरिफाइड ID",
+    present: "प्रेजेंट (P)",
+    absent: "एब्सेंट (A)",
+    holiday: "छुट्टी",
+    profile: "प्रोफाइल",
+    aggregateScore: "टोटल स्कोर",
+    status: "स्टेटस",
+    activeLedger: "एक्टिव रिकॉर्ड",
+    recentTests: "पिछले टेस्ट",
+    mockFinals: "मॉक टेस्ट",
+    nextMilestone: "अगला टारगेट",
+
+    // Finance Node (NEW)
+    feeDiary: "फीस डायरी",
+    financeNode: "फीस का रिकॉर्ड",
+    paidTill: "फीस जमा है",
+    dueSoon: "फीस का समय",
+    overdue: "फीस बाकी है",
+    actionNeeded: "तुरंत ध्यान दें",
+    pending: "बाकी है",
+    currentStatus: "करंट स्टेटस",
+    cleared: "जमा है",
+    paymentHistory: "पिछली जमा फीस",
+    noPaymentRecords: "अभी तक कोई फीस जमा नहीं हुई है।",
+    overdueSince: "महीने से बाकी:",
+    pendingFor: "इतने समय से बाकी:",
+    month: "महीने",
+    months: "महीने",
 
     // Syllabus
-    backToDashboard: "डैशबोर्ड पर वापस जाएँ",
-    pulse: "पल्स",
-    progress: "प्रगति",
-    readingCloudData: "क्लाउड डेटा पढ़ रहा है",
-    noChaptersAdded: "इसके लिए कोई अध्याय नहीं जोड़ा गया:",
+    backToDashboard: "होम पर जाएँ",
+    pulse: "स्टेटस",
+    progress: "प्रोग्रेस",
+    readingCloudData: "डेटा लोड हो रहा है...",
+    noChaptersAdded: "अभी चैप्टर नहीं जोड़े गए हैं:",
     mathematics: "गणित",
     science: "विज्ञान",
     english: "अंग्रेज़ी",
@@ -180,7 +220,6 @@ export const dict = {
   }
 };
 
-// Default context structure
 const defaultContext = {
   lang: 'EN',
   t: (key: string) => key,
@@ -192,7 +231,6 @@ export const LanguageContext = createContext(defaultContext);
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
   const [lang, setLang] = useState<'EN' | 'HI'>('EN');
 
-  // Load preference from local storage if available
   useEffect(() => {
     const savedLang = localStorage.getItem('app_lang') as 'EN' | 'HI';
     if (savedLang) setLang(savedLang);
@@ -205,7 +243,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   const t = (key: string) => {
-    return dict[lang][key] || key;
+    return dict[lang]?.[key as keyof typeof dict['EN']] || key;
   };
 
   return (

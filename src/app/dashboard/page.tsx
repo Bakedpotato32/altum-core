@@ -14,7 +14,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [rank, setRank] = useState<number | string>('--');
 
-  // 🚀 GRADUAL WARNING LOGIC
   const getClearanceLevel = (paidTill: string | null) => {
     if (!paidTill || paidTill.toUpperCase() === 'PENDING') return { level: 'danger', monthsBehind: 99 };
     
@@ -33,15 +32,14 @@ export default function Dashboard() {
 
     if (parsedMonth === -1) return { level: 'cleared', monthsBehind: 0 }; 
     
-    // Calculate total months difference
     const totalCurrentMonths = currentYear * 12 + currentMonth;
     const totalPaidMonths = parsedYear * 12 + parsedMonth;
     const monthsBehind = totalCurrentMonths - totalPaidMonths;
 
-    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 }; // Paid up to date or advance
-    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 }; // 1 month -> Yellow
-    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };   // 2 months -> Orange
-    return { level: 'danger', monthsBehind };                             // 3+ months -> Red
+    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 }; 
+    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 }; 
+    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };   
+    return { level: 'danger', monthsBehind };                             
   };
 
   useEffect(() => {
@@ -105,7 +103,6 @@ export default function Dashboard() {
 
   const clearance = getClearanceLevel(student.paid_till);
 
-  // Dynamic styling based on the level
   const badgeColors: Record<string, string> = {
     cleared: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
     warning: 'bg-yellow-500/10 border-yellow-500/40 text-yellow-600',
@@ -121,10 +118,10 @@ export default function Dashboard() {
   };
 
   const badgeLabels: Record<string, string> = {
-    cleared: 'Paid Till',
-    warning: 'Due Soon',
-    alert: 'Overdue',
-    danger: 'Action Needed'
+    cleared: t('paidTill'),
+    warning: t('dueSoon'),
+    alert: t('overdue'),
+    danger: t('actionNeeded')
   };
 
   return (
@@ -143,7 +140,7 @@ export default function Dashboard() {
              {badgeLabels[clearance.level]}
           </span>
           <span className={`text-sm font-black italic uppercase tracking-tighter ${badgeTextColors[clearance.level]}`}>
-            {student.paid_till || 'PENDING'}
+            {student.paid_till || t('pending')}
           </span>
         </div>
       </div>
@@ -156,14 +153,14 @@ export default function Dashboard() {
 
       <div className="mb-8 p-6 bg-blue-500/5 border border-dashed border-blue-500/20 rounded-[35px] shadow-sm relative overflow-hidden group">
          <div className="absolute right-[-10px] top-[-10px] opacity-5 -rotate-12 group-hover:rotate-0 transition-transform duration-500"><Bell size={80} className="text-orange-500" /></div>
-        <p className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-3 flex items-center gap-2"><Bell size={10} /> {student.class} Update</p>
+        <p className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-3 flex items-center gap-2"><Bell size={10} /> {student.class} {t('update')}</p>
         <p className="text-sm font-bold text-[var(--text)] leading-relaxed italic uppercase tracking-tight relative z-10">{classNotice ? `"${classNotice}"` : "No specific updates for your class today. Keep studying! 🦊"}</p>
       </div>
 
       <div onClick={() => router.push('/fees')} className="mb-4 p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm">
         <div className="flex items-center gap-5">
           <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20"><Wallet size={26} /></div>
-          <div><p className="text-emerald-500 text-[9px] font-black uppercase tracking-[3px]">Finance Node</p><h3 className="text-2xl font-black italic text-[var(--text)] tracking-tighter uppercase">Fee Diary</h3></div>
+          <div><p className="text-emerald-500 text-[9px] font-black uppercase tracking-[3px]">{t('financeNode')}</p><h3 className="text-2xl font-black italic text-[var(--text)] tracking-tighter uppercase">{t('feeDiary')}</h3></div>
         </div>
         <ChevronRight size={16} className="text-emerald-500/50" />
       </div>
@@ -184,7 +181,6 @@ export default function Dashboard() {
         <ArrowUpRight size={18} className="text-zinc-400" />
       </div>
 
-      {/* 🚀 WHATSAPP CARD RESTORED */}
       <div onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')} className="mb-6 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-95 transition-all relative shadow-sm">
         <div className="flex items-center gap-4 relative z-10">
           <div className="w-12 h-12 bg-[#25d366] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#25d366]/20"><MessageSquare size={22} fill="currentColor" /></div>
