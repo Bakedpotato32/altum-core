@@ -14,13 +14,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [rank, setRank] = useState<number | string>('--');
 
-  // 🚀 SMART CLEARANCE LOGIC: Checks if the paid month is >= the current real-world month
-  const checkClearance = (paidTill: string | null) => {
-    if (!paidTill || paidTill.toUpperCase() === 'PENDING') return false;
+  // 🚀 GRADUAL WARNING LOGIC
+  const getClearanceLevel = (paidTill: string | null) => {
+    if (!paidTill || paidTill.toUpperCase() === 'PENDING') return { level: 'danger', monthsBehind: 99 };
     
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const currentMonth = new Date().getMonth(); // 0 (Jan) to 11 (Dec)
-    const currentYear = new Date().getFullYear();
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth(); 
+    const currentYear = currentDate.getFullYear();
 
     const str = paidTill.toUpperCase();
     let parsedMonth = -1;
@@ -30,10 +31,17 @@ export default function Dashboard() {
     const yearMatch = str.match(/\d{4}/);
     if (yearMatch) parsedYear = parseInt(yearMatch[0]);
 
-    if (parsedMonth === -1) return true; // If it's a custom fee like "ADMISSION", default to green
-    if (parsedYear > currentYear) return true;
-    if (parsedYear < currentYear) return false;
-    return parsedMonth >= currentMonth;
+    if (parsedMonth === -1) return { level: 'cleared', monthsBehind: 0 }; 
+    
+    // Calculate total months difference
+    const totalCurrentMonths = currentYear * 12 + currentMonth;
+    const totalPaidMonths = parsedYear * 12 + parsedMonth;
+    const monthsBehind = totalCurrentMonths - totalPaidMonths;
+
+    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 }; // Paid up to date or advance
+    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 }; // 1 month -> Yellow
+    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };   // 2 months -> Orange
+    return { level: 'danger', monthsBehind };                             // 3+ months -> Red
   };
 
   useEffect(() => {
@@ -95,7 +103,29 @@ export default function Dashboard() {
 
   if (loading || !student) return <div className="h-svh bg-[var(--background)] flex items-center justify-center"><Loader2 className="text-blue-500 animate-spin" /></div>;
 
-  const isCleared = checkClearance(student.paid_till);
+  const clearance = getClearanceLevel(student.paid_till);
+
+  // Dynamic styling based on the level
+  const badgeColors: Record<string, string> = {
+    cleared: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
+    warning: 'bg-yellow-500/10 border-yellow-500/40 text-yellow-600',
+    alert: 'bg-orange-500/10 border-orange-500/40 text-orange-500',
+    danger: 'bg-red-500/10 border-red-500/30 text-red-500'
+  };
+
+  const badgeTextColors: Record<string, string> = {
+    cleared: 'text-emerald-600',
+    warning: 'text-yellow-600',
+    alert: 'text-orange-600',
+    danger: 'text-red-600'
+  };
+
+  const badgeLabels: Record<string, string> = {
+    cleared: 'Paid Till',
+    warning: 'Due Soon',
+    alert: 'Overdue',
+    danger: 'Action Needed'
+  };
 
   return (
     <div className="px-6 pt-28 pb-32 min-h-screen font-sans bg-transparent">
@@ -107,12 +137,12 @@ export default function Dashboard() {
           <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[3px] mt-1 italic">{student.class} {t('student')} • {t('id')}: {student.id}</p>
         </div>
         
-        {/* 🛡️ THE SMART BADGE */}
-        <div className={`p-2 px-4 rounded-xl border flex flex-col items-center justify-center shadow-sm transition-colors ${isCleared ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-          <span className={`text-[7px] font-black uppercase tracking-[2px] ${isCleared ? 'text-emerald-500' : 'text-red-500'}`}>
-             {isCleared ? 'Paid Till' : 'Dues Pending'}
+        {/* 🛡️ GRADUAL WARNING BADGE */}
+        <div className={`p-2 px-4 rounded-xl border flex flex-col items-center justify-center shadow-sm transition-colors ${badgeColors[clearance.level]}`}>
+          <span className="text-[7px] font-black uppercase tracking-[2px] mb-0.5">
+             {badgeLabels[clearance.level]}
           </span>
-          <span className={`text-sm font-black italic uppercase tracking-tighter ${isCleared ? 'text-emerald-600' : 'text-red-600'}`}>
+          <span className={`text-sm font-black italic uppercase tracking-tighter ${badgeTextColors[clearance.level]}`}>
             {student.paid_till || 'PENDING'}
           </span>
         </div>
@@ -153,6 +183,16 @@ export default function Dashboard() {
         </div>
         <ArrowUpRight size={18} className="text-zinc-400" />
       </div>
+
+      {/* 🚀 WHATSAPP CARD RESTORED */}
+      <div onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')} className="mb-6 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-95 transition-all relative shadow-sm">
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-12 h-12 bg-[#25d366] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#25d366]/20"><MessageSquare size={22} fill="currentColor" /></div>
+          <div><h4 className="text-[9px] font-black uppercase text-[#25d366] tracking-widest mb-1">{t('support')}</h4><p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{t('whatsappGroup')}</p></div>
+        </div>
+        <ArrowUpRight size={18} className="text-zinc-400" />
+      </div>
+
     </div>
   );
 }

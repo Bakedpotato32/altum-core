@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Loader2, IndianRupee, ShieldCheck, ShieldAlert, Clock, ReceiptText } from 'lucide-react';
+import { ArrowLeft, Loader2, IndianRupee, ShieldCheck, ShieldAlert, Clock, ReceiptText, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 
@@ -11,11 +11,13 @@ export default function StudentFeeDiary() {
   const [student, setStudent] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
 
-  const checkClearance = (paidTill: string | null) => {
-    if (!paidTill || paidTill.toUpperCase() === 'PENDING') return false;
+  const getClearanceLevel = (paidTill: string | null) => {
+    if (!paidTill || paidTill.toUpperCase() === 'PENDING') return { level: 'danger', monthsBehind: 99 };
+    
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const currentMonth = new Date().getMonth(); 
-    const currentYear = new Date().getFullYear();
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth(); 
+    const currentYear = currentDate.getFullYear();
 
     const str = paidTill.toUpperCase();
     let parsedMonth = -1;
@@ -25,10 +27,16 @@ export default function StudentFeeDiary() {
     const yearMatch = str.match(/\d{4}/);
     if (yearMatch) parsedYear = parseInt(yearMatch[0]);
 
-    if (parsedMonth === -1) return true; 
-    if (parsedYear > currentYear) return true;
-    if (parsedYear < currentYear) return false;
-    return parsedMonth >= currentMonth;
+    if (parsedMonth === -1) return { level: 'cleared', monthsBehind: 0 }; 
+    
+    const totalCurrentMonths = currentYear * 12 + currentMonth;
+    const totalPaidMonths = parsedYear * 12 + parsedMonth;
+    const monthsBehind = totalCurrentMonths - totalPaidMonths;
+
+    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 };
+    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 };
+    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };
+    return { level: 'danger', monthsBehind };
   };
 
   useEffect(() => {
@@ -51,7 +59,16 @@ export default function StudentFeeDiary() {
 
   if (loading || !student) return <div className="h-svh bg-[var(--background)] flex items-center justify-center"><Loader2 className="text-emerald-500 animate-spin" /></div>;
 
-  const isCleared = checkClearance(student.paid_till);
+  const clearance = getClearanceLevel(student.paid_till);
+
+  const shieldConfig: Record<string, any> = {
+    cleared: { bg: 'bg-emerald-500 border-emerald-400', icon: <ShieldCheck size={120} className="absolute right-[-20px] bottom-[-20px] text-white/10 -rotate-12" />, title: 'Cleared', text: 'text-emerald-100', subtitle: `Till: ${student.paid_till}` },
+    warning: { bg: 'bg-yellow-500 border-yellow-400', icon: <AlertCircle size={120} className="absolute right-[-20px] bottom-[-20px] text-black/10 -rotate-12" />, title: 'Due Soon', text: 'text-yellow-900', subtitle: `Pending for 1 Month` },
+    alert: { bg: 'bg-orange-500 border-orange-400', icon: <AlertTriangle size={120} className="absolute right-[-20px] bottom-[-20px] text-white/10 -rotate-12" />, title: 'Overdue', text: 'text-orange-100', subtitle: `Pending for 2 Months` },
+    danger: { bg: 'bg-red-500 border-red-400', icon: <ShieldAlert size={120} className="absolute right-[-20px] bottom-[-20px] text-white/10 -rotate-12" />, title: 'Action Needed', text: 'text-red-100', subtitle: student.paid_till ? `Overdue since ${student.paid_till}` : 'Contact Administration' }
+  };
+
+  const activeShield = shieldConfig[clearance.level];
 
   return (
     <div className="min-h-screen bg-transparent p-6 pt-28 pb-40 font-sans text-[var(--text)]">
@@ -67,23 +84,18 @@ export default function StudentFeeDiary() {
           <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[3px] mt-1 italic opacity-60">Finance Node</p>
         </div>
 
-        {/* 🛡️ SMART CLEARANCE STATUS */}
-        <div className={`p-8 rounded-[35px] border relative overflow-hidden shadow-lg transition-colors ${isCleared ? 'bg-emerald-500 border-emerald-400' : 'bg-red-500 border-red-400'}`}>
-          {isCleared ? <ShieldCheck size={120} className="absolute right-[-20px] bottom-[-20px] text-white/10 -rotate-12" /> : <ShieldAlert size={120} className="absolute right-[-20px] bottom-[-20px] text-white/10 -rotate-12" />}
+        {/* 🛡️ DYNAMIC SHIELD STATUS */}
+        <div className={`p-8 rounded-[35px] border relative overflow-hidden shadow-lg transition-colors ${activeShield.bg}`}>
+          {activeShield.icon}
           
           <div className="relative z-10">
-            <h3 className={`text-[10px] font-black uppercase tracking-[4px] mb-2 ${isCleared ? 'text-emerald-100' : 'text-red-100'}`}>Current Status</h3>
-            {isCleared ? (
-              <>
-                <p className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none mb-1">Cleared</p>
-                <p className="text-sm font-bold text-emerald-100 uppercase tracking-widest">Till: {student.paid_till}</p>
-              </>
-            ) : (
-              <>
-                <p className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none mb-1">Pending</p>
-                <p className="text-sm font-bold text-red-100 uppercase tracking-widest">{student.paid_till ? `Overdue since ${student.paid_till}` : 'Contact Administration'}</p>
-              </>
-            )}
+            <h3 className={`text-[10px] font-black uppercase tracking-[4px] mb-2 ${activeShield.text} opacity-80`}>Current Status</h3>
+            <p className={`text-3xl font-black italic uppercase tracking-tighter leading-none mb-1 ${clearance.level === 'warning' ? 'text-black' : 'text-white'}`}>
+               {activeShield.title}
+            </p>
+            <p className={`text-sm font-bold uppercase tracking-widest ${activeShield.text}`}>
+               {activeShield.subtitle}
+            </p>
           </div>
         </div>
 
