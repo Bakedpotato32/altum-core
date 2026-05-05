@@ -6,31 +6,32 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development", // Won't annoy you while coding locally
+  disable: process.env.NODE_ENV === "development", // REMEMBER: This kills offline mode in localhost!
   workboxOptions: {
     disableDevLogs: true,
     runtimeCaching: [
       {
-        // 🚀 Caches all Supabase database calls automatically
+        // 🚀 Auto-cache all Supabase database calls!
         urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
         handler: 'NetworkFirst', 
         options: {
           cacheName: 'supabase-offline-cache',
-          expiration: {
-            maxEntries: 200,
-            maxAgeSeconds: 60 * 60 * 24 * 7, // Caches data for 1 week
-          },
-          networkTimeoutSeconds: 3, // If internet is dead, load offline data instantly
+          expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 }, // Keep for 1 week
+          networkTimeoutSeconds: 3, 
         },
       },
+      {
+        // 🚀 Auto-cache the UI assets (Tailwind, Lucide icons, etc.)
+        urlPattern: /\/_next\/.*$/i,
+        handler: 'NetworkFirst',
+        options: { cacheName: 'next-static-assets' }
+      }
     ],
   },
 });
 
 const nextConfig: NextConfig = {
   typescript: {
-    // This keeps the typescript bypass so your phone doesn't crash, 
-    // but removes the invalid ESLint rule that made Vercel panic.
     ignoreBuildErrors: true,
   },
 };
