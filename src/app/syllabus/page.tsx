@@ -22,7 +22,6 @@ export default function StudentSyllabus() {
 
   useEffect(() => {
     if (!userClass) return;
-
     async function fetchSyllabus() {
       setLoading(true);
       const { data, error } = await supabase
@@ -31,7 +30,6 @@ export default function StudentSyllabus() {
         .eq('class', userClass)
         .eq('subject', activeSubject.toLowerCase())
         .order('order_index', { ascending: true });
-
       if (!error) setChapters(data || []);
       setLoading(false);
     }
@@ -41,79 +39,179 @@ export default function StudentSyllabus() {
   const completedCount = chapters.filter(c => c.is_completed).length;
   const progressPercent = chapters.length > 0 ? Math.round((completedCount / chapters.length) * 100) : 0;
 
-  return (
-    <div className="min-h-screen bg-transparent p-6 pt-24 pb-32 text-[var(--text)] font-sans">
-      <button 
-        onClick={() => router.push('/dashboard')} 
-        className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-10 active:scale-90"
-      >
-        <ChevronLeft size={14} /> {t('backToDashboard')}
-      </button>
+  const subjectAccents: Record<string, { color: string; glow: string; bg: string; border: string }> = {
+    mathematics:    { color: '#3b82f6', glow: 'rgba(59,130,246,0.3)',  bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.2)'  },
+    science:        { color: '#10b981', glow: 'rgba(16,185,129,0.3)',  bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.2)'  },
+    english:        { color: '#a855f7', glow: 'rgba(168,85,247,0.3)',  bg: 'rgba(168,85,247,0.08)',  border: 'rgba(168,85,247,0.2)'  },
+    'social-studies':{ color: '#f97316', glow: 'rgba(249,115,22,0.3)', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.2)'  },
+  };
 
-      <div className="mb-10">
-        <div className="flex justify-between items-end mb-4">
-           <div>
-             <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">{t('syllabus')} <span className="text-blue-500">{t('pulse')}</span></h1>
-             <p className="text-zinc-500 text-[9px] font-black uppercase tracking-[3px] mt-2 italic opacity-60">{t('classWord')} {userClass} • {t('progress')}</p>
-           </div>
-           <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 border border-blue-500/20">
-              <ListChecks size={24} />
-           </div>
-        </div>
-        
-        <div className="flex items-center gap-4 bg-[var(--card)] p-4 rounded-[30px] border border-[var(--border)] shadow-sm">
-           <div className="flex-1 h-2 bg-zinc-500/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_15px_#3b82f6] transition-all duration-1000" 
-                style={{ width: `${progressPercent}%` }} 
-              />
-           </div>
-           <span className="text-2xl font-black italic text-[var(--text)] tracking-tighter">{progressPercent}%</span>
-        </div>
+  const accent = subjectAccents[activeSubject] || subjectAccents['mathematics'];return (
+    <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
+
+      {/* Ambient orbs */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div style={{ position: 'absolute', top: '-8%', right: '-12%', width: 320, height: 320, borderRadius: '50%', background: `radial-gradient(circle, ${accent.glow.replace('0.3','0.1')} 0%, transparent 70%)`, filter: 'blur(50px)', transition: 'background 0.5s' }} />
+        <div style={{ position: 'absolute', bottom: '10%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-8 no-scrollbar">
-        {subjects.map(s => {
-          // Dynamic key resolution: "social-studies" -> "socialstudies" to match dictionary
-          const dictKey = s.replace('-', '');
-          return (
-            <button 
-              key={s} 
-              onClick={() => setActiveSubject(s)}
-              className={`px-7 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${activeSubject === s ? 'bg-blue-600 border-blue-400 text-white shadow-xl' : 'bg-[var(--card)] border-[var(--border)] text-zinc-500'}`}
-            >
-              {t(dictKey)}
-            </button>
-          );
-        })}
-      </div>
+      <div className="px-5 pt-24">
 
-      <div className="space-y-3">
-        {loading ? (
-          <div className="flex flex-col items-center py-20 gap-4">
-             <Loader2 className="animate-spin text-blue-500" size={32} />
-             <p className="text-[8px] font-black uppercase tracking-[4px] text-zinc-800">{t('readingCloudData')}</p>
-          </div>
-        ) : chapters.length === 0 ? (
-          <div className="py-20 text-center border border-dashed border-[var(--border)] rounded-[40px] bg-[var(--card)]/30">
-            <p className="text-zinc-500 font-bold italic uppercase text-[10px] tracking-widest">{t('noChaptersAdded')} {t(activeSubject.replace('-',''))}.</p>
-          </div>
-        ) : (
-          chapters.map(ch => (
-            <div key={ch.id} className="p-6 bg-[var(--card)] border border-[var(--border)] rounded-[30px] flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-5">
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${ch.is_completed ? 'bg-green-500 text-black' : 'bg-zinc-500/10 text-zinc-400'}`}>
-                   {ch.is_completed ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-                </div>
-                <span className={`text-[12px] font-bold uppercase tracking-tight ${ch.is_completed ? 'text-zinc-500 line-through' : 'text-[var(--text)]'}`}>
-                  {ch.chapter_name}
+        {/* ── Back ── */}
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform"
+          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}
+        >
+          <ChevronLeft size={15} strokeWidth={3} /> {t('backToDashboard')}
+        </button>
+
+        {/* ── Header ── */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div>
+              <h1 style={{ fontSize: 44, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
+                {t('syllabus')}{' '}
+                <span style={{ color: accent.color, textShadow: `0 0 30px ${accent.glow}`, transition: 'color 0.4s, text-shadow 0.4s' }}>
+                  {t('pulse')}
                 </span>
-              </div>
-              {ch.is_completed && <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]" />}
+              </h1>
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 8 }}>
+                {t('classWord')} {userClass} · {t('progress')}
+              </p>
             </div>
-          ))
-        )}
+            <div style={{ width: 48, height: 48, borderRadius: 16, background: accent.bg, border: `1px solid ${accent.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.4s, border 0.4s', flexShrink: 0 }}>
+              <ListChecks size={22} style={{ color: accent.color, transition: 'color 0.4s' }} />
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ borderRadius: 24, background: 'var(--card)', border: '1px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ flex: 1, height: 6, background: 'rgba(128,128,128,0.1)', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 6, background: `linear-gradient(90deg, ${accent.color}, ${accent.color}cc)`, boxShadow: `0 0 12px ${accent.glow}`, transition: 'width 1s cubic-bezier(0.22,1,0.36,1), background 0.4s' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexShrink: 0 }}>
+              <span style={{ fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.04em', color: accent.color, transition: 'color 0.4s' }}>
+                {progressPercent}%
+              </span>
+            </div>
+          </div>
+
+          {/* Chapter count */}
+          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.25, marginTop: 10, textAlign: 'center' }}>
+            {completedCount} of {chapters.length} chapters done
+          </p>
+        </div>
+
+        {/* ── Subject Tabs ── */}
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 20 }} className="no-scrollbar">
+          {subjects.map(s => {
+            const dictKey = s.replace('-', '');
+            const isActive = activeSubject === s;
+            const sa = subjectAccents[s];
+            return (
+              <button
+                key={s}
+                onClick={() => setActiveSubject(s)}
+                className="active:scale-95 transition-transform"
+                style={{
+                  flexShrink: 0,
+                  padding: '10px 20px',
+                  borderRadius: 14,
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                  border: isActive ? `1px solid ${sa.border}` : '1px solid var(--border)',
+                  background: isActive ? sa.bg : 'var(--card)',
+                  color: isActive ? sa.color : 'var(--text)',
+                  opacity: isActive ? 1 : 0.45,
+                  boxShadow: isActive ? `0 4px 16px ${sa.glow}` : 'none',
+                  transition: 'all 0.25s',
+                }}
+              >
+                {t(dictKey)}
+              </button>
+            );
+          })}
+        </div>{/* ── Chapter List ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 8 }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16 }}>
+              <div style={{ position: 'relative' }}>
+                <div className="absolute inset-0 rounded-full animate-ping" style={{ border: `2px solid ${accent.glow}` }} />
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: accent.bg, border: `1px solid ${accent.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Loader2 size={22} className="animate-spin" style={{ color: accent.color }} />
+                </div>
+              </div>
+              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.28em', textTransform: 'uppercase', color: accent.color, opacity: 0.6 }}>
+                {t('readingCloudData')}
+              </p>
+            </div>
+
+          ) : chapters.length === 0 ? (
+            <div style={{ padding: '64px 24px', textAlign: 'center', borderRadius: 28, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
+              <ListChecks size={36} style={{ color: 'var(--text)', opacity: 0.2, margin: '0 auto 12px' }} />
+              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
+                {t('noChaptersAdded')} {t(activeSubject.replace('-', ''))}.
+              </p>
+            </div>
+
+          ) : (
+            chapters.map((ch, index) => (
+              <div
+                key={ch.id}
+                style={{
+                  borderRadius: 22,
+                  background: ch.is_completed ? accent.bg : 'var(--card)',
+                  border: ch.is_completed ? `1px solid ${accent.border}` : '1px solid var(--border)',
+                  padding: '15px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 14,
+                  transition: 'background 0.3s, border 0.3s',
+                  animation: `fadeSlideIn 0.35s ease both`,
+                  animationDelay: `${index * 0.04}s`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+                  {/* Rank number */}
+                  <span style={{ fontSize: 10, fontWeight: 900, fontStyle: 'italic', color: 'var(--text)', opacity: 0.2, width: 20, textAlign: 'right', flexShrink: 0 }}>
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+
+                  {/* Check icon */}
+                  <div style={{ width: 28, height: 28, borderRadius: 10, background: ch.is_completed ? accent.color : 'rgba(128,128,128,0.08)', border: ch.is_completed ? 'none' : '1px solid rgba(128,128,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: ch.is_completed ? `0 4px 12px ${accent.glow}` : 'none', transition: 'all 0.3s' }}>
+                    {ch.is_completed
+                      ? <CheckCircle2 size={16} style={{ color: '#fff' }} />
+                      : <Circle size={16} style={{ color: 'var(--text)', opacity: 0.25 }} />
+                    }
+                  </div>
+
+                  {/* Chapter name */}
+                  <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: ch.is_completed ? accent.color : 'var(--text)', textDecoration: ch.is_completed ? 'line-through' : 'none', opacity: ch.is_completed ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.3s, opacity 0.3s' }}>
+                    {ch.chapter_name}
+                  </span>
+                </div>
+
+                {/* Done glow dot */}
+                {ch.is_completed && (
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent.color, boxShadow: `0 0 10px ${accent.glow}`, flexShrink: 0 }} />
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
+
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

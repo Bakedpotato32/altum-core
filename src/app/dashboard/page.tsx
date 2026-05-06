@@ -16,80 +16,61 @@ export default function Dashboard() {
 
   const getClearanceLevel = (paidTill: string | null) => {
     if (!paidTill || paidTill.toUpperCase() === 'PENDING') return { level: 'danger', monthsBehind: 99 };
-    
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const currentDate = new Date();
-    const currentMonth = currentDate.getMonth(); 
+    const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
-
     const str = paidTill.toUpperCase();
     let parsedMonth = -1;
     let parsedYear = currentYear;
-
     months.forEach((m, idx) => { if (str.includes(m)) parsedMonth = idx; });
     const yearMatch = str.match(/\d{4}/);
     if (yearMatch) parsedYear = parseInt(yearMatch[0]);
-
-    if (parsedMonth === -1) return { level: 'cleared', monthsBehind: 0 }; 
-    
+    if (parsedMonth === -1) return { level: 'cleared', monthsBehind: 0 };
     const totalCurrentMonths = currentYear * 12 + currentMonth;
     const totalPaidMonths = parsedYear * 12 + parsedMonth;
     const monthsBehind = totalCurrentMonths - totalPaidMonths;
-
-    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 }; 
-    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 }; 
-    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };   
-    return { level: 'danger', monthsBehind };                             
+    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 };
+    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 };
+    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };
+    return { level: 'danger', monthsBehind };
   };
 
   useEffect(() => {
     const role = localStorage.getItem('role');
-    if (role === 'principal' || role === 'teacher') {
-      router.push('/admin');
-      return;
-    }
-
+    if (role === 'principal' || role === 'teacher') { router.push('/admin'); return; }
     const activeId = localStorage.getItem('studentId');
     if (!activeId) { router.push('/login'); return; }
 
     const fetchDashboardData = async () => {
       setLoading(true);
       const { data: studentData } = await supabase.from('students').select('*').eq('id', activeId).single();
-      
       if (studentData) {
         setStudent(studentData);
         const cleanClass = studentData.class.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
         const classNoticeKey = `notice_class_${cleanClass}`;
-
         const [globalRes, classRes] = await Promise.all([
           supabase.from('config').select('value').eq('key', 'global_notice').maybeSingle(),
           supabase.from('config').select('value').eq('key', classNoticeKey).maybeSingle()
         ]);
-
         if (globalRes.data) setGlobalNotice(globalRes.data.value);
         if (classRes.data) setClassNotice(classRes.data.value);
-
         const { data: classmates } = await supabase.from('students').select('id').eq('class', studentData.class);
         const classmateIds = classmates ? classmates.map(c => c.id) : [activeId];
-
         const { data: allScores } = await supabase.from('test_scores').select('student_id, marks_obtained, total_marks').in('student_id', classmateIds);
-        
         if (allScores) {
           const studentStats: any = {};
-          classmateIds.forEach(id => { studentStats[id] = { got: 0, total: 0 }; }); 
-          
+          classmateIds.forEach(id => { studentStats[id] = { got: 0, total: 0 }; });
           allScores.forEach(s => {
             if (studentStats[s.student_id]) {
               studentStats[s.student_id].got += Number(s.marks_obtained);
               studentStats[s.student_id].total += Number(s.total_marks);
             }
           });
-
           const rankedList = Object.keys(studentStats)
-            .filter(id => studentStats[id].total > 0) 
+            .filter(id => studentStats[id].total > 0)
             .map(id => ({ id, avg: (studentStats[id].got / studentStats[id].total) * 100 }))
             .sort((a, b) => b.avg - a.avg);
-            
           const myRank = rankedList.findIndex(item => item.id === activeId) + 1;
           setRank(myRank > 0 ? myRank : '--');
         }
@@ -99,96 +80,180 @@ export default function Dashboard() {
     fetchDashboardData();
   }, [router]);
 
-  if (loading || !student) return <div className="h-svh bg-[var(--background)] flex items-center justify-center"><Loader2 className="text-blue-500 animate-spin" /></div>;
+  if (loading || !student) return (
+    <div className="h-svh flex items-center justify-center" style={{ background: 'var(--background)' }}>
+      <div style={{ position: 'relative' }}>
+        <div className="absolute inset-0 rounded-full animate-ping" style={{ border: '2px solid rgba(59,130,246,0.25)' }} />
+        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+          <Loader2 className="animate-spin" size={22} style={{ color: '#3b82f6' }} />
+        </div>
+      </div>
+    </div>
+  );
 
   const clearance = getClearanceLevel(student.paid_till);
 
-  const badgeColors: Record<string, string> = {
-    cleared: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-    warning: 'bg-yellow-500/10 border-yellow-500/40 text-yellow-600',
-    alert: 'bg-orange-500/10 border-orange-500/40 text-orange-500',
-    danger: 'bg-red-500/10 border-red-500/30 text-red-500'
+  const badgeConfig: Record<string, { bg: string; border: string; label: string; color: string }> = {
+    cleared:  { bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.25)',  label: t('paidTill'),     color: '#10b981' },
+    warning:  { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.3)',   label: t('dueSoon'),      color: '#f59e0b' },
+    alert:    { bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.3)',   label: t('overdue'),      color: '#f97316' },
+    danger:   { bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.25)',   label: t('actionNeeded'), color: '#ef4444' },
   };
+  const badge = badgeConfig[clearance.level];return (
+    <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
 
-  const badgeTextColors: Record<string, string> = {
-    cleared: 'text-emerald-600',
-    warning: 'text-yellow-600',
-    alert: 'text-orange-600',
-    danger: 'text-red-600'
-  };
+      {/* Ambient orbs */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div style={{ position: 'absolute', top: '-5%', right: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+      </div>
 
-  const badgeLabels: Record<string, string> = {
-    cleared: t('paidTill'),
-    warning: t('dueSoon'),
-    alert: t('overdue'),
-    danger: t('actionNeeded')
-  };
+      {/* ── HERO ── */}
+      <div className="px-5 pt-28 pb-6">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          {/* Name block */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, marginBottom: 4 }}>
+              {t('welcome')}
+            </p>
+            <h1 style={{ fontSize: 38, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.95, color: 'var(--text)' }}>
+              {student.name.split(' ')[0].split('').map((char: string, i: number) => (
+                <span key={i} style={{ color: i === 0 ? '#3b82f6' : 'var(--text)' }}>{char}</span>
+              ))}
+            </h1>
+            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 6 }}>
+              {student.class} {t('student')} · {t('id')}: {student.id}
+            </p>
+          </div>
 
-  return (
-    <div className="px-6 pt-28 pb-32 min-h-screen font-sans bg-transparent">
-      <div className="mb-8 flex justify-between items-end">
-        <div>
-          <h1 className="text-[var(--text)] text-3xl font-black italic uppercase leading-tight tracking-tighter">
-            {t('welcome')}, <span className="text-blue-500">{student.name.split(' ')[0]}</span>
-          </h1>
-          <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[3px] mt-1 italic">{student.class} {t('student')} • {t('id')}: {student.id}</p>
+          {/* Fee badge */}
+          <div style={{ flexShrink: 0, padding: '10px 14px', borderRadius: 16, background: badge.bg, border: `1px solid ${badge.border}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: badge.color, opacity: 0.8 }}>
+              {badge.label}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', color: badge.color }}>
+              {student.paid_till || t('pending')}
+            </span>
+          </div>
         </div>
-        
-        {/* 🛡️ GRADUAL WARNING BADGE */}
-        <div className={`p-2 px-4 rounded-xl border flex flex-col items-center justify-center shadow-sm transition-colors ${badgeColors[clearance.level]}`}>
-          <span className="text-[7px] font-black uppercase tracking-[2px] mb-0.5">
-             {badgeLabels[clearance.level]}
-          </span>
-          <span className={`text-sm font-black italic uppercase tracking-tighter ${badgeTextColors[clearance.level]}`}>
-            {student.paid_till || t('pending')}
-          </span>
+
+        {/* Thin accent line */}
+        <div style={{ marginTop: 20, height: 1, background: 'linear-gradient(90deg, rgba(59,130,246,0.4), transparent)', borderRadius: 1 }} />
+      </div>
+
+      <div className="px-5 space-y-3">
+
+        {/* ── LIVE NOTICE ── */}
+        <div style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '20px 20px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', right: -8, top: -8, opacity: 0.05 }}>
+            <Megaphone size={72} style={{ color: '#3b82f6' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 8px rgba(59,130,246,0.6)', animation: 'pulse 2s infinite' }} />
+            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#3b82f6' }}>
+              {t('liveNotice')}
+            </span>
+          </div>
+          <p style={{ fontSize: 13, fontWeight: 800, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.45, color: 'var(--text)', position: 'relative', zIndex: 1 }}>
+            "{globalNotice}"
+          </p>
         </div>
-      </div>
 
-      <div className="mb-4 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] shadow-sm relative overflow-hidden group">
-        <div className="absolute right-[-10px] top-[-10px] opacity-5 -rotate-12 group-hover:rotate-0 transition-transform duration-500"><Megaphone size={80} className="text-blue-500" /></div>
-        <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-3 flex items-center gap-2"><Megaphone size={10} /> {t('liveNotice')}</p>
-        <p className="text-sm font-bold text-[var(--text)] leading-relaxed italic uppercase tracking-tight relative z-10">"{globalNotice}"</p>
-      </div>
-
-      <div className="mb-8 p-6 bg-blue-500/5 border border-dashed border-blue-500/20 rounded-[35px] shadow-sm relative overflow-hidden group">
-         <div className="absolute right-[-10px] top-[-10px] opacity-5 -rotate-12 group-hover:rotate-0 transition-transform duration-500"><Bell size={80} className="text-orange-500" /></div>
-        <p className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-3 flex items-center gap-2"><Bell size={10} /> {student.class} {t('update')}</p>
-        <p className="text-sm font-bold text-[var(--text)] leading-relaxed italic uppercase tracking-tight relative z-10">{classNotice ? `"${classNotice}"` : "No specific updates for your class today. Keep studying! 🦊"}</p>
-      </div>
-
-      <div onClick={() => router.push('/fees')} className="mb-4 p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 border border-emerald-500/20"><Wallet size={26} /></div>
-          <div><p className="text-emerald-500 text-[9px] font-black uppercase tracking-[3px]">{t('financeNode')}</p><h3 className="text-2xl font-black italic text-[var(--text)] tracking-tighter uppercase">{t('feeDiary')}</h3></div>
+        {/* ── CLASS UPDATE ── */}
+        <div style={{ borderRadius: 28, background: 'rgba(249,115,22,0.04)', border: '1px dashed rgba(249,115,22,0.25)', padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', right: -8, top: -8, opacity: 0.05 }}>
+            <Bell size={72} style={{ color: '#f97316' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <Bell size={9} style={{ color: '#f97316' }} />
+            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#f97316' }}>
+              {student.class} {t('update')}
+            </span>
+          </div>
+          <p style={{ fontSize: 13, fontWeight: 800, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.45, color: 'var(--text)', position: 'relative', zIndex: 1 }}>
+            {classNotice ? `"${classNotice}"` : "No specific updates for your class today. Keep studying! 🦊"}
+          </p>
+        </div>{/* ── FEE DIARY ── */}
+        <div
+          onClick={() => router.push('/fees')}
+          style={{ borderRadius: 28, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'transform 0.15s, opacity 0.15s', position: 'relative', overflow: 'hidden' }}
+          className="active:scale-[0.98]"
+        >
+          <div style={{ position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)', opacity: 0.04 }}>
+            <Wallet size={90} style={{ color: '#10b981' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 18, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Wallet size={24} style={{ color: '#10b981' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#10b981', marginBottom: 3 }}>{t('financeNode')}</p>
+              <h3 style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1 }}>{t('feeDiary')}</h3>
+            </div>
+          </div>
+          <ChevronRight size={16} style={{ color: 'rgba(16,185,129,0.5)', flexShrink: 0 }} />
         </div>
-        <ChevronRight size={16} className="text-emerald-500/50" />
-      </div>
 
-      <div onClick={() => router.push('/leaderboard')} className="mb-4 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500 border border-yellow-500/20"><Trophy size={28} /></div>
-          <div><p className="text-yellow-500 text-[9px] font-black uppercase tracking-[3px]">{t('rank')}</p><h3 className="text-2xl font-black italic text-[var(--text)] tracking-tighter uppercase">#{rank}</h3></div>
+        {/* ── RANK ── */}
+        <div
+          onClick={() => router.push('/leaderboard')}
+          style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+          className="active:scale-[0.98]"
+        >
+          <div style={{ position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)', opacity: 0.04 }}>
+            <Trophy size={90} style={{ color: '#f5c842' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 18, background: 'rgba(245,200,66,0.1)', border: '1px solid rgba(245,200,66,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trophy size={24} style={{ color: '#f5c842' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#f5c842', marginBottom: 3 }}>{t('rank')}</p>
+              <h3 style={{ fontSize: 28, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, textShadow: rank === 1 ? '0 0 20px rgba(245,200,66,0.3)' : 'none' }}>
+                {rank === 1 ? <Crown size={20} style={{ display: 'inline', color: '#f5c842', marginRight: 4 }} /> : null}#{rank}
+              </h3>
+            </div>
+          </div>
+          <ChevronRight size={16} style={{ color: 'rgba(200,200,200,0.3)', flexShrink: 0 }} />
         </div>
-        <ChevronRight size={16} className="text-zinc-400" />
-      </div>
 
-      <div onClick={() => router.push('/syllabus')} className="mb-4 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 border border-red-500/10"><ListChecks size={22} /></div>
-          <div><h4 className="text-[9px] font-black uppercase text-zinc-500 tracking-widest leading-none mb-1">{t('syllabus')}</h4><p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{t('trackProgress')}</p></div>
+        {/* ── SYLLABUS ── */}
+        <div
+          onClick={() => router.push('/syllabus')}
+          style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          className="active:scale-[0.98]"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ListChecks size={20} style={{ color: '#ef4444' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, marginBottom: 3 }}>{t('syllabus')}</p>
+              <h4 style={{ fontSize: 15, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1 }}>{t('trackProgress')}</h4>
+            </div>
+          </div>
+          <ArrowUpRight size={16} style={{ color: 'rgba(200,200,200,0.3)', flexShrink: 0 }} />
         </div>
-        <ArrowUpRight size={18} className="text-zinc-400" />
-      </div>
 
-      <div onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')} className="mb-6 p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-95 transition-all relative shadow-sm">
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12 bg-[#25d366] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#25d366]/20"><MessageSquare size={22} fill="currentColor" /></div>
-          <div><h4 className="text-[9px] font-black uppercase text-[#25d366] tracking-widest mb-1">{t('support')}</h4><p className="text-sm font-black text-[var(--text)] italic uppercase tracking-tight">{t('whatsappGroup')}</p></div>
+        {/* ── WHATSAPP ── */}
+        <div
+          onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')}
+          style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+          className="active:scale-[0.98]"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 16, background: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(37,211,102,0.25)' }}>
+              <MessageSquare size={20} fill="white" style={{ color: 'white' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#25d366', marginBottom: 3 }}>{t('support')}</p>
+              <h4 style={{ fontSize: 15, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1 }}>{t('whatsappGroup')}</h4>
+            </div>
+          </div>
+          <ArrowUpRight size={16} style={{ color: 'rgba(200,200,200,0.3)', flexShrink: 0 }} />
         </div>
-        <ArrowUpRight size={18} className="text-zinc-400" />
-      </div>
 
+      </div>
     </div>
   );
 }
