@@ -82,7 +82,7 @@ export default function LoginPage() {
         {/* LOGO SECTION */}
         <div className="mb-16">
           <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-none">
-            WINNER'S <span className="text-blue-500 ml-1">ACADEMY</span>
+            ALTUM <span className="text-blue-500 ml-1">CORE</span>
           </h1>
           <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[8px] mt-6 italic opacity-60">
             {t('portalAccess')}

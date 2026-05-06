@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {!isLogin && (
             <header className={`fixed top-0 left-0 right-0 px-6 pt-10 pb-4 z-[100] flex justify-between items-center backdrop-blur-md transition-all duration-500 bg-gradient-to-b ${isDarkMode ? 'from-[#050508] via-[#050508]/80' : 'from-[#f4f7f6] via-[#f4f7f6]/80'} to-transparent`}>
               <h1 className="text-xl font-black italic uppercase tracking-tighter text-[var(--text)]">
-                WINNER'S<span className="text-blue-500">ACADEMY</span>
+                ALTUM<span className="text-blue-500">CORE</span>
               </h1>
               <div className="flex items-center gap-3">
                 <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all">
