@@ -1,4 +1,3 @@
-
 'use client';
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -9,52 +8,120 @@ export default function SubjectVault() {
   const router = useRouter();
   const params = useParams();
   const { t } = useLanguage();
-  const studentClass = params.class; 
+  const studentClass = params.class;
 
   const subjects = [
-    { name: "English", id: "english" },
-    { name: "Science", id: "science" },
-    { name: "Mathematics", id: "mathematics" },
-    { name: "Social Studies", id: "social-studies" }
+    { name: "English",       id: "english"       },
+    { name: "Science",       id: "science"        },
+    { name: "Mathematics",   id: "mathematics"    },
+    { name: "Social Studies",id: "social-studies" },
   ];
 
-  return (
-    <div className="px-6 pt-28 pb-32 min-h-svh bg-transparent font-sans">
-      <div className="max-w-md mx-auto space-y-8">
-        
-        <button onClick={() => router.push('/Materials')} className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-4">
-          <ChevronLeft size={14} /> {t('backToHub')}
+  const subjectAccents: Record<string, { color: string; glow: string; bg: string; border: string; label: string }> = {
+    english:        { color: '#a855f7', glow: 'rgba(168,85,247,0.25)',  bg: 'rgba(168,85,247,0.07)',  border: 'rgba(168,85,247,0.2)',  label: 'Language & Literature' },
+    science:        { color: '#10b981', glow: 'rgba(16,185,129,0.25)',  bg: 'rgba(16,185,129,0.07)',  border: 'rgba(16,185,129,0.2)',  label: 'Physics · Chemistry · Bio' },
+    mathematics:    { color: '#3b82f6', glow: 'rgba(59,130,246,0.25)',  bg: 'rgba(59,130,246,0.07)',  border: 'rgba(59,130,246,0.2)',  label: 'Numbers & Algebra' },
+    'social-studies':{ color: '#f97316', glow: 'rgba(249,115,22,0.25)', bg: 'rgba(249,115,22,0.07)', border: 'rgba(249,115,22,0.2)',  label: 'History · Geo · Civics' },
+  };return (
+    <div className="min-h-svh pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
+
+      {/* Ambient orbs */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div style={{ position: 'absolute', top: '-8%', right: '-12%', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+      </div>
+
+      <div className="max-w-md mx-auto px-5 pt-28">
+
+        {/* ── Back ── */}
+        <button
+          onClick={() => router.push('/Materials')}
+          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform"
+          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}
+        >
+          <ChevronLeft size={15} strokeWidth={3} /> {t('backToHub')}
         </button>
 
-        <div>
-          <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[var(--text)]">
-            {t('classWord')} <span className="text-blue-500">{studentClass}</span>
+        {/* ── Header ── */}
+        <div style={{ marginBottom: 36 }}>
+          <h1 style={{ fontSize: 46, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
+            {t('classWord')}{' '}
+            <span style={{ color: '#3b82f6', textShadow: '0 0 30px rgba(59,130,246,0.35)' }}>
+              {studentClass}
+            </span>
           </h1>
-          <p className="text-blue-500 text-[10px] font-black uppercase tracking-[3px] mt-1">{t('selectSubjectVault')}</p>
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+            <div style={{ width: 28, height: 2, background: 'rgba(59,130,246,0.5)', borderRadius: 2 }} />
+            <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.25em', textTransform: 'uppercase', color: '#3b82f6', opacity: 0.7 }}>
+              {t('selectSubjectVault')}
+            </p>
+          </div>
+        </div>{/* ── Subject Cards ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {subjects.map((sub, index) => {
+            const ac = subjectAccents[sub.id] || subjectAccents['mathematics'];
+            return (
+              <button
+                key={sub.id}
+                onClick={() => router.push(`/Materials/${studentClass}/${sub.id}`)}
+                className="active:scale-[0.98] transition-transform"
+                style={{
+                  width: '100%',
+                  borderRadius: 26,
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  padding: '18px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 14,
+                  cursor: 'pointer',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  animation: 'fadeSlideIn 0.35s ease both',
+                  animationDelay: `${index * 0.07}s`,
+                  textAlign: 'left',
+                }}
+              >
+                {/* Hover shimmer layer */}
+                <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at left, ${ac.bg} 0%, transparent 70%)`, pointerEvents: 'none', borderRadius: 26 }} />
 
-        <div className="space-y-4">
-          {subjects.map((sub) => (
-            <button 
-              key={sub.id}
-              onClick={() => router.push(`/Materials/${studentClass}/${sub.id}`)}
-              className="w-full p-6 bg-[var(--card)] border border-[var(--border)] rounded-[35px] flex items-center justify-between active:scale-[0.98] transition-all shadow-sm group"
-            >
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
-                  <Book size={20} />
+                {/* Left color bar */}
+                <div style={{ position: 'absolute', left: 0, top: '18%', bottom: '18%', width: 3, borderRadius: '0 3px 3px 0', background: ac.color, boxShadow: `0 0 10px ${ac.glow}` }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1, flex: 1, minWidth: 0 }}>
+                  {/* Icon box */}
+                  <div style={{ width: 52, height: 52, borderRadius: 18, background: ac.bg, border: `1px solid ${ac.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 16px ${ac.glow}` }}>
+                    <Book size={22} style={{ color: ac.color }} />
+                  </div>
+
+                  {/* Text */}
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {sub.name}
+                    </h3>
+                    <p style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: ac.color, opacity: 0.7, marginTop: 4 }}>
+                      {ac.label}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  {/* Keep Subject names in English since they are IDs/proper nouns, but translate the subtitle */}
-                  <h3 className="text-lg font-black italic uppercase text-[var(--text)] leading-none">{sub.name}</h3>
-                  <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mt-1">{t('coreResources')}</p>
+
+                {/* Arrow */}
+                <div style={{ width: 32, height: 32, borderRadius: 12, background: ac.bg, border: `1px solid ${ac.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                  <ArrowRight size={14} style={{ color: ac.color }} />
                 </div>
-              </div>
-              <ArrowRight className="text-zinc-800 group-hover:text-blue-500 transition-colors" size={16} />
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
