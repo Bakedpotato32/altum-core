@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee, Sparkles } from 'lucide-react';
+import { ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon, Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee, Sparkles, Settings2, BookMarked } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -34,13 +34,16 @@ export default function AdminDashboard() {
 
     const fetchAdminData = async () => {
       const cleanClass = sanitizeClass(userClass);
-      const noticeKey = role === 'principal' ? 'global_notice' : `notice_class_${cleanClass}`;
+      const isMaster = role === 'principal' || cleanClass === 'all';
+      const noticeKey = isMaster ? 'global_notice' : `notice_class_${cleanClass}`;
       
       const { data: noticeData } = await supabase.from('config').select('value').eq('key', noticeKey).maybeSingle();
       if (noticeData) setNotice(noticeData.value);
 
       let query = supabase.from('students').select('*', { count: 'exact', head: true });
-      if (role === 'teacher') query = query.eq('class', userClass);
+      if (role === 'teacher' && cleanClass !== 'all') {
+        query = query.eq('class', userClass);
+      }
       
       const { count } = await query;
       if (count !== null) setStudentCount(count);
@@ -51,7 +54,8 @@ export default function AdminDashboard() {
   const handleUpdateNotice = async () => {
     const role = localStorage.getItem('role');
     const cleanClass = sanitizeClass(assignedClass);
-    const noticeKey = role === 'principal' ? 'global_notice' : `notice_class_${cleanClass}`;
+    const isMaster = role === 'principal' || cleanClass === 'all';
+    const noticeKey = isMaster ? 'global_notice' : `notice_class_${cleanClass}`;
 
     const { error } = await supabase.from('config').upsert({ key: noticeKey, value: notice });
     if (!error) {
@@ -65,10 +69,11 @@ export default function AdminDashboard() {
     router.push('/login');
   };
 
+  const isMasterAdmin = userRole === 'principal' || sanitizeClass(assignedClass) === 'all';
+
   return (
     <div className="px-6 pt-28 pb-40 min-h-svh bg-transparent font-sans text-[var(--text)] relative z-0">
       
-      {/* ✨ Ambient Premium Glow Background */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] rounded-full bg-blue-500/10 blur-[120px]"></div>
         <div className="absolute bottom-[10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-emerald-500/10 blur-[100px]"></div>
@@ -82,10 +87,10 @@ export default function AdminDashboard() {
           </div>
           <div>
             <h2 className="text-4xl font-black italic uppercase tracking-tighter leading-none text-[var(--text)]">
-              {userRole === 'principal' ? 'Master' : 'Staff'} <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">Core</span>
+              {isMasterAdmin ? 'Master' : 'Staff'} <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">Core</span>
             </h2>
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px] mt-2 flex items-center gap-2">
-              <span className="w-6 h-[1px] bg-zinc-400 block"></span> {userRole === 'principal' ? `Admin: ${staffName}` : `Class ${assignedClass}`}
+              <span className="w-6 h-[1px] bg-zinc-400 block"></span> {isMasterAdmin ? `Admin: ${staffName}` : `Class ${assignedClass}`}
             </p>
           </div>
         </div>
@@ -94,7 +99,6 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* 📢 Notice Board */}
       <div className="p-6 bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] rounded-[35px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] mb-10 relative overflow-hidden group">
         <div className="absolute right-[-15px] top-[-15px] opacity-[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-500">
           <Bell size={100} className="text-blue-500" />
@@ -104,7 +108,7 @@ export default function AdminDashboard() {
             <Bell className="text-blue-500" size={16} />
           </div>
           <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text)]">
-            {userRole === 'principal' ? 'Global Broadcast' : 'Class Notice Update'}
+            {isMasterAdmin ? 'Global Broadcast' : 'Class Notice Update'}
           </h4>
         </div>
         <textarea 
@@ -118,9 +122,26 @@ export default function AdminDashboard() {
         </button>
       </div>
 
+      {/* ── SYSTEM CONFIGURATION (MASTER ONLY) ── */}
+      {isMasterAdmin && (
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-4 ml-2">
+            <Settings2 size={16} className="text-zinc-500" />
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px]">System Config</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <AdminCard onClick={() => router.push('/admin/classes')} icon={<ShieldCheck className="text-indigo-500" />} label="Structure" title="Class Config" detail="Add/Remove Classes" borderAccent="border-l-indigo-500" iconBg="bg-indigo-500/10" textAccent="text-indigo-600 dark:text-indigo-500" />
+            <AdminCard onClick={() => router.push('/admin/subjects')} icon={<BookMarked className="text-rose-500" />} label="Curriculum" title="Subject Config" detail="Manage by Class" borderAccent="border-l-rose-500" iconBg="bg-rose-500/10" textAccent="text-rose-600 dark:text-rose-500" />
+          </div>
+        </div>
+      )}
+
+      {/* ── STANDARD MODULES ── */}
+      <div className="flex items-center gap-2 mb-4 ml-2">
+        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px]">Core Modules</span>
+      </div>
       <div className="grid grid-cols-2 gap-4">
-        {/* 🛡️ ONLY PRINCIPAL SEES FINANCE AND STAFF MANAGEMENT */}
-        {userRole === 'principal' && (
+        {isMasterAdmin && (
           <>
             <AdminCard onClick={() => router.push('/admin/fees')} icon={<IndianRupee className="text-emerald-500" />} label="Finance Node" title="Fee Ledger" detail="Collect & Setup" borderAccent="border-l-emerald-500" iconBg="bg-emerald-500/10" textAccent="text-emerald-600 dark:text-emerald-500" />
             <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users className="text-cyan-500" />} label="Management" title="Staff Hub" detail="Manage Teachers" borderAccent="border-l-cyan-500" iconBg="bg-cyan-500/10" textAccent="text-cyan-600 dark:text-cyan-500" />

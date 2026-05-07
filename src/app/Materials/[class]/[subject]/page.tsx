@@ -1,16 +1,39 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { FileDown, Download, ChevronLeft, Loader2, Library } from 'lucide-react';
 import { useLanguage } from '@/lib/LanguageContext';
 
 export default function PDFVault() {
+  const router = useRouter();
   const { class: className, subject } = useParams();
   const { t } = useLanguage();
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const backPressCount = useRef(0);
+
+  // --- BULLETPROOF HARDWARE BACK BUTTON ---
+  useEffect(() => {
+    window.history.pushState({ dummy: true }, '', window.location.href);
+
+    const handleHardwareBack = () => {
+      if (backPressCount.current === 0) {
+        backPressCount.current = 1;
+        window.history.pushState({ dummy: true }, '', window.location.href);
+        router.push(`/Materials/${className}`);
+        setTimeout(() => {
+          backPressCount.current = 0;
+        }, 2000);
+      }
+    };
+
+    window.addEventListener('popstate', handleHardwareBack);
+    return () => {
+      window.removeEventListener('popstate', handleHardwareBack);
+    };
+  }, [router, className]);
+  // ----------------------------------------
 
   useEffect(() => {
     async function fetchMaterials() {
@@ -44,10 +67,11 @@ export default function PDFVault() {
 
   const cleanSubjectKey = decodeURIComponent(subject as string).toLowerCase();
   const ac = subjectAccents[cleanSubjectKey] || subjectAccents['mathematics'];
-  const subjectLabel = decodeURIComponent(subject as string);return (
+  const subjectLabel = decodeURIComponent(subject as string);
+
+  return (
     <main className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
 
-      {/* Ambient orbs */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
         <div style={{ position: 'absolute', top: '-8%', right: '-12%', width: 320, height: 320, borderRadius: '50%', background: `radial-gradient(circle, ${ac.glow.replace('0.25','0.09')} 0%, transparent 70%)`, filter: 'blur(50px)', transition: 'background 0.5s' }} />
         <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)', filter: 'blur(50px)' }} />
@@ -55,16 +79,14 @@ export default function PDFVault() {
 
       <div className="max-w-md mx-auto px-5 pt-28">
 
-        {/* ── Back ── */}
-        <Link
-          href={`/Materials/${className}`}
+        <button
+          onClick={() => router.push(`/Materials/${className}`)}
           className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform"
-          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4, textDecoration: 'none' }}
+          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4, border: 'none', background: 'transparent', padding: 0 }}
         >
           <ChevronLeft size={15} strokeWidth={3} /> {t('backTo')} {className}
-        </Link>
+        </button>
 
-        {/* ── Header ── */}
         <div style={{ marginBottom: 32 }}>
           <h1 style={{ fontSize: 44, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
             {subjectLabel}{' '}
@@ -80,7 +102,6 @@ export default function PDFVault() {
           </div>
         </div>
 
-        {/* ── Loading ── */}
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16 }}>
             <div style={{ position: 'relative' }}>
@@ -120,21 +141,17 @@ export default function PDFVault() {
                   animationDelay: `${index * 0.06}s`,
                 }}
               >
-                {/* Left accent bar */}
                 <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: ac.color, boxShadow: `0 0 10px ${ac.glow}` }} />
 
-                {/* Watermark index */}
                 <div style={{ position: 'absolute', right: 60, top: '50%', transform: 'translateY(-50%)', fontSize: 52, fontWeight: 900, fontStyle: 'italic', color: ac.color, opacity: 0.04, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
                   {String(index + 1).padStart(2, '0')}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0, paddingLeft: 10 }}>
-                  {/* File icon */}
                   <div style={{ width: 48, height: 48, borderRadius: 16, background: ac.bg, border: `1px solid ${ac.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 14px ${ac.glow}` }}>
                     <FileDown size={20} style={{ color: ac.color }} />
                   </div>
 
-                  {/* Info */}
                   <div style={{ minWidth: 0 }}>
                     <h4 style={{ fontSize: 13, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 5 }}>
                       {pdf.title}
@@ -145,7 +162,6 @@ export default function PDFVault() {
                   </div>
                 </div>
 
-                {/* Download button */}
                 <button
                   onClick={() => handleDownload(pdf.drive_id)}
                   className="active:scale-90 transition-transform"

@@ -13,7 +13,10 @@ import NativeAppBehavior from '@/components/NativeApp';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter(); 
+  
   const isLogin = pathname === '/login' || pathname === '/';
+  // 🛡️ Check if the current route is part of the Admin Hub
+  const isAdmin = pathname.startsWith('/admin');
   
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [lang, setLang] = useState('EN');
@@ -96,7 +99,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </header>
           )}
 
-          <main className="h-svh overflow-y-auto pb-32 pt-20">
+          {/* We adjust the bottom padding dynamically. 
+            If it's an admin page, we don't need the massive 32px bottom padding for the nav bar!
+          */}
+          <main className={`h-svh overflow-y-auto pt-20 ${isAdmin ? 'pb-10' : 'pb-32'}`}>
             <AnimatePresence mode="wait">
               <motion.div key={pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 {children}
@@ -104,9 +110,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AnimatePresence>
           </main>
 
-          {!isLogin && (
+          {/* 🚀 Only show Bottom Navigation if NOT on Login AND NOT on Admin pages */}
+          {!isLogin && !isAdmin && (
             <div className="fixed bottom-6 left-6 right-6 z-[100]">
-              {/* 🚀 PREMIUM BOTTOM NAVIGATION OVERHAUL */}
               <nav className={`h-20 border backdrop-blur-2xl rounded-[35px] flex justify-between items-center shadow-2xl px-3 bg-[var(--card)]/90 border-[var(--border)] ${isDarkMode ? 'shadow-black/50' : 'shadow-[0_15px_40px_rgba(0,0,0,0.08)]'}`}>
                 <LayoutGroup>
                   <NavItem 

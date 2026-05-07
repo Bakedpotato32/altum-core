@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase'; 
-import { Trophy, Zap, ArrowLeft, Loader2, CheckCircle2, Filter, Lock, Trash2, Search, User, AlertTriangle, Sparkles } from 'lucide-react';
+import { Trophy, Zap, ArrowLeft, Loader2, CheckCircle2, Filter, Lock, Trash2, Search, AlertTriangle, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function MarksEntry() {
@@ -11,11 +11,16 @@ export default function MarksEntry() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [dbError, setDbError] = useState(""); 
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   
-  // Search & Selection State
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic States
+  const [activeClasses, setActiveClasses] = useState<string[]>([]);
+  const [classSubjects, setClassSubjects] = useState<string[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -25,11 +30,13 @@ export default function MarksEntry() {
   const [total, setTotal] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  const classes = ["5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
-
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
     return cls.toLowerCase().replace(/(st|nd|rd|th|standard|class)/g, "").trim();
+  };
+
+  const getSubjectKey = (cls: string) => {
+    return 'subjects_' + cls.toLowerCase().replace(/[^a-z0-9]/g, '_');
   };
 
   const loadData = async () => {
@@ -56,11 +63,14 @@ export default function MarksEntry() {
     const assigned = localStorage.getItem('assignedClass');
     setUserRole(role);
     
-    if (role === 'teacher' && assigned) {
-      const match = classes.find(c => sanitizeClass(c) === sanitizeClass(assigned)) || assigned;
-      setSelectedClass(match);
+    const isMaster = role === 'principal' || sanitizeClass(assigned) === 'all';
+    setIsMasterAdmin(isMaster);
+    
+    if (!isMaster && assigned) {
+      setSelectedClass(assigned);
     }
     
+    fetchActiveClasses();
     loadData();
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -72,8 +82,48 @@ export default function MarksEntry() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const fetchActiveClasses = async () => {
+    const { data } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
+    if (data && data.value) {
+      try {
+        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (Array.isArray(parsed)) setActiveClasses(parsed);
+      } catch (e) {
+        console.error("Failed to parse classes", e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedClass) {
+      setClassSubjects([]);
+      return;
+    }
+    
+    const fetchSubjects = async () => {
+      setLoadingSubjects(true);
+      const key = getSubjectKey(selectedClass);
+      const { data } = await supabase.from('config').select('value').eq('key', key).maybeSingle();
+      
+      if (data && data.value) {
+        try {
+          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          setClassSubjects(Array.isArray(parsed) ? parsed : []);
+        } catch (e) {
+          setClassSubjects([]);
+        }
+      } else {
+        setClassSubjects([]);
+      }
+      setSubject("");
+      setLoadingSubjects(false);
+    };
+
+    fetchSubjects();
+  }, [selectedClass]);
+
   const filteredSearchStudents = allStudents
-    .filter(s => sanitizeClass(s.class) === sanitizeClass(selectedClass))
+    .filter(s => s.class === selectedClass)
     .filter(s => 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       s.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -81,14 +131,14 @@ export default function MarksEntry() {
 
   const classHistory = allScores.filter(score => {
     const student = allStudents.find(st => st.id === score.student_id);
-    return student && sanitizeClass(student.class) === sanitizeClass(selectedClass);
+    return student && student.class === selectedClass;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setDbError(""); 
 
-    if (!selectedStudent) return alert("Select a student first!");
+    if (!selectedStudent || !subject) return alert("Select a student and subject first!");
     setLoading(true);
 
     const { error } = await supabase.from('test_scores').insert([
@@ -120,10 +170,10 @@ export default function MarksEntry() {
       await loadData();
     }
   };
+
   return (
     <div className="min-h-screen bg-transparent p-6 pt-24 pb-40 font-sans text-[var(--text)] relative z-0">
       
-      {/* ✨ Ambient Premium Glow Background */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] rounded-full bg-yellow-500/10 blur-[120px]"></div>
         <div className="absolute bottom-[10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-orange-500/10 blur-[100px]"></div>
@@ -131,7 +181,6 @@ export default function MarksEntry() {
 
       <div className="max-w-md mx-auto space-y-8">
         
-        {/* Header & Back Button */}
         <div>
           <button onClick={() => router.back()} className="flex items-center gap-2 text-zinc-500 hover:text-[var(--text)] transition-colors text-[10px] font-black uppercase tracking-widest mb-8 active:scale-95">
             <ArrowLeft size={16} /> Admin Core
@@ -160,19 +209,18 @@ export default function MarksEntry() {
           </div>
         )}
 
-        {/* 📝 ENTRY FORM */}
         <div className="bg-[var(--card)]/90 backdrop-blur-2xl border border-[var(--border)] border-t-4 border-t-yellow-500 rounded-[35px] p-6 space-y-5 shadow-xl relative overflow-visible">
           
-          <div className={`bg-[var(--background)] rounded-[20px] border border-[var(--border)] p-1 px-5 flex items-center shadow-inner transition-opacity ${userRole === 'teacher' ? 'opacity-70' : ''}`}>
-            {userRole === 'teacher' ? <Lock size={16} className="text-yellow-600" /> : <Filter size={16} className="text-zinc-500" />}
+          <div className={`bg-[var(--background)] rounded-[20px] border border-[var(--border)] p-1 px-5 flex items-center shadow-inner transition-opacity ${!isMasterAdmin ? 'opacity-70' : ''}`}>
+            {!isMasterAdmin ? <Lock size={16} className="text-yellow-600" /> : <Filter size={16} className="text-zinc-500" />}
             <select 
-              disabled={userRole === 'teacher'}
+              disabled={!isMasterAdmin}
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full bg-transparent p-4 text-sm font-black uppercase text-[var(--text)] outline-none appearance-none focus:text-yellow-500 transition-colors"
             >
               <option value="">Select Class</option>
-              {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
+              {activeClasses.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -217,7 +265,13 @@ export default function MarksEntry() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 pt-2">
-            <input type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="bg-[var(--background)] border border-[var(--border)] rounded-[20px] p-5 text-xs font-black uppercase text-[var(--text)] outline-none focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/10 transition-all shadow-inner placeholder:text-zinc-500" />
+            <div className="relative">
+              {loadingSubjects && <Loader2 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-yellow-500 animate-spin z-10" />}
+              <select required value={subject} onChange={(e) => setSubject(e.target.value)} disabled={!selectedClass || classSubjects.length === 0} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-[20px] p-5 text-xs font-black uppercase text-[var(--text)] outline-none appearance-none focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/10 transition-all shadow-inner disabled:opacity-50">
+                <option value="">{classSubjects.length === 0 && selectedClass ? "No Subjects" : "Subject"}</option>
+                {classSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
             <input type="text" placeholder="Test Name" value={testName} onChange={(e) => setTestName(e.target.value)} className="bg-[var(--background)] border border-[var(--border)] rounded-[20px] p-5 text-xs font-black uppercase text-[var(--text)] outline-none focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/10 transition-all shadow-inner placeholder:text-zinc-500" />
           </div>
 
@@ -235,7 +289,7 @@ export default function MarksEntry() {
           <button 
             type="button"
             onClick={handleSubmit}
-            disabled={loading || !selectedStudent || success}
+            disabled={loading || !selectedStudent || success || !subject}
             className={`w-full p-6 mt-4 rounded-[24px] font-black uppercase tracking-[3px] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_10px_25px_rgba(234,179,8,0.25)]
               ${success ? 'bg-green-500 text-white shadow-green-500/30' : 'bg-yellow-500 text-black hover:bg-yellow-400 disabled:bg-zinc-500/10 disabled:text-zinc-500 disabled:shadow-none disabled:border disabled:border-[var(--border)]'}
             `}
@@ -244,7 +298,6 @@ export default function MarksEntry() {
           </button>
         </div>
 
-        {/* 📚 HISTORY LEDGER */}
         <div className="pt-6">
           <div className="flex items-center justify-between mb-5 ml-2">
             <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px]">Class Ledger</h2>

@@ -1,9 +1,8 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { UserPlus, ArrowLeft, RefreshCw, Trash2, Users, Sparkles, Copy, CheckCircle2, KeyRound } from 'lucide-react';
+import { UserPlus, ArrowLeft, RefreshCw, Trash2, Users, Sparkles, Copy, CheckCircle2, KeyRound, Loader2, ShieldAlert } from 'lucide-react';
 
 export default function StaffHub() {
   const [name, setName] = useState('');
@@ -11,16 +10,29 @@ export default function StaffHub() {
   const [generatedId, setGeneratedId] = useState('');
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [activeClasses, setActiveClasses] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const router = useRouter();
 
-  const fetchStaff = async () => {
-    const { data } = await supabase.from('staff').select('*').order('created_at', { ascending: false });
-    if (data) setStaffList(data);
+  const fetchStaffAndClasses = async () => {
+    // Fetch Staff
+    const { data: staffData } = await supabase.from('staff').select('*').order('created_at', { ascending: false });
+    if (staffData) setStaffList(staffData);
+
+    // Fetch Dynamic Classes
+    const { data: configData } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
+    if (configData && configData.value) {
+      try {
+        const parsed = typeof configData.value === 'string' ? JSON.parse(configData.value) : configData.value;
+        if (Array.isArray(parsed)) setActiveClasses(parsed);
+      } catch (e) {
+        console.error("Failed to parse classes", e);
+      }
+    }
   };
 
   useEffect(() => {
-    fetchStaff();
+    fetchStaffAndClasses();
   }, []);
 
   const generateSecureId = () => {
@@ -60,7 +72,7 @@ export default function StaffHub() {
       setAssignedClass('');
       setGeneratedId('');
       setCopied(false);
-      fetchStaff(); 
+      fetchStaffAndClasses(); 
     }
     setLoading(false);
   };
@@ -68,14 +80,13 @@ export default function StaffHub() {
   const deleteStaff = async (id: string) => {
     if (confirm("Remove this staff member?")) {
       await supabase.from('staff').delete().eq('id', id);
-      fetchStaff();
+      fetchStaffAndClasses();
     }
   };
 
   return (
     <div className="min-h-screen bg-transparent p-6 pt-24 pb-40 text-[var(--text)] font-sans relative z-0">
       
-      {/* ✨ Ambient Premium Glow Background */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] rounded-full bg-cyan-500/10 blur-[120px]"></div>
         <div className="absolute bottom-[10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-blue-500/10 blur-[100px]"></div>
@@ -83,7 +94,6 @@ export default function StaffHub() {
 
       <div className="max-w-md mx-auto space-y-8">
         
-        {/* Header & Back Button */}
         <div>
           <button onClick={() => router.back()} className="flex items-center gap-2 text-zinc-500 hover:text-[var(--text)] transition-colors text-[10px] font-black uppercase tracking-widest mb-8 active:scale-95">
             <ArrowLeft size={16} /> Admin Core
@@ -105,7 +115,6 @@ export default function StaffHub() {
           </div>
         </div>
 
-        {/* 📝 REGISTRATION FORM */}
         <form onSubmit={handleAddStaff} className="bg-[var(--card)]/90 backdrop-blur-2xl border border-[var(--border)] border-t-4 border-t-cyan-500 rounded-[35px] p-7 space-y-6 shadow-xl relative overflow-hidden">
           <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text)] flex items-center gap-2">
             <KeyRound size={16} className="text-cyan-500" /> Register Staff Node
@@ -117,13 +126,19 @@ export default function StaffHub() {
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-black uppercase outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all placeholder:text-zinc-500"
               />
-              <input 
-                  type="text" placeholder="ASSIGN CLASS (E.G. 10)" value={assignedClass}
-                  onChange={(e) => setAssignedClass(e.target.value)}
-                  className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-black uppercase outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all placeholder:text-zinc-500"
-              />
               
-              {/* 🔐 SECURE ID GENERATOR */}
+              <div className="relative">
+                <select 
+                  value={assignedClass}
+                  onChange={(e) => setAssignedClass(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-black uppercase outline-none appearance-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all text-[var(--text)]"
+                >
+                  <option value="">ASSIGN CLASS...</option>
+                  <option value="ALL">★ ALL CLASSES (MASTER ACCESS)</option>
+                  {activeClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
+                </select>
+              </div>
+              
               <div className="space-y-1.5 pt-2">
                 <label className="text-[9px] font-black text-cyan-500 uppercase tracking-widest ml-2">Access Token</label>
                 <div className="flex items-center gap-2">
@@ -147,7 +162,6 @@ export default function StaffHub() {
           </button>
         </form>
 
-        {/* 👥 STAFF LIST */}
         <div className="pt-4">
           <div className="flex items-center gap-2 mb-5 ml-2">
               <Users size={16} className="text-zinc-500" />
@@ -164,7 +178,6 @@ export default function StaffHub() {
               staffList.map((staff) => (
                 <div key={staff.id} className="p-5 bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] rounded-[28px] flex justify-between items-center group active:scale-[0.98] hover:border-cyan-500/40 hover:shadow-md transition-all">
                   <div className="flex items-center gap-4">
-                    {/* Avatar Badge */}
                     <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-black italic text-lg border border-cyan-500/20 group-hover:scale-110 transition-transform">
                       {staff.name[0]}
                     </div>
@@ -172,7 +185,10 @@ export default function StaffHub() {
                     <div className="flex flex-col">
                       <h3 className="text-sm font-black uppercase italic tracking-tight text-[var(--text)] leading-tight">{staff.name}</h3>
                       <p className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-500 tracking-widest mt-1">ID: {staff.id}</p>
-                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mt-0.5">Class {staff.assigned_class}</p>
+                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                        {staff.assigned_class === 'ALL' && <ShieldAlert size={10} className="text-cyan-500" />}
+                        Class {staff.assigned_class}
+                      </p>
                     </div>
                   </div>
                   

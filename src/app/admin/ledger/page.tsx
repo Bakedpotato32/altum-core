@@ -11,13 +11,15 @@ export default function StudentLedger() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const router = useRouter();
 
-  const [newName, setNewName] = useState("");
-  const [newClass, setNewClass] = useState("10th");
-  const [isEnrolling, setIsEnrolling] = useState(false);
+  // Dynamic Classes
+  const [activeClasses, setActiveClasses] = useState<string[]>([]);
 
-  const allClasses = ['All', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+  const [newName, setNewName] = useState("");
+  const [newClass, setNewClass] = useState("");
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
@@ -29,17 +31,37 @@ export default function StudentLedger() {
     const assigned = localStorage.getItem('assignedClass');
     setUserRole(role);
 
-    if (role === 'teacher' && assigned) {
-      const match = allClasses.find(c => sanitizeClass(c) === sanitizeClass(assigned)) || assigned;
-      setSelectedClass(match);
-      setNewClass(match);
-    }
+    const isMaster = role === 'principal' || sanitizeClass(assigned) === 'all';
+    setIsMasterAdmin(isMaster);
+
+    fetchActiveClasses(isMaster, assigned);
     fetchStudents(); 
   }, []);
 
+  const fetchActiveClasses = async (isMaster: boolean, assigned: string | null) => {
+    const { data } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
+    if (data && data.value) {
+      try {
+        const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+        if (Array.isArray(parsed)) {
+          setActiveClasses(parsed);
+          
+          if (!isMaster && assigned) {
+            const match = parsed.find(c => sanitizeClass(c) === sanitizeClass(assigned)) || assigned;
+            setSelectedClass(match);
+            setNewClass(match);
+          } else if (parsed.length > 0) {
+            setNewClass(parsed[0]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse classes", e);
+      }
+    }
+  };
+
   async function fetchStudents() {
     setLoading(true);
-    // Fetch all then filter in JS to avoid string matching issues
     const { data } = await supabase.from('students').select('*').order('name', { ascending: true });
     if (data) setStudents(data);
     setLoading(false);
@@ -47,9 +69,9 @@ export default function StudentLedger() {
 
   const handleEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newClass) return;
     setIsEnrolling(true);
-    const newID = 'MX' + Math.floor(1000 + Math.random() * 9000); // Simple ID gen
+    const newID = 'MX' + Math.floor(1000 + Math.random() * 9000); 
     const { error } = await supabase.from('students').insert([{ id: newID, name: newName.trim(), class: newClass, attendance: 0 }]);
     if (!error) { 
       setNewName(""); 
@@ -66,6 +88,8 @@ export default function StudentLedger() {
     return matchesSearch && matchesClass;
   });
 
+  const filterTabs = ['All', ...activeClasses];
+
   return (
     <div className="min-h-screen bg-transparent p-6 pt-28 font-sans text-[var(--text)] pb-40">
       <div className="flex items-center gap-4 mb-8">
@@ -81,16 +105,16 @@ export default function StudentLedger() {
         <span className="text-[10px] font-black uppercase tracking-[2px] text-blue-500">Enroll New Student</span>
       </button>
 
-      {userRole === 'teacher' ? (
+      {!isMasterAdmin ? (
         <div className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-500/5 border border-blue-500/20 rounded-xl w-fit">
           <Lock size={12} className="text-blue-500" />
           <span className="text-[9px] font-black uppercase text-blue-500 tracking-widest">Locked to Class {selectedClass}</span>
         </div>
       ) : (
         <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
-          {allClasses.map(cls => (
+          {filterTabs.map(cls => (
             <button key={cls} onClick={() => setSelectedClass(cls)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedClass === cls ? 'bg-blue-600 text-white shadow-lg' : 'bg-[var(--card)] text-zinc-500 border border-[var(--border)]'}`}>
-              {cls === 'All' ? 'All Classes' : `${cls} Standard`}
+              {cls === 'All' ? 'All Classes' : `${cls}`}
             </button>
           ))}
         </div>
@@ -124,8 +148,8 @@ export default function StudentLedger() {
             </div>
             <div className="space-y-6">
               <input required type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="STUDENT FULL NAME" className="w-full bg-zinc-500/5 border border-[var(--border)] rounded-2xl py-5 px-6 text-xs font-black uppercase text-[var(--text)] outline-none focus:border-blue-500" />
-              <select disabled={userRole === 'teacher'} value={newClass} onChange={(e) => setNewClass(e.target.value)} className="w-full bg-zinc-500/5 border border-[var(--border)] rounded-2xl py-5 px-6 text-xs font-black uppercase text-[var(--text)] outline-none appearance-none">
-                {allClasses.filter(c => c !== 'All').map(cls => <option key={cls} value={cls}>{cls} Grade</option>)}
+              <select disabled={!isMasterAdmin} value={newClass} onChange={(e) => setNewClass(e.target.value)} className="w-full bg-zinc-500/5 border border-[var(--border)] rounded-2xl py-5 px-6 text-xs font-black uppercase text-[var(--text)] outline-none appearance-none">
+                {activeClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
               </select>
               <button type="submit" disabled={isEnrolling} className="w-full bg-blue-600 text-white py-6 rounded-[28px] flex items-center justify-center gap-3 font-black uppercase tracking-[3px] text-xs active:scale-95 transition-all shadow-lg">
                 {isEnrolling ? <Loader2 className="animate-spin" /> : <>Complete Enrollment <ShieldCheck size={18}/></>}

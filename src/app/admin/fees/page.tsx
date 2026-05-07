@@ -11,32 +11,42 @@ export default function FeeAdmin() {
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClassFilter, setSelectedClassFilter] = useState('All'); 
+  const [selectedClassFilter, setSelectedClassFilter] = useState('All');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  
-  // Config States
+
+  const [activeClasses, setActiveClasses] = useState<string[]>([]);
   const [feeStructures, setFeeStructures] = useState<any[]>([]);
-  const [newClass, setNewClass] = useState('5th');
+  const [newClass, setNewClass] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
 
-  // Collect States
   const [studentFeeOptions, setStudentFeeOptions] = useState<any[]>([]);
   const [selectedFeeId, setSelectedFeeId] = useState('');
   const [payAmount, setPayAmount] = useState('');
   const [paidTillUpdate, setPaidTillUpdate] = useState('');
-  const [studentHistory, setStudentHistory] = useState<any[]>([]); 
-
-  const allClasses = ['All', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
-  const configClasses = ["5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
+  const [studentHistory, setStudentHistory] = useState<any[]>([]);
 
   useEffect(() => {
     const role = localStorage.getItem('role');
-    if (role !== 'principal') { router.push('/admin'); return; }
+    const assignedClass = localStorage.getItem('assignedClass') || '';
+    const isMaster = role === 'principal' || assignedClass.toLowerCase() === 'all';
+    if (!isMaster) { router.push('/admin'); return; }
     loadData();
   }, []);
 
   const loadData = async () => {
+    const { data: configData } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
+    let dynamicClasses: string[] = [];
+    if (configData && configData.value) {
+      try {
+        const parsed = typeof configData.value === 'string' ? JSON.parse(configData.value) : configData.value;
+        if (Array.isArray(parsed)) {
+          dynamicClasses = parsed;
+          setActiveClasses(parsed);
+          if (parsed.length > 0) setNewClass(parsed[0]);
+        }
+      } catch (e) { console.error("Parse error", e); }
+    }
     const [{ data: stData }, { data: fsData }] = await Promise.all([
       supabase.from('students').select('*').order('name'),
       supabase.from('fee_structure').select('*')
@@ -64,12 +74,7 @@ export default function FeeAdmin() {
   const handleDeletePayment = async (paymentId: string) => {
     if (confirm("Undo and delete this payment record permanently?")) {
       await supabase.from('fee_payments').delete().eq('id', paymentId);
-      
-      const { data: hist } = await supabase
-        .from('fee_payments')
-        .select('*')
-        .eq('student_id', selectedStudent.id)
-        .order('payment_date', { ascending: false });
+      const { data: hist } = await supabase.from('fee_payments').select('*').eq('student_id', selectedStudent.id).order('payment_date', { ascending: false });
       if (hist) setStudentHistory(hist);
     }
   };
@@ -77,24 +82,16 @@ export default function FeeAdmin() {
   const handleSelectStudent = async (student: any) => {
     setSelectedStudent(student);
     setSearchTerm('');
-    
-    const options = feeStructures.filter(f => f.class_name === student.class);
+    const options = feeStructures.filter(f => f.class_name.toLowerCase() === student.class.toLowerCase());
     setStudentFeeOptions(options);
-    
     if (options.length > 0) {
       setSelectedFeeId(options[0].id);
       setPayAmount(options[0].amount.toString());
-      setPaidTillUpdate(options[0].fee_title); 
+      setPaidTillUpdate(options[0].fee_title);
     } else {
       setPaidTillUpdate(student.paid_till || '');
     }
-
-    const { data: hist } = await supabase
-      .from('fee_payments')
-      .select('*')
-      .eq('student_id', student.id)
-      .order('payment_date', { ascending: false });
-    
+    const { data: hist } = await supabase.from('fee_payments').select('*').eq('student_id', student.id).order('payment_date', { ascending: false });
     if (hist) setStudentHistory(hist);
   };
 
@@ -102,27 +99,21 @@ export default function FeeAdmin() {
     const id = e.target.value;
     setSelectedFeeId(id);
     const fee = studentFeeOptions.find(f => f.id === id);
-    if (fee) {
-      setPayAmount(fee.amount.toString());
-      setPaidTillUpdate(fee.fee_title); 
-    }
+    if (fee) { setPayAmount(fee.amount.toString()); setPaidTillUpdate(fee.fee_title); }
   };
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     const feeConfig = studentFeeOptions.find(f => f.id === selectedFeeId);
-    
     await supabase.from('fee_payments').insert([{
       student_id: selectedStudent.id,
       fee_title: feeConfig ? feeConfig.fee_title : 'CUSTOM PAYMENT',
       amount_paid: Number(payAmount)
     }]);
-
     if (paidTillUpdate.trim() !== '') {
       await supabase.from('students').update({ paid_till: paidTillUpdate.toUpperCase().trim() }).eq('id', selectedStudent.id);
     }
-
     alert("Payment Logged Successfully!");
     setSelectedStudent(null);
     await loadData();
@@ -131,232 +122,265 @@ export default function FeeAdmin() {
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClassFilter === 'All' || s.class === selectedClassFilter;
+    const matchesClass = selectedClassFilter === 'All' || s.class.toLowerCase() === selectedClassFilter.toLowerCase();
     return matchesSearch && matchesClass;
   });
-  return (
-    <div className="min-h-screen bg-transparent p-6 pt-24 pb-40 text-[var(--text)] font-sans relative z-0">
-      
-      {/* ✨ Ambient Premium Glow Background */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[350px] h-[350px] rounded-full bg-emerald-500/10 blur-[120px]"></div>
-        <div className="absolute bottom-[10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-blue-500/10 blur-[100px]"></div>
+
+  // ── NEW: Stats ──
+  const clearedCount = students.filter(s => s.paid_till && s.paid_till.toUpperCase() !== 'PENDING').length;
+  const pendingCount = students.length - clearedCount;return (
+    <div className="min-h-screen pb-40 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
+
+      {/* Ambient orbs */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+        <div style={{ position: 'absolute', bottom: '10%', left: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       </div>
 
-      <div className="max-w-md mx-auto space-y-8">
-        
-        {/* Header & Back Button */}
-        <div>
-          <button onClick={() => router.push('/admin')} className="flex items-center gap-2 text-zinc-500 hover:text-[var(--text)] transition-colors text-[10px] font-black uppercase tracking-widest mb-8 active:scale-95">
-            <ArrowLeft size={16} /> Admin Core
-          </button>
+      <div className="max-w-md mx-auto px-5 pt-24">
 
-          <div className="flex items-center gap-4 relative">
-            <Sparkles className="absolute -top-5 -left-3 text-emerald-500/40 animate-pulse" size={32} />
-            <div className="p-3 bg-emerald-500/10 rounded-[20px] border border-emerald-500/20 shadow-sm flex items-center justify-center">
-              <IndianRupee className="text-emerald-500" size={28} />
+        {/* ── Back ── */}
+        <button onClick={() => router.push('/admin')} className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform" style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
+          <ArrowLeft size={15} strokeWidth={3} /> Admin Core
+        </button>
+
+        {/* ── Header ── */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 18, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(16,185,129,0.2)', flexShrink: 0 }}>
+              <IndianRupee size={24} style={{ color: '#10b981' }} />
             </div>
             <div>
-              <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none text-[var(--text)]">
-                Finance <span className="text-emerald-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Node</span>
+              <h1 style={{ fontSize: 38, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
+                Finance <span style={{ color: '#10b981', textShadow: '0 0 24px rgba(16,185,129,0.35)' }}>Node</span>
               </h1>
-              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px] mt-2 flex items-center gap-2">
-                <span className="w-6 h-[1px] bg-zinc-400 block"></span> Principal Access
-              </p>
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 6 }}>Master Access</p>
             </div>
+          </div>
+
+          {/* ── NEW: Stats Bar ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
+            {[
+              { label: 'Total',   value: students.length, color: '#3b82f6', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.2)'  },
+              { label: 'Cleared', value: clearedCount,    color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+              { label: 'Pending', value: pendingCount,    color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.2)'  },
+            ].map((stat, i) => (
+              <div key={i} style={{ borderRadius: 18, background: stat.bg, border: `1px solid ${stat.border}`, padding: '12px 10px', textAlign: 'center' }}>
+                <p style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.03em', color: stat.color, lineHeight: 1, marginBottom: 3 }}>{stat.value}</p>
+                <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: stat.color, opacity: 0.7 }}>{stat.label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 🎛️ Premium Segmented Tab Control */}
-        <div className="flex gap-2 bg-[var(--card)]/80 backdrop-blur-xl p-1.5 rounded-[24px] border border-[var(--border)] shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
-          <button onClick={() => setTab('collect')} className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest rounded-[20px] transition-all duration-300 ${tab === 'collect' ? 'bg-emerald-500 text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)]' : 'text-zinc-500 hover:bg-zinc-500/5'}`}>
-            Collection Desk
-          </button>
-          <button onClick={() => setTab('config')} className={`flex-1 py-3.5 text-[10px] font-black uppercase tracking-widest rounded-[20px] transition-all duration-300 ${tab === 'config' ? 'bg-[var(--text)] text-[var(--background)] shadow-lg' : 'text-zinc-500 hover:bg-zinc-500/5'}`}>
-            Configurator
-          </button>
+        {/* ── Tabs ── */}
+        <div style={{ display: 'flex', gap: 8, background: 'var(--card)', padding: 6, borderRadius: 22, border: '1px solid var(--border)', marginBottom: 24 }}>
+          {(['collect', 'config'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} className="active:scale-95 transition-transform" style={{ flex: 1, padding: '12px', fontSize: 10, fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase', borderRadius: 16, border: 'none', cursor: 'pointer', transition: 'all 0.25s', background: tab === t ? (t === 'collect' ? '#10b981' : 'var(--text)') : 'transparent', color: tab === t ? (t === 'collect' ? '#fff' : 'var(--background)') : 'rgba(128,128,128,0.6)', boxShadow: tab === t ? (t === 'collect' ? '0 4px 16px rgba(16,185,129,0.3)' : '0 4px 16px rgba(0,0,0,0.15)') : 'none' }}>
+              {t === 'collect' ? 'Collection Desk' : 'Configurator'}
+            </button>
+          ))}
         </div>
 
+        {/* ══════════════════════════════════ */}
+        {/* CONFIG TAB                         */}
+        {/* ══════════════════════════════════ */}
         {tab === 'config' ? (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 🛠️ Configurator Form */}
-            <form onSubmit={handleAddStructure} className="bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] border-l-4 border-l-emerald-500 rounded-[35px] p-6 space-y-5 shadow-sm">
-              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text)] mb-2 flex items-center gap-2">
-                <Plus size={16} className="text-emerald-500" /> Create Fee Template
-              </h3>
-              
-              <div className="space-y-3">
-                <select value={newClass} onChange={(e) => setNewClass(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-bold outline-none text-[var(--text)] focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all appearance-none">
-                  {configClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
-                </select>
-                <input required type="text" placeholder="FEE TITLE (e.g. MAY TUITION)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-bold uppercase outline-none text-[var(--text)] focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-500" />
-                <input required type="number" placeholder="AMOUNT (₹)" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-bold outline-none text-[var(--text)] focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:text-zinc-500" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Add template form */}
+            <form onSubmit={handleAddStructure} style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', borderLeft: '4px solid #10b981', padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <Plus size={15} style={{ color: '#10b981' }} />
+                <h3 style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)' }}>Create Fee Template</h3>
               </div>
-              
-              <button disabled={loading} className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all disabled:opacity-50">
-                {loading ? <Loader2 className="animate-spin" /> : <><Save size={16} /> Save Template</>}
+
+              {(['select', 'title', 'amount'] as const).map((field) => (
+                field === 'select' ? (
+                  <select key={field} value={newClass} onChange={(e) => setNewClass(e.target.value)} style={{ width: '100%', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', fontSize: 13, fontWeight: 700, color: 'var(--text)', outline: 'none', fontFamily: 'inherit', appearance: 'none' }}>
+                    {activeClasses.length === 0 && <option value="">No Classes Configured</option>}
+                    {activeClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : field === 'title' ? (
+                  <input key={field} required type="text" placeholder="FEE TITLE (e.g. MAY TUITION)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} style={{ width: '100%', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                ) : (
+                  <input key={field} required type="number" placeholder="AMOUNT (₹)" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} style={{ width: '100%', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', fontSize: 13, fontWeight: 800, color: 'var(--text)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                )
+              ))}
+
+              <button disabled={loading || !newClass} className="active:scale-95 transition-transform" style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#10b981', color: '#fff', fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 8px 20px rgba(16,185,129,0.3)', opacity: loading || !newClass ? 0.5 : 1 }}>
+                {loading ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> Save Template</>}
               </button>
             </form>
 
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px] ml-2 mb-4">Saved Templates</h4>
-              {feeStructures.map(f => (
-                <div key={f.id} className="p-5 bg-[var(--card)]/60 backdrop-blur-md border border-[var(--border)] rounded-[24px] flex justify-between items-center shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:border-emerald-500/30 transition-colors">
-                  <div>
-                    <p className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mb-1">{f.class_name} Standard</p>
-                    <p className="font-black text-sm uppercase italic tracking-tight">{f.fee_title}</p>
+            {/* Templates list */}
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, paddingLeft: 4 }}>Saved Templates</p>
+            {feeStructures.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 24px', borderRadius: 24, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
+                <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>No templates found.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {feeStructures.map((f, index) => (
+                  <div key={f.id} style={{ borderRadius: 22, background: 'var(--card)', border: '1px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', animation: 'fadeSlideIn 0.3s ease both', animationDelay: `${index * 0.05}s`, position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: '#10b981' }} />
+                    <div style={{ paddingLeft: 8 }}>
+                      <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#10b981', marginBottom: 4 }}>{f.class_name}</p>
+                      <p style={{ fontSize: 14, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)' }}>{f.fee_title}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ fontSize: 20, fontWeight: 900, fontStyle: 'italic', color: 'var(--text)', letterSpacing: '-0.02em' }}>₹{f.amount}</span>
+                      <button onClick={() => deleteStructure(f.id)} className="active:scale-90 transition-transform" style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', cursor: 'pointer' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xl font-black text-[var(--text)] tracking-tighter">₹{f.amount}</span>
-                    <button onClick={() => deleteStructure(f.id)} className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-colors active:scale-90">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {feeStructures.length === 0 && (
-                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center py-10 opacity-50">No templates found.</p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                ))}
+              </div>
+            )}
+          </div>) : (
+          /* ══════════════════════════════════ */
+          /* COLLECT TAB                        */
+          /* ══════════════════════════════════ */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {!selectedStudent ? (
               <>
-                {/* 🔍 Premium Search Bar */}
-                <div className="relative">
-                  <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                  <input type="text" placeholder="SEARCH STUDENT..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] rounded-[28px] py-6 pl-14 pr-6 text-sm font-black outline-none text-[var(--text)] placeholder:text-zinc-500 uppercase tracking-widest shadow-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all" />
+                {/* Search */}
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', color: 'var(--text)', opacity: 0.3, pointerEvents: 'none' }} />
+                  <input type="text" placeholder="SEARCH STUDENT..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: '16px 20px 16px 46px', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
 
-                {/* 🚀 Filter Chips */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {allClasses.map(cls => (
-                    <button 
-                      key={cls} 
-                      onClick={() => setSelectedClassFilter(cls)} 
-                      className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${selectedClassFilter === cls ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_5px_15px_rgba(16,185,129,0.3)] scale-105' : 'bg-[var(--card)]/50 backdrop-blur-md text-zinc-500 border-[var(--border)] hover:bg-[var(--card)]'}`}
-                    >
-                      {cls === 'All' ? 'All Classes' : `${cls} STD`}
+                {/* Class filter tabs */}
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }} className="no-scrollbar">
+                  {['All', ...activeClasses].map(cls => (
+                    <button key={cls} onClick={() => setSelectedClassFilter(cls)} className="active:scale-95 transition-transform" style={{ flexShrink: 0, padding: '9px 18px', borderRadius: 12, fontSize: 9, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', border: selectedClassFilter === cls ? '1px solid rgba(16,185,129,0.4)' : '1px solid var(--border)', background: selectedClassFilter === cls ? 'rgba(16,185,129,0.1)' : 'var(--card)', color: selectedClassFilter === cls ? '#10b981' : 'var(--text)', opacity: selectedClassFilter === cls ? 1 : 0.4, cursor: 'pointer', boxShadow: selectedClassFilter === cls ? '0 4px 12px rgba(16,185,129,0.2)' : 'none', whiteSpace: 'nowrap' }}>
+                      {cls}
                     </button>
                   ))}
                 </div>
 
-                {/* 📋 Student List */}
-                <div className="space-y-3">
-                  {filteredStudents.length === 0 ? (
-                     <div className="py-16 text-center border border-dashed border-[var(--border)] rounded-[35px] bg-[var(--card)]/30">
-                       <User size={40} className="text-zinc-600 mx-auto mb-3 opacity-50" />
-                       <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest opacity-70">No student found</p>
-                     </div>
-                  ) : (
-                    filteredStudents.map(s => (
-                      <div key={s.id} onClick={() => handleSelectStudent(s)} className="p-5 bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] rounded-[28px] hover:border-emerald-500/40 hover:shadow-md cursor-pointer flex justify-between items-center group transition-all">
-                         <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 font-black italic text-lg border border-blue-500/20 group-hover:scale-110 transition-transform">
-                             {s.name[0]}
-                           </div>
-                           <div>
-                             <p className="font-black italic uppercase text-[var(--text)] text-md leading-none group-hover:text-emerald-500 transition-colors">{s.name}</p>
-                             <p className="text-[9px] text-zinc-500 font-bold tracking-widest mt-1.5">ID: {s.id} • CLASS: {s.class}</p>
-                           </div>
-                         </div>
-                         <div className={`text-[8px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest border ${s.paid_till ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400'}`}>
-                           {s.paid_till || 'PENDING'}
-                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                {/* Student list */}
+                {filteredStudents.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '60px 24px', borderRadius: 28, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
+                    <User size={36} style={{ color: 'var(--text)', opacity: 0.2, margin: '0 auto 12px' }} />
+                    <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>No student found</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {filteredStudents.map((s, index) => {
+                      const isCleared = s.paid_till && s.paid_till.toUpperCase() !== 'PENDING';
+                      return (
+                        <div key={s.id} onClick={() => handleSelectStudent(s)} className="active:scale-[0.98] transition-transform" style={{ borderRadius: 22, background: 'var(--card)', border: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', animation: 'fadeSlideIn 0.3s ease both', animationDelay: `${index * 0.03}s`, position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: isCleared ? '#10b981' : '#ef4444' }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, paddingLeft: 8 }}>
+                            <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {s.avatar_url ? (
+                                <img src={s.avatar_url} alt={s.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                              ) : (
+                                <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#3b82f6' }}>{s.name[0]}</span>
+                              )}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</p>
+                              <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 3 }}>ID: {s.id} · {s.class}</p>
+                            </div>
+                          </div>
+                          <div style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 10, background: isCleared ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${isCleared ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+                            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase', color: isCleared ? '#10b981' : '#ef4444' }}>{s.paid_till || 'PENDING'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             ) : (
-              <div className="space-y-6">
-                {/* 💳 PAYMENT FORM */}
-                <form onSubmit={handlePaymentSubmit} className="bg-[var(--card)]/90 backdrop-blur-2xl border border-[var(--border)] border-t-4 border-t-emerald-500 rounded-[35px] p-7 space-y-6 shadow-xl relative overflow-hidden">
-                  <div className="flex justify-between items-center border-b border-[var(--border)] pb-5 mb-2">
+              /* Payment Form */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', borderTop: '4px solid #10b981', padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  {/* Student header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
                     <div>
-                      <h3 className="font-black italic uppercase text-2xl text-[var(--text)] tracking-tighter leading-none">{selectedStudent.name}</h3>
-                      <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-2 flex items-center gap-2">
-                        <span className="w-4 h-[1px] bg-zinc-400 block"></span> {selectedStudent.class} • {selectedStudent.id}
-                      </p>
+                      <h3 style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1, marginBottom: 6 }}>{selectedStudent.name}</h3>
+                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35 }}>{selectedStudent.class} · {selectedStudent.id}</p>
                     </div>
-                    <button type="button" onClick={() => setSelectedStudent(null)} className="text-[9px] font-black text-red-500 bg-red-500/10 hover:bg-red-500 hover:text-white px-4 py-2.5 rounded-xl uppercase tracking-widest active:scale-95 transition-colors">
-                      Cancel
+                    <button type="button" onClick={() => setSelectedStudent(null)} className="active:scale-90 transition-transform" style={{ padding: '8px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', textTransform: 'uppercase', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+
+                  <form onSubmit={handlePaymentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {/* Fee type */}
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}><Wallet size={11} /> Select Fee Type</label>
+                      <select value={selectedFeeId} onChange={handleFeeSelectionChange} style={{ width: '100%', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', fontSize: 13, fontWeight: 700, color: 'var(--text)', outline: 'none', fontFamily: 'inherit', appearance: 'none' }}>
+                        {studentFeeOptions.length === 0 && <option value="">No templates for this class</option>}
+                        {studentFeeOptions.map(f => <option key={f.id} value={f.id}>{f.fee_title}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Amount */}
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}><IndianRupee size={11} /> Amount Collecting</label>
+                      <input required type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} style={{ width: '100%', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px', fontSize: 36, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.03em', color: '#10b981', textAlign: 'center', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    </div>
+
+                    {/* Paid till */}
+                    <div>
+                      <label style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}><Clock size={11} /> Target "Paid Till" Month</label>
+                      <input type="text" value={paidTillUpdate} onChange={(e) => setPaidTillUpdate(e.target.value)} style={{ width: '100%', background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 14, padding: '14px 16px', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', color: '#3b82f6', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      <p style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.25, marginTop: 6, paddingLeft: 4 }}>*Controls badge color on student dashboard</p>
+                    </div>
+
+                    <button disabled={loading} className="active:scale-95 transition-transform" style={{ width: '100%', padding: '18px', borderRadius: 18, background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 10px 28px rgba(16,185,129,0.35)', position: 'relative', overflow: 'hidden', opacity: loading ? 0.6 : 1 }}>
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <><ShieldCheck size={18} /> Confirm Payment</>}
                     </button>
-                  </div>
-
-                  <div className="space-y-1.5">
-                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-2 flex items-center gap-1">
-                       <Wallet size={12}/> Select Fee Type
-                     </label>
-                     <select value={selectedFeeId} onChange={handleFeeSelectionChange} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-4 text-sm font-bold outline-none text-[var(--text)] appearance-none focus:border-emerald-500 transition-colors">
-                       {studentFeeOptions.length === 0 && <option value="">No templates for this class</option>}
-                       {studentFeeOptions.map(f => <option key={f.id} value={f.id}>{f.fee_title}</option>)}
-                     </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-2 flex items-center gap-1">
-                       <IndianRupee size={12} /> Amount Collecting
-                     </label>
-                     <input required type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-6 text-4xl font-black italic tracking-tighter outline-none text-[var(--text)] text-center shadow-inner focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all" />
-                  </div>
-
-                  <div className="space-y-1.5 pt-2">
-                     <label className="text-[9px] font-black text-blue-500 uppercase tracking-widest ml-2 flex items-center gap-1">
-                       <Clock size={12} /> Target "Paid Till" Month
-                     </label>
-                     <input type="text" value={paidTillUpdate} onChange={(e) => setPaidTillUpdate(e.target.value)} className="w-full bg-blue-500/5 border border-blue-500/30 rounded-2xl p-4 text-sm font-black uppercase outline-none text-blue-600 dark:text-blue-400 placeholder:text-blue-500/40 focus:ring-4 focus:ring-blue-500/20 transition-all" />
-                     <p className="text-[7px] font-bold text-zinc-500 tracking-widest ml-2 mt-1 uppercase">*Controls the color of the badge on student dashboard</p>
-                  </div>
-
-                  <button disabled={loading} className="w-full py-5 mt-4 bg-emerald-500 text-white rounded-[24px] font-black uppercase tracking-[3px] text-xs flex items-center justify-center gap-3 active:scale-95 shadow-[0_10px_25px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-400 disabled:opacity-50">
-                    {loading ? <Loader2 className="animate-spin" /> : <><ShieldCheck size={20} /> Confirm Payment</>}
-                  </button>
-                </form>
-
-                {/* 🧾 INSTANT STUDENT HISTORY LEDGER */}
-                <div className="pt-6">
-                  <div className="flex items-center gap-2 mb-5 ml-2">
-                    <ReceiptText size={18} className="text-zinc-400" />
-                    <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-[4px]">Digital Receipts</h2>
-                  </div>
-                  
-                  {studentHistory.length > 0 ? (
-                    <div className="space-y-3">
-                      {studentHistory.map(payment => (
-                        <div key={payment.id} className="p-4 bg-[var(--card)]/60 backdrop-blur-md border border-[var(--border)] rounded-[24px] flex justify-between items-center shadow-sm">
-                           <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-full bg-zinc-500/10 flex items-center justify-center text-zinc-500">
-                               <ReceiptText size={16} />
-                             </div>
-                             <div>
-                               <h4 className="text-xs font-black uppercase italic text-[var(--text)]">{payment.fee_title}</h4>
-                               <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
-                                 {format(new Date(payment.payment_date), 'dd MMM yyyy')}
-                               </p>
-                             </div>
-                           </div>
-                           <div className="flex items-center gap-4">
-                             <span className="text-sm font-black italic text-[var(--text)] tracking-tighter">₹{payment.amount_paid}</span>
-                             <button onClick={() => handleDeletePayment(payment.id)} className="w-8 h-8 rounded-full bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-zinc-400 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5 active:scale-90 transition-all">
-                               <Trash2 size={14} />
-                             </button>
-                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 bg-[var(--card)]/30 border border-dashed border-[var(--border)] rounded-[28px]">
-                       <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500 opacity-50 italic">No past payments logged.</p>
-                    </div>
-                  )}
+                  </form>
                 </div>
+
+                {/* Payment history */}
+                <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 6 }}><ReceiptText size={12} /> Digital Receipts</p>
+                {studentHistory.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', borderRadius: 22, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
+                    <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>No past payments logged.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {studentHistory.map((payment, index) => (
+                      <div key={payment.id} style={{ borderRadius: 20, background: 'var(--card)', border: '1px solid var(--border)', padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, animation: 'fadeSlideIn 0.3s ease both', animationDelay: `${index * 0.05}s`, position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: '#10b981' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 8 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 13, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <ReceiptText size={16} style={{ color: '#10b981' }} />
+                          </div>
+                          <div>
+                            <h4 style={{ fontSize: 12, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1.1, marginBottom: 4 }}>{payment.fee_title}</h4>
+                            <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3 }}>{format(new Date(payment.payment_date), 'dd MMM yyyy')}</p>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                          <span style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', color: '#10b981', letterSpacing: '-0.02em' }}>₹{payment.amount_paid}</span>
+                          <button onClick={() => handleDeletePayment(payment.id)} className="active:scale-90 transition-transform" style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', cursor: 'pointer' }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        input::placeholder, select { font-family: inherit; }
+      `}</style>
     </div>
   );
 }

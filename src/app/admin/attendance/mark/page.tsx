@@ -1,4 +1,3 @@
-
 'use client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
@@ -37,8 +36,16 @@ function AttendanceForm() {
       const { data: existingLogs } = await supabase.from('attendance_logs').select('*').eq('date', dateStr);
 
       if (allStudents) {
-        const filtered = allStudents.filter(s => sanitizeClass(s.class) === cleanClass);
-        const classLogs = existingLogs?.filter(l => sanitizeClass(l.class) === cleanClass) || [];
+        // Bulletproof dynamic matching: checks both sanitized and exact match to handle custom classes seamlessly
+        const filtered = allStudents.filter(s => 
+            sanitizeClass(s.class) === cleanClass || 
+            s.class.toLowerCase() === className.toLowerCase()
+        );
+        
+        const classLogs = existingLogs?.filter(l => 
+            sanitizeClass(l.class) === cleanClass || 
+            l.class.toLowerCase() === className.toLowerCase()
+        ) || [];
         
         setStudents(filtered);
         const initialStatus: Record<string, boolean> = {};
@@ -83,7 +90,6 @@ function AttendanceForm() {
     }
   };
 
-  // 🚀 UNDO FUNCTION RESTORED
   const undoAttendance = async () => {
     if (!confirm("Are you sure you want to completely delete today's attendance records for this class?")) return;
     setSaving(true);
@@ -152,7 +158,6 @@ function AttendanceForm() {
             {saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Push to Cloud</>}
           </button>
 
-          {/* 🚀 UNDO BUTTON RESTORED */}
           {hasExistingRecords && (
             <button onClick={undoAttendance} disabled={saving} className="w-full bg-[var(--card)] text-red-500 py-5 rounded-[28px] flex items-center justify-center gap-3 font-black uppercase tracking-widest border border-red-500/20 active:scale-95 disabled:opacity-30 transition-all hover:bg-red-500/10">
               {saving ? <Loader2 className="animate-spin" /> : <><Trash2 size={18} /> Undo Roll Call</>}

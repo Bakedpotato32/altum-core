@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, CalendarCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, eachDayOfInterval } from 'date-fns';
@@ -12,9 +12,12 @@ export default function AttendanceHub() {
   const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [assignedClass, setAssignedClass] = useState<string | null>(null);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const router = useRouter();
 
-  // 🚀 Intelligent Sanitizer
+  // Dynamic Classes
+  const [activeClasses, setActiveClasses] = useState<string[]>([]);
+
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
     return cls.toLowerCase().replace(/(st|nd|rd|th|class)/g, "").trim();
@@ -26,33 +29,42 @@ export default function AttendanceHub() {
     setUserRole(role);
     setAssignedClass(assigned);
 
-    const fetchData = async () => {
-      // 1. Fetch Holidays
+    const isMaster = role === 'principal' || sanitizeClass(assigned) === 'all';
+    setIsMasterAdmin(isMaster);
+
+    const fetchConfigAndData = async () => {
+      // Fetch Dynamic Classes
+      const { data: configData } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
+      if (configData && configData.value) {
+        try {
+          const parsed = typeof configData.value === 'string' ? JSON.parse(configData.value) : configData.value;
+          if (Array.isArray(parsed)) setActiveClasses(parsed);
+        } catch (e) {
+          console.error("Parse error", e);
+        }
+      }
+
+      // Fetch Holidays
       const { data: holidayData } = await supabase.from('holidays').select('date');
       if (holidayData) setHolidays(holidayData.map(h => h.date));
 
-      // 2. 🛡️ Bulletproof Fetch: Grab all dates and classes, then filter smartly in JS
+      // Fetch Logs
       const { data: attendanceData } = await supabase.from('attendance_logs').select('date, class');
-      
       if (attendanceData) {
         let myLogs = attendanceData;
-        
-        // If it's a teacher, filter logs so they only see days their specific class was marked
-        if (role === 'teacher' && assigned) {
+        if (!isMaster && assigned) {
           const cleanAssigned = sanitizeClass(assigned);
           myLogs = attendanceData.filter(log => sanitizeClass(log.class) === cleanAssigned);
         }
-
-        // Extract unique dates
         const uniqueDates = Array.from(new Set(myLogs.map(a => a.date)));
         setMarkedDates(uniqueDates);
       }
     };
-    fetchData();
+    fetchConfigAndData();
   }, []);
 
   const handleHolidayMark = async (day: Date) => {
-    if (userRole !== 'principal') return;
+    if (!isMasterAdmin) return;
     const dateStr = format(day, 'yyyy-MM-dd');
     if (holidays.includes(dateStr)) {
       await supabase.from('holidays').delete().eq('date', dateStr);
@@ -63,8 +75,7 @@ export default function AttendanceHub() {
     }
   };
 
-  const allClasses = ["5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
-  const visibleClasses = userRole === 'principal' ? allClasses : [assignedClass];
+  const visibleClasses = isMasterAdmin ? activeClasses : [assignedClass];
 
   return (
     <div className="min-h-screen bg-transparent p-6 pt-28 pb-40 text-[var(--text)] font-sans">
@@ -124,7 +135,7 @@ export default function AttendanceHub() {
             <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 font-black italic mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <CalendarCheck size={18} />
             </div>
-            <h4 className="font-black italic text-[var(--text)] uppercase text-sm">Class {cls.replace('th', '')}</h4>
+            <h4 className="font-black italic text-[var(--text)] uppercase text-sm">{cls}</h4>
             <p className="text-[8px] font-bold text-zinc-500 uppercase mt-1">Mark Roll Call</p>
           </button>
         ))}
