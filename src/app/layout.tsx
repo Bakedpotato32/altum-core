@@ -1,6 +1,5 @@
 'use client';
 import "./globals.css";
-// Removed Link import, replaced with useRouter
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -13,7 +12,7 @@ import NativeAppBehavior from '@/components/NativeApp';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter(); // 🚀 Added useRouter
+  const router = useRouter(); 
   const isLogin = pathname === '/login' || pathname === '/';
   
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -76,22 +75,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LanguageContext.Provider value={{ lang, t, toggleLang }}>
           {!isLogin && (
             <header className={`fixed top-0 left-0 right-0 px-6 pt-10 pb-4 z-[100] flex justify-between items-center backdrop-blur-md transition-all duration-500 bg-gradient-to-b ${isDarkMode ? 'from-[#050508] via-[#050508]/80' : 'from-[#f4f7f6] via-[#f4f7f6]/80'} to-transparent`}>
-              <h1 className="text-xl font-black italic uppercase tracking-tighter text-[var(--text)]">
-                ALTUM<span className="text-blue-500">CORE</span>
-              </h1>
+              
+              {/* 🚀 LOGO & BRANDING INTEGRATION */}
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="AltumCore Logo" className="w-8 h-8 object-contain drop-shadow-sm" />
+                <h1 className="text-xl font-black italic uppercase tracking-tighter text-[var(--text)] pt-1">
+                  ALTUM<span className="text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">CORE</span>
+                </h1>
+              </div>
+
               <div className="flex items-center gap-3">
-                <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all">
+                <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all shadow-sm">
                   <Globe size={12} className="text-blue-500" />
                   <span className="text-[9px] font-black uppercase text-[var(--text)]">{lang === 'EN' ? 'EN / हिन्दी' : 'हिन्दी / EN'}</span>
                 </button>
-                <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all ${isDarkMode ? 'text-orange-400' : 'text-blue-600'}`}>
+                <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center bg-[var(--card)] border-[var(--border)] shadow-sm active:scale-95 transition-all ${isDarkMode ? 'text-orange-400' : 'text-blue-600'}`}>
                   {isDarkMode ? <Moon size={16} /> : <Sun size={16} />}
                 </button>
               </div>
             </header>
           )}
 
-          <main className="h-svh overflow-y-auto pb-32">
+          <main className="h-svh overflow-y-auto pb-32 pt-20">
             <AnimatePresence mode="wait">
               <motion.div key={pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 {children}
@@ -100,10 +105,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
 
           {!isLogin && (
-            <div className="fixed bottom-8 left-6 right-6 z-[100]">
-              <nav className={`h-20 border backdrop-blur-2xl rounded-[32px] flex justify-around items-center shadow-2xl bg-[var(--card)] border-[var(--border)] ${isDarkMode ? 'shadow-black/50' : 'shadow-zinc-300'}`}>
+            <div className="fixed bottom-6 left-6 right-6 z-[100]">
+              {/* 🚀 PREMIUM BOTTOM NAVIGATION OVERHAUL */}
+              <nav className={`h-20 border backdrop-blur-2xl rounded-[35px] flex justify-between items-center shadow-2xl px-3 bg-[var(--card)]/90 border-[var(--border)] ${isDarkMode ? 'shadow-black/50' : 'shadow-[0_15px_40px_rgba(0,0,0,0.08)]'}`}>
                 <LayoutGroup>
-                  {/* 🚀 Replaced Link with intelligent onClick routers */}
                   <NavItem 
                     onClick={() => {
                       const role = localStorage.getItem('role');
@@ -119,12 +124,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   />
                   <NavItem 
                     onClick={() => router.replace('/ai-chat')} 
-                    icon={<Bot size={22} />} 
+                    icon={<Bot size={24} />} 
                     active={pathname === '/ai-chat'} 
                   />
                   <NavItem 
                     onClick={() => router.replace('/profile')} 
-                    icon={<User size={22} />} 
+                    icon={<User size={24} />} 
                     active={pathname.startsWith('/profile')} 
                   />
                 </LayoutGroup>
@@ -137,14 +142,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-// 🚀 Changed NavItem to accept onClick instead of href
+// 🚀 OVERHAULED NAV ITEM: FLUID SLIDING PILL
 function NavItem({ onClick, icon, active }: { onClick: () => void, icon: React.ReactNode, active: boolean }) {
   return (
-    <button onClick={onClick} className="relative flex flex-col items-center justify-center w-16 h-full cursor-pointer">
-      <div className={`transition-all duration-300 z-10 ${active ? 'scale-125 text-blue-500 -translate-y-1' : 'text-[var(--text-muted)]'}`}>
+    <button onClick={onClick} className="relative flex flex-col items-center justify-center w-[22%] h-14 rounded-[24px] cursor-pointer tap-highlight-transparent">
+      {active && (
+        <motion.div 
+          layoutId="active-nav-pill" 
+          className="absolute inset-0 bg-blue-500/10 border border-blue-500/20 rounded-[22px]"
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        />
+      )}
+      <div className={`relative z-10 transition-all duration-300 ${active ? 'scale-110 text-blue-600 dark:text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'text-zinc-400 hover:text-zinc-500'}`}>
         {icon}
       </div>
-      {active && <motion.div layoutId="nav-dot" className="absolute bottom-3 w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]" />}
     </button>
   );
 }
