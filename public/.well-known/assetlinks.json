@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.altum_core.twa",
+        "sha256_cert_fingerprints": ["BE:2E:68:1A:50:DC:C2:17:A1:DA:E8:E9:D9:E0:97:B8:75:1D:0C:6D:C8:A3:D0:97:1F:E7:40:39:76:BB:D1:54"]
+      }
+    }]
