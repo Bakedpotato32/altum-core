@@ -99,7 +99,8 @@ export default function Dashboard() {
     alert:    { bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.3)',   label: t('overdue'),      color: '#f97316' },
     danger:   { bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.25)',   label: t('actionNeeded'), color: '#ef4444' },
   };
-  const badge = badgeConfig[clearance.level];return (
+  const badge = badgeConfig[clearance.level];
+  return (
     <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
 
       {/* Ambient orbs */}
@@ -110,20 +111,46 @@ export default function Dashboard() {
 
       {/* ── HERO ── */}
       <div className="px-5 pt-28 pb-6">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-          {/* Name block */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, marginBottom: 4 }}>
-              {t('welcome')}
-            </p>
-            <h1 style={{ fontSize: 38, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.95, color: 'var(--text)' }}>
-              {student.name.split(' ')[0].split('').map((char: string, i: number) => (
-                <span key={i} style={{ color: i === 0 ? '#3b82f6' : 'var(--text)' }}>{char}</span>
-              ))}
-            </h1>
-            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 6 }}>
-              {student.class} {t('student')} · {t('id')}: {student.id}
-            </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          
+          {/* Avatar & Name block */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+            {/* Cube-shaped Profile Picture */}
+            <div style={{ 
+              width: 64, 
+              height: 64, 
+              borderRadius: 20, 
+              background: 'rgba(59,130,246,0.1)', 
+              border: '1px solid rgba(59,130,246,0.2)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              flexShrink: 0, 
+              overflow: 'hidden',
+              boxShadow: '0 4px 15px rgba(59,130,246,0.15)'
+            }}>
+              {student.avatar_url ? (
+                <img src={student.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ fontSize: 28, fontWeight: 900, fontStyle: 'italic', color: '#3b82f6' }}>
+                  {student.name[0]}
+                </span>
+              )}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, marginBottom: 4 }}>
+                {t('welcome')}
+              </p>
+              <h1 style={{ fontSize: 30, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.95, color: 'var(--text)' }}>
+                {student.name.split(' ')[0].split('').map((char: string, i: number) => (
+                  <span key={i} style={{ color: i === 0 ? '#3b82f6' : 'var(--text)' }}>{char}</span>
+                ))}
+              </h1>
+              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {student.class} {t('student')} · ID: {student.id}
+              </p>
+            </div>
           </div>
 
           {/* Fee badge */}
@@ -138,7 +165,7 @@ export default function Dashboard() {
         </div>
 
         {/* Thin accent line */}
-        <div style={{ marginTop: 20, height: 1, background: 'linear-gradient(90deg, rgba(59,130,246,0.4), transparent)', borderRadius: 1 }} />
+        <div style={{ marginTop: 24, height: 1, background: 'linear-gradient(90deg, rgba(59,130,246,0.4), transparent)', borderRadius: 1 }} />
       </div>
 
       <div className="px-5 space-y-3">
@@ -173,7 +200,9 @@ export default function Dashboard() {
           <p style={{ fontSize: 13, fontWeight: 800, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.45, color: 'var(--text)', position: 'relative', zIndex: 1 }}>
             {classNotice ? `"${classNotice}"` : "No specific updates for your class today. Keep studying! 🦊"}
           </p>
-        </div>{/* ── FEE DIARY ── */}
+        </div>
+
+        {/* ── FEE DIARY ── */}
         <div
           onClick={() => router.push('/fees')}
           style={{ borderRadius: 28, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'transform 0.15s, opacity 0.15s', position: 'relative', overflow: 'hidden' }}
