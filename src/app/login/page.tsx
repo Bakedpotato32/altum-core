@@ -6,30 +6,28 @@ import { User, ArrowRight, Loader2, MessageSquare, Eye, EyeOff, Globe } from 'lu
 import { useLanguage } from '@/lib/LanguageContext';
 
 export default function LoginPage() {
-  const { t, lang, toggleLang } = useLanguage(); 
+  const { t, lang, toggleLang } = useLanguage();
   const [studentId, setStudentId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const enteredId = studentId.trim().toUpperCase(); // Ensure it's uppercase
+    const enteredId = studentId.trim().toUpperCase();
     if (!enteredId) return;
     setLoading(true);
 
-    // 🛡️ THE GHOST ADMIN BACKDOOR (MASTER KEY)
     if (enteredId === 'DOITHARDKARAN5219A') {
       localStorage.clear();
-      localStorage.setItem('role', 'principal'); // Gives you Master Admin rights
+      localStorage.setItem('role', 'principal');
       localStorage.setItem('staffName', 'Karan (Developer)');
       localStorage.setItem('assignedClass', 'All');
-      router.replace('/admin'); 
+      router.replace('/admin');
       return;
     }
 
     try {
-      // 1. Check Staff Table (Principal/Teachers)
       const { data: staffMember } = await supabase
         .from('staff')
         .select('*')
@@ -38,14 +36,13 @@ export default function LoginPage() {
 
       if (staffMember) {
         localStorage.clear();
-        localStorage.setItem('role', staffMember.role); 
+        localStorage.setItem('role', staffMember.role);
         localStorage.setItem('staffName', staffMember.name);
         localStorage.setItem('assignedClass', staffMember.assigned_class);
-        router.replace('/admin'); 
+        router.replace('/admin');
         return;
       }
 
-      // 2. Check Students Table
       const { data: student } = await supabase.from('students').select('*').eq('id', enteredId).single();
 
       if (student) {
@@ -54,7 +51,7 @@ export default function LoginPage() {
         localStorage.setItem('studentId', student.id);
         localStorage.setItem('studentName', student.name);
         localStorage.setItem('studentClass', student.class);
-        router.replace('/dashboard'); 
+        router.replace('/dashboard');
       } else {
         alert("ID not found or incorrect.");
         setLoading(false);
@@ -63,77 +60,126 @@ export default function LoginPage() {
       console.error(err);
       setLoading(false);
     }
-  };
+  };return (
+    <div style={{ minHeight: '100svh', background: 'var(--background)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', color: 'var(--text)', fontFamily: 'inherit', position: 'relative', overflow: 'hidden' }}>
 
-  return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-8 text-[var(--text)] font-sans relative">
-      
-      {/* LANGUAGE TOGGLE */}
-      <div className="absolute top-10 right-6">
-        <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-2 rounded-xl border bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all shadow-sm">
-          <Globe size={14} className="text-blue-500" />
-          <span className="text-[10px] font-black uppercase">
+      {/* Ambient orbs */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div style={{ position: 'absolute', bottom: '-5%', left: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div style={{ position: 'absolute', bottom: '10%', right: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+      </div>
+
+      {/* Lang toggle */}
+      <div style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}>
+        <button
+          onClick={toggleLang}
+          className="active:scale-95 transition-transform"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 14, background: 'var(--card)', border: '1px solid var(--border)', cursor: 'pointer' }}
+        >
+          <Globe size={12} style={{ color: '#3b82f6' }} />
+          <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>
             {lang === 'EN' ? 'EN / हिन्दी' : 'हिन्दी / EN'}
           </span>
         </button>
       </div>
 
-      <div className="w-full max-w-sm text-center">
-        {/* LOGO SECTION */}
-        <div className="mb-16">
-          <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-none">
-            ALTUM <span className="text-blue-500 ml-1">CORE</span>
-          </h1>
-          <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[8px] mt-6 italic opacity-60">
-            {t('portalAccess')}
-          </p>
-        </div>
+      <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
 
-        {/* LOGIN FORM */}
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="bg-[var(--card)] border border-white/10 rounded-[32px] p-2 flex items-center group focus-within:border-blue-500 transition-all shadow-md">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-500/10 flex items-center justify-center text-zinc-400 group-focus-within:text-blue-500 transition-colors">
-                <User size={20} />
+        {/* ── Logo ── */}
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+          {/* Icon mark */}
+          <div style={{ width: 64, height: 64, borderRadius: 22, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 8px 28px rgba(59,130,246,0.2)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #2563eb, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fff', opacity: 0.9 }} />
             </div>
-            <input 
-              type={showPassword ? "text" : "password"} 
-              placeholder={t('studentId')} 
+          </div>
+
+          <h1 style={{ fontSize: 52, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.04em', lineHeight: 0.9, color: 'var(--text)', marginBottom: 4 }}>
+            ALTUM
+            <span style={{ color: '#3b82f6', textShadow: '0 0 30px rgba(59,130,246,0.4)', marginLeft: 6 }}>
+              CORE
+            </span>
+          </h1>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 14 }}>
+            <div style={{ height: 1, width: 32, background: 'rgba(59,130,246,0.3)', borderRadius: 1 }} />
+            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.35em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35 }}>
+              {t('portalAccess')}
+            </p>
+            <div style={{ height: 1, width: 32, background: 'rgba(59,130,246,0.3)', borderRadius: 1 }} />
+          </div>
+        </div>{/* ── Form ── */}
+        <form onSubmit={handleLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Input */}
+          <div style={{ borderRadius: 24, background: 'var(--card)', border: '1px solid var(--border)', padding: '6px 6px 6px 6px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', transition: 'border-color 0.2s' }}
+            onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(59,130,246,0.45)')}
+            onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+          >
+            {/* Icon box */}
+            <div style={{ width: 46, height: 46, borderRadius: 18, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <User size={18} style={{ color: '#3b82f6' }} />
+            </div>
+
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder={t('studentId')}
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
-              className="bg-transparent border-none flex-1 py-4 px-4 font-black uppercase text-[12px] tracking-widest outline-none text-[var(--text)] placeholder:text-zinc-600"
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text)', fontFamily: 'inherit', padding: '12px 4px' }}
             />
-            <button 
-              type="button" 
+
+            <button
+              type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="w-12 h-12 flex items-center justify-center text-zinc-500 hover:text-[var(--text)] transition-colors"
+              style={{ width: 46, height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', opacity: 0.3, cursor: 'pointer', background: 'none', border: 'none', flexShrink: 0 }}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-6 rounded-[32px] flex items-center justify-center gap-3 font-black uppercase tracking-[4px] shadow-xl active:scale-95 transition-all">
-            {loading ? <Loader2 className="animate-spin" /> : <>{t('launchCore')} <ArrowRight size={18}/></>}
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="active:scale-95 transition-transform"
+            style={{ width: '100%', borderRadius: 22, padding: '20px', background: loading ? 'rgba(59,130,246,0.5)' : 'linear-gradient(135deg, #1d4ed8, #3b82f6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 12px 36px rgba(59,130,246,0.4)', position: 'relative', overflow: 'hidden', transition: 'box-shadow 0.2s' }}
+          >
+            {/* Shine overlay */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
+            {loading
+              ? <Loader2 size={20} className="animate-spin" style={{ position: 'relative', zIndex: 1 }} />
+              : <><span style={{ position: 'relative', zIndex: 1 }}>{t('launchCore')}</span><ArrowRight size={17} style={{ position: 'relative', zIndex: 1 }} /></>
+            }
           </button>
         </form>
 
-        {/* HELP SECTION */}
-        <div className="flex items-center gap-4 my-10 opacity-20">
-            <div className="h-[1px] bg-zinc-700 flex-1"></div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-400">{t('help')}</span>
-            <div className="h-[1px] bg-zinc-700 flex-1"></div>
+        {/* ── Divider ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', margin: '28px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.2 }}>{t('help')}</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
-        <button 
-          onClick={() => window.open('https://wa.me/917054937918?text=Hello%20Karan%20Sir,%20I%20need%20help%20with%20my%20login%20code.', '_blank')} 
-          className="w-full bg-[var(--card)] border border-white/10 py-5 rounded-[30px] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all border-dashed hover:border-white/20"
+        {/* ── WhatsApp Help ── */}
+        <button
+          onClick={() => window.open('https://wa.me/917054937918?text=Hello%20Karan%20Sir,%20I%20need%20help%20with%20my%20login%20code.', '_blank')}
+          className="active:scale-95 transition-transform"
+          style={{ width: '100%', borderRadius: 22, padding: '18px', background: 'var(--card)', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}
         >
-          <div className="flex items-center gap-2">
-            <MessageSquare size={16} className="text-[#25d366]" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-[var(--text)]">{t('contactAdmin')}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 10, background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <MessageSquare size={14} fill="#25d366" style={{ color: '#25d366' }} />
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>{t('contactAdmin')}</span>
           </div>
-          <p className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest">{t('getHelpWhatsApp')}</p>
+          <p style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3 }}>{t('getHelpWhatsApp')}</p>
         </button>
+
       </div>
+
+      <style>{`input::placeholder { opacity: 0.3; }`}</style>
     </div>
   );
 }
