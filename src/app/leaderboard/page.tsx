@@ -76,7 +76,12 @@ export default function Leaderboard() {
     if (avg >= 60) return '#6EE7B7';
     if (avg >= 40) return '#93C5FD';
     return '#F87171';
-  };return (
+  };
+
+/* ========================================= */
+/* ✂️ END OF PART 1 - PASTE PART 2 BELOW THIS */
+/* ========================================= */
+  return (
     <div
       className="min-h-screen p-5 pt-20 pb-32 font-sans relative overflow-hidden"
       style={{ background: 'var(--background)', color: 'var(--text)' }}
@@ -190,7 +195,7 @@ export default function Leaderboard() {
                           {student.name.split(' ')[0]}
                         </h3>
                         <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 3, color: isFirst ? 'rgba(245,200,66,0.7)' : 'var(--text)', opacity: isFirst ? 1 : 0.35 }}>
-                          {t('id')}: {student.id}
+                          CLASS {student.class}
                         </p>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
