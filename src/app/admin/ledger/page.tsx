@@ -71,7 +71,14 @@ export default function StudentLedger() {
     e.preventDefault();
     if (!newName.trim() || !newClass) return;
     setIsEnrolling(true);
-    const newID = 'MX' + Math.floor(1000 + Math.random() * 9000); 
+    
+    // 🔥 NEW RANDOM ID GENERATOR: 2 Letters + 4 Numbers
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const l1 = chars.charAt(Math.floor(Math.random() * chars.length));
+    const l2 = chars.charAt(Math.floor(Math.random() * chars.length));
+    const nums = Math.floor(1000 + Math.random() * 9000);
+    const newID = `${l1}${l2}${nums}`; 
+
     const { error } = await supabase.from('students').insert([{ id: newID, name: newName.trim(), class: newClass, attendance: 0 }]);
     if (!error) { 
       setNewName(""); 

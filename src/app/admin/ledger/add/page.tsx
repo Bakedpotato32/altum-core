@@ -1,14 +1,46 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ChevronLeft, UserPlus, CheckCircle2, Loader2 } from 'lucide-react';
+import { ChevronLeft, UserPlus, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AddStudent() {
   const [formData, setFormData] = useState({ id: '', name: '', class: '', attendance: '100' });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [activeClasses, setActiveClasses] = useState<string[]>([]);
   const router = useRouter();
+
+  // 🔥 NEW RANDOM ID GENERATOR
+  const generateRandomID = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const l1 = chars.charAt(Math.floor(Math.random() * chars.length));
+    const l2 = chars.charAt(Math.floor(Math.random() * chars.length));
+    const nums = Math.floor(1000 + Math.random() * 9000);
+    return `${l1}${l2}${nums}`;
+  };
+
+  useEffect(() => {
+    // Generate initial ID
+    setFormData(prev => ({ ...prev, id: generateRandomID() }));
+
+    // Fetch dynamic classes
+    const fetchClasses = async () => {
+      const { data } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
+      if (data && data.value) {
+        try {
+          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setActiveClasses(parsed);
+            setFormData(prev => ({ ...prev, class: parsed[0] }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    fetchClasses();
+  }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,17 +74,22 @@ export default function AddStudent() {
 
       <div className="mb-10">
         <h1 className="text-3xl font-black italic uppercase tracking-tighter">New <span className="text-blue-500">Entry</span></h1>
-        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Add Student to Mahuli Node</p>
+        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Add Student to Database</p>
       </div>
 
       <form onSubmit={handleAdd} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-4">Access Code (ID)</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-4 flex items-center justify-between">
+            Access Code (ID)
+            <button type="button" onClick={() => setFormData(prev => ({ ...prev, id: generateRandomID() }))} className="flex items-center gap-1 text-blue-500 active:scale-90">
+              <RefreshCw size={10} /> Regenerate
+            </button>
+          </label>
           <input 
             required
-            placeholder="e.g. 7055"
+            placeholder="e.g. AB1234"
             value={formData.id}
-            onChange={e => setFormData({...formData, id: e.target.value})}
+            onChange={e => setFormData({...formData, id: e.target.value.toUpperCase()})}
             className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 px-6 text-sm font-bold text-[var(--text)] focus:border-blue-500 outline-none transition-all shadow-sm"
           />
         </div>
@@ -71,13 +108,14 @@ export default function AddStudent() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-4">Class</label>
-            <input 
+            <select 
               required
-              placeholder="e.g. 10th"
               value={formData.class}
               onChange={e => setFormData({...formData, class: e.target.value})}
-              className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 px-6 text-sm font-bold text-[var(--text)] focus:border-blue-500 outline-none transition-all shadow-sm"
-            />
+              className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 px-6 text-sm font-bold text-[var(--text)] focus:border-blue-500 outline-none transition-all shadow-sm appearance-none"
+            >
+              {activeClasses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-4">Attendance %</label>

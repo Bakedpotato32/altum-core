@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Loader2, Download, FileBarChart, Filter, Award, Star } from 'lucide-react';
+import { ArrowLeft, Loader2, Download, FileBarChart, Filter, Award, Star, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -18,7 +18,21 @@ export default function ReportCardGenerator() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [scores, setScores] = useState<any[]>([]);
 
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
+  const [assignedClass, setAssignedClass] = useState('');
+
   useEffect(() => {
+    const role = localStorage.getItem('role');
+    const aClass = localStorage.getItem('assignedClass') || '';
+    
+    const master = role === 'principal' || aClass.toLowerCase() === 'all';
+    setIsMasterAdmin(master);
+    setAssignedClass(aClass);
+
+    if (!master && aClass) {
+      setSelectedClass(aClass);
+    }
+
     const fetchClasses = async () => {
       const { data } = await supabase.from('config').select('value').eq('key', 'active_classes').maybeSingle();
       if (data && data.value) {
@@ -53,7 +67,6 @@ export default function ReportCardGenerator() {
     };
     fetchScores();
   }, [selectedStudent]);
-
   let totalMarks = 0;
   let marksObtained = 0;
   scores.forEach(s => {
@@ -84,24 +97,10 @@ export default function ReportCardGenerator() {
     setGenerating(true);
     
     try {
-      window.scrollTo(0, 0); // Reset scroll to prevent capture offset
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        scrollY: -window.scrollY
-      });
-
+      window.scrollTo(0, 0);
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY });
       const imgData = canvas.toDataURL('image/png');
-      
-      // CRITICAL FIX: Create a custom PDF matching the EXACT canvas size
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-      
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
       pdf.save(`${selectedStudent.name.replace(/\s+/g, '_')}_Report_Card.pdf`);
     } catch (error) {
@@ -110,6 +109,7 @@ export default function ReportCardGenerator() {
     }
     setGenerating(false);
   };
+
   const pct = Number(overallPercentage);
   const ac = getGradeAccent(pct);
   const grade = getGrade(pct);
@@ -118,14 +118,12 @@ export default function ReportCardGenerator() {
 
   return (
     <div className="min-h-screen pb-40 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
-
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
         <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: 340, height: 340, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter: 'blur(60px)' }} />
         <div style={{ position: 'absolute', bottom: '10%', left: '-10%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       </div>
 
       <div className="max-w-md mx-auto px-5 pt-24">
-
         <button onClick={() => router.push('/admin')} className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform" style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
           <ArrowLeft size={15} strokeWidth={3} /> Admin Core
         </button>
@@ -143,17 +141,23 @@ export default function ReportCardGenerator() {
         </div>
 
         <div style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', borderTop: '4px solid #3b82f6', padding: '22px 20px', marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {[
-            { value: selectedClass, onChange: (e: any) => setSelectedClass(e.target.value), opts: [<option key="" value="">Select Class</option>, ...activeClasses.map(c => <option key={c} value={c}>{c}</option>)], disabled: false, spin: false },
-            { value: selectedStudent ? selectedStudent.id : '', onChange: (e: any) => { const s = students.find((x: any) => x.id === e.target.value); setSelectedStudent(s || null); }, opts: [<option key="" value="">{students.length === 0 && selectedClass ? 'No Students' : 'Select Student'}</option>, ...students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)], disabled: !selectedClass || students.length === 0, spin: loading && !selectedStudent },
-          ].map((sel, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--background)', borderRadius: 16, border: '1px solid var(--border)', padding: '4px 16px', opacity: sel.disabled ? 0.5 : 1 }}>
-              {sel.spin ? <Loader2 size={14} className="animate-spin" style={{ color: '#3b82f6', flexShrink: 0 }} /> : <Filter size={14} style={{ color: 'var(--text)', opacity: 0.3, flexShrink: 0 }} />}
-              <select value={sel.value} onChange={sel.onChange} disabled={sel.disabled} style={{ flex: 1, background: 'transparent', border: 'none', padding: '14px 0', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text)', outline: 'none', fontFamily: 'inherit', appearance: 'none' }}>
-                {sel.opts}
-              </select>
-            </div>
-          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--background)', borderRadius: 16, border: '1px solid var(--border)', padding: '4px 16px', opacity: !isMasterAdmin ? 0.6 : 1 }}>
+            {!isMasterAdmin ? <Lock size={14} style={{ color: '#3b82f6', flexShrink: 0 }} /> : <Filter size={14} style={{ color: 'var(--text)', opacity: 0.3, flexShrink: 0 }} />}
+            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} disabled={!isMasterAdmin} style={{ flex: 1, background: 'transparent', border: 'none', padding: '14px 0', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text)', outline: 'none', fontFamily: 'inherit', appearance: 'none' }}>
+              <option value="">{isMasterAdmin ? "Select Class" : `Locked: ${assignedClass}`}</option>
+              {isMasterAdmin && activeClasses.map(c => <option key={c} value={c}>{c}</option>)}
+              {!isMasterAdmin && <option value={assignedClass}>{assignedClass}</option>}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--background)', borderRadius: 16, border: '1px solid var(--border)', padding: '4px 16px', opacity: !selectedClass || students.length === 0 ? 0.5 : 1 }}>
+            {loading && !selectedStudent ? <Loader2 size={14} className="animate-spin" style={{ color: '#3b82f6', flexShrink: 0 }} /> : <Filter size={14} style={{ color: 'var(--text)', opacity: 0.3, flexShrink: 0 }} />}
+            <select value={selectedStudent ? selectedStudent.id : ''} onChange={(e) => { const s = students.find((x: any) => x.id === e.target.value); setSelectedStudent(s || null); }} disabled={!selectedClass || students.length === 0} style={{ flex: 1, background: 'transparent', border: 'none', padding: '14px 0', fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text)', outline: 'none', fontFamily: 'inherit', appearance: 'none' }}>
+              <option value="">{students.length === 0 && selectedClass ? 'No Students' : 'Select Student'}</option>
+              {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+
           <button onClick={handleGeneratePdf} disabled={!selectedStudent || generating} className="active:scale-95 transition-transform" style={{ width: '100%', padding: '18px', borderRadius: 18, background: !selectedStudent || generating ? 'rgba(59,130,246,0.4)' : 'linear-gradient(135deg, #1d4ed8, #3b82f6)', color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', border: 'none', cursor: !selectedStudent || generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: !selectedStudent || generating ? 'none' : '0 10px 28px rgba(59,130,246,0.35)', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
             {generating ? <Loader2 size={18} className="animate-spin" style={{ position: 'relative', zIndex: 1 }} /> : <><Download size={17} style={{ position: 'relative', zIndex: 1 }} /><span style={{ position: 'relative', zIndex: 1 }}>Export PDF Report</span></>}
