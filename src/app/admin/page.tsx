@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon,
   Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee,
-  Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight
+  Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight,
+  FileBarChart
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -18,7 +19,9 @@ type AdminCardProps = {
   iconBg: string;
   textAccent: string;
   featured?: boolean;
-};export default function AdminDashboard() {
+};
+
+export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
   const [studentCount, setStudentCount] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -223,7 +226,9 @@ type AdminCardProps = {
             <><Save size={14} /> Update Board</>
           )}
         </button>
-      </div>{/* ── SYSTEM CONFIG (MASTER ONLY) ── */}
+      </div>
+
+      {/* ── SYSTEM CONFIG (MASTER ONLY) ── */}
       {master && (
         <div className="mb-8">
           <SectionLabel icon={<Settings2 size={12} />} label="System Config" />
@@ -335,6 +340,16 @@ type AdminCardProps = {
           borderAccent="border-l-red-500"
           iconBg="bg-red-500/10"
           textAccent="text-red-500"
+        />
+        <AdminCard
+          onClick={() => router.push('/admin/reports')}
+          icon={<FileBarChart className="text-blue-500" size={20} />}
+          label="Analysis"
+          title="Report Gen"
+          detail="Export PDFs"
+          borderAccent="border-l-blue-500"
+          iconBg="bg-blue-500/10"
+          textAccent="text-blue-500"
         />
       </div>
 
