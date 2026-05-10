@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Calendar, Star, ArrowUpRight, Zap, Loader2, MessageSquare, Trophy, ChevronRight, Crown, ListChecks, Bell, Megaphone, Wallet } from 'lucide-react';
+import { Calendar, Star, ArrowUpRight, Zap, Loader2, MessageSquare, Trophy, ChevronRight, Crown, ListChecks, Bell, Megaphone, Wallet, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -79,7 +79,6 @@ export default function Dashboard() {
     };
     fetchDashboardData();
   }, [router]);
-
   if (loading || !student) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="relative">
@@ -204,7 +203,6 @@ export default function Dashboard() {
           </div>
           <ChevronRight className="w-4 h-4 text-emerald-500/40 group-hover:translate-x-1 transition-transform" />
         </div>
-
         {/* Rank Card */}
         <div
           onClick={() => router.push('/leaderboard')}
@@ -230,7 +228,7 @@ export default function Dashboard() {
         {/* Syllabus Card */}
         <div
           onClick={() => router.push('/syllabus')}
-          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg"
+          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-red-500/30"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
@@ -242,6 +240,27 @@ export default function Dashboard() {
               </p>
               <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
                 {t('trackProgress')}
+              </h4>
+            </div>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+        </div>
+
+        {/* Arcade Card */}
+        <div
+          onClick={() => router.push('/arcade')}
+          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-violet-500/30"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+              <Gamepad2 className="w-5 h-5 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-violet-500 mb-1">
+                Altum Arcade
+              </p>
+              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
+                Mini Games
               </h4>
             </div>
           </div>
