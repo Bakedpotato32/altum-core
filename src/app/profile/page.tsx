@@ -58,77 +58,77 @@ export default function Profile() {
     img.src = URL.createObjectURL(file);
   };
 
-  if (!mounted) return null;return (
-    <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
+  if (!mounted) return null;
+
+  return (
+    <div className="min-h-screen pb-32 font-sans bg-background text-text">
       <input type="file" className="hidden" ref={fileInputRef} accept="image/*" onChange={handleImageUpload} />
 
       {/* Ambient orbs */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-5%', left: '50%', transform: 'translateX(-50%)', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-        <div style={{ position: 'absolute', bottom: '10%', right: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,115,22,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div className="absolute -top-[5%] left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-blue-500/10 blur-[60px]" />
+        <div className="absolute bottom-[10%] -right-[10%] w-64 h-64 rounded-full bg-orange-500/8 blur-[60px]" />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 120, paddingLeft: 20, paddingRight: 20 }}>
-
-        {/* ── Avatar ── */}
-        <div style={{ position: 'relative', marginBottom: 28, marginTop: 16 }}>
+      <div className="flex flex-col items-center px-5 pt-32">
+        {/* Avatar section */}
+        <div className="relative mb-7 mt-4">
           {/* Outer glow ring */}
-          <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(99,102,241,0.2))', filter: 'blur(12px)', zIndex: 0 }} />
+          <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-blue-500/30 to-indigo-500/20 blur-xl z-0" />
 
           {/* Gradient border ring */}
-          <div style={{ position: 'relative', zIndex: 1, width: 128, height: 128, borderRadius: '50%', padding: 3, background: 'linear-gradient(135deg, #3b82f6, #6366f1, #3b82f6)' }}>
-            <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', background: 'var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="relative z-10 w-32 h-32 rounded-full p-[3px] bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-500">
+            <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center">
               {uploading ? (
-                <Loader2 className="animate-spin" size={30} style={{ color: '#3b82f6' }} />
+                <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
               ) : student?.avatar_url ? (
-                <img src={student.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={student.avatar_url} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <span style={{ fontSize: 48, fontWeight: 900, fontStyle: 'italic', color: '#3b82f6' }}>
-                  {student?.name?.[0] || <User size={48} style={{ color: '#3b82f6' }} />}
+                <span className="text-5xl font-black italic text-blue-500">
+                  {student?.name?.[0] || <User size={48} className="text-blue-500" />}
                 </span>
               )}
             </div>
           </div>
 
-          {/* Camera button */}
+          {/* Camera button - SOLID, no transparency */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="active:scale-90 transition-transform"
-            style={{ position: 'absolute', bottom: 2, right: 2, zIndex: 2, width: 34, height: 34, borderRadius: 12, background: 'linear-gradient(135deg, #2563eb, #3b82f6)', border: '3px solid var(--background)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(59,130,246,0.45)', cursor: 'pointer' }}
+            className="absolute bottom-1 right-1 z-20 w-9 h-9 rounded-xl bg-blue-500 border-[3px] border-background flex items-center justify-center shadow-lg shadow-blue-500/40 active:scale-90 transition-transform cursor-pointer"
           >
-            <Camera size={15} style={{ color: '#fff' }} />
+            <Camera size={15} className="text-white" />
           </button>
         </div>
 
-        {/* ── Name & ID ── */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <h2 style={{ fontSize: 34, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.95, color: 'var(--text)', marginBottom: 12 }}>
+        {/* Name & ID */}
+        <div className="text-center mb-10">
+          <h2 className="text-4xl font-black italic uppercase tracking-[-0.03em] leading-[0.95] text-text mb-3">
             {student?.name || '...'}
           </h2>
-
-          {/* Class badge + ID badge row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
             {student?.class && (
-              <div style={{ padding: '5px 14px', borderRadius: 20, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6366f1' }}>
+              <div className="px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                <span className="text-[9px] font-black tracking-[0.2em] uppercase text-indigo-400">
                   Class {student.class}
                 </span>
               </div>
             )}
-            <div style={{ padding: '5px 14px', borderRadius: 20, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-              <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#3b82f6' }}>
+            <div className="px-3.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+              <span className="text-[9px] font-black tracking-[0.2em] uppercase text-blue-400">
                 {t('nodeId')}: {student?.id || '...'}
               </span>
             </div>
           </div>
-        </div>{/* ── Divider ── */}
-        <div style={{ width: '100%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.2), transparent)', marginBottom: 28 }} />
+        </div>
 
-        {/* ── Profile Cards ── */}
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Divider */}
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent mb-7" />
+
+        {/* Cards grid */}
+        <div className="w-full flex flex-col gap-3">
           <ProfileCard
             href="/profile/attendance"
-            icon={<CalIcon size={22} style={{ color: '#f97316' }} />}
+            icon={<CalIcon size={22} className="text-orange-500" />}
             iconBg="rgba(249,115,22,0.08)"
             iconBorder="rgba(249,115,22,0.2)"
             iconGlow="rgba(249,115,22,0.2)"
@@ -139,7 +139,7 @@ export default function Profile() {
           />
           <ProfileCard
             href="/profile/performance"
-            icon={<BarChart3 size={22} style={{ color: '#3b82f6' }} />}
+            icon={<BarChart3 size={22} className="text-blue-500" />}
             iconBg="rgba(59,130,246,0.08)"
             iconBorder="rgba(59,130,246,0.2)"
             iconGlow="rgba(59,130,246,0.2)"
@@ -163,34 +163,49 @@ export default function Profile() {
 
 function ProfileCard({ href, icon, iconBg, iconBorder, iconGlow, accentColor, title, subtitle, index }: any) {
   return (
-    <Link href={href} style={{ textDecoration: 'none', display: 'block', animation: 'fadeSlideIn 0.35s ease both', animationDelay: `${index * 0.08}s` }} className="active:scale-[0.98] transition-transform">
-      <div style={{ borderRadius: 26, background: 'var(--card)', border: '1px solid var(--border)', padding: '17px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, position: 'relative', overflow: 'hidden' }}>
-
+    <Link
+      href={href}
+      className="group block active:scale-[0.98] transition-transform duration-150"
+      style={{ animation: 'fadeSlideIn 0.35s ease both', animationDelay: `${index * 0.08}s` }}
+    >
+      <div className="relative rounded-2xl bg-card border border-border p-4 flex items-center justify-between gap-3.5 overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5">
         {/* Left accent bar */}
-        <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: accentColor, boxShadow: `0 0 10px ${iconGlow}` }} />
+        <div
+          className="absolute left-0 top-[20%] bottom-[20%] w-1 rounded-r-full transition-all group-hover:top-[12%] group-hover:bottom-[12%]"
+          style={{ background: accentColor, boxShadow: `0 0 10px ${iconGlow}` }}
+        />
 
-        {/* Subtle radial shimmer */}
-        <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at left, ${iconBg} 0%, transparent 65%)`, pointerEvents: 'none' }} />
+        {/* Radial shimmer on hover */}
+        <div
+          className="absolute inset-0 pointer-events-none rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ background: `radial-gradient(ellipse at left, ${iconBg} 0%, transparent 65%)` }}
+        />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1, flex: 1, paddingLeft: 8 }}>
-          {/* Icon */}
-          <div style={{ width: 50, height: 50, borderRadius: 17, background: iconBg, border: `1px solid ${iconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 14px ${iconGlow}` }}>
+        <div className="flex items-center gap-4 relative z-10 flex-1 pl-2">
+          {/* Icon box */}
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+            style={{ background: iconBg, border: `1px solid ${iconBorder}`, boxShadow: `0 4px 14px ${iconGlow}` }}
+          >
             {icon}
           </div>
 
           {/* Text */}
           <div>
-            <h4 style={{ fontSize: 16, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1.1, marginBottom: 4 }}>
+            <h4 className="text-base font-black italic uppercase tracking-[-0.01em] text-text leading-tight mb-1">
               {title}
             </h4>
-            <p style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: accentColor, opacity: 0.7 }}>
+            <p className="text-[8px] font-black tracking-[0.2em] uppercase opacity-70" style={{ color: accentColor }}>
               {subtitle}
             </p>
           </div>
         </div>
 
-        {/* Arrow */}
-        <div style={{ width: 32, height: 32, borderRadius: 12, background: iconBg, border: `1px solid ${iconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+        {/* Arrow button */}
+        <div
+          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110 group-hover:rotate-3"
+          style={{ background: iconBg, border: `1px solid ${iconBorder}` }}
+        >
           <ChevronRight size={15} style={{ color: accentColor }} />
         </div>
       </div>

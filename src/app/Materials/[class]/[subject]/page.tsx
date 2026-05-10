@@ -13,10 +13,9 @@ export default function PDFVault() {
   const [loading, setLoading] = useState(true);
   const backPressCount = useRef(0);
 
-  // --- BULLETPROOF HARDWARE BACK BUTTON ---
+  // Hardware back button protection (unchanged)
   useEffect(() => {
     window.history.pushState({ dummy: true }, '', window.location.href);
-
     const handleHardwareBack = () => {
       if (backPressCount.current === 0) {
         backPressCount.current = 1;
@@ -27,13 +26,11 @@ export default function PDFVault() {
         }, 2000);
       }
     };
-
     window.addEventListener('popstate', handleHardwareBack);
     return () => {
       window.removeEventListener('popstate', handleHardwareBack);
     };
   }, [router, className]);
-  // ----------------------------------------
 
   useEffect(() => {
     async function fetchMaterials() {
@@ -70,104 +67,122 @@ export default function PDFVault() {
   const subjectLabel = decodeURIComponent(subject as string);
 
   return (
-    <main className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
-
+    <main className="min-h-screen pb-32 font-sans bg-background text-text">
+      {/* Ambient orbs (preserved with dynamic accent glow) */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-8%', right: '-12%', width: 320, height: 320, borderRadius: '50%', background: `radial-gradient(circle, ${ac.glow.replace('0.25','0.09')} 0%, transparent 70%)`, filter: 'blur(50px)', transition: 'background 0.5s' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div
+          className="absolute -top-[8%] -right-[12%] w-80 h-80 rounded-full blur-[60px] transition-all duration-500"
+          style={{ background: `radial-gradient(circle, ${ac.glow.replace('0.25', '0.09')} 0%, transparent 70%)` }}
+        />
+        <div className="absolute bottom-[15%] -left-[10%] w-64 h-64 rounded-full bg-blue-500/5 blur-[60px]" />
       </div>
 
       <div className="max-w-md mx-auto px-5 pt-28">
-
+        {/* Back button */}
         <button
           onClick={() => router.push(`/Materials/${className}`)}
-          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform"
-          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4, border: 'none', background: 'transparent', padding: 0 }}
+          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform text-[10px] font-extrabold tracking-[0.18em] uppercase text-text/40 border-none bg-transparent p-0"
         >
           <ChevronLeft size={15} strokeWidth={3} /> {t('backTo')} {className}
         </button>
 
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 44, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
+        {/* Header section */}
+        <div className="mb-8">
+          <h1 className="text-5xl font-black italic uppercase tracking-[-0.03em] leading-[0.92] text-text">
             {subjectLabel}{' '}
-            <span style={{ color: ac.color, textShadow: `0 0 30px ${ac.glow}`, fontSize: 36 }}>
+            <span className="text-4xl" style={{ color: ac.color, textShadow: `0 0 30px ${ac.glow}` }}>
               {t('vault')}
             </span>
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-            <div style={{ width: 28, height: 2, background: ac.color, opacity: 0.5, borderRadius: 2 }} />
-            <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3 }}>
+          <div className="flex items-center gap-2.5 mt-2.5">
+            <div className="w-7 h-0.5 rounded-full" style={{ background: ac.color, opacity: 0.5 }} />
+            <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-text/30">
               {t('standard')} {className} · {pdfs.length} {t('resources')}
             </p>
           </div>
         </div>
 
+        {/* Loading state */}
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16 }}>
-            <div style={{ position: 'relative' }}>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="relative">
               <div className="absolute inset-0 rounded-full animate-ping" style={{ border: `2px solid ${ac.glow}` }} />
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: ac.bg, border: `1px solid ${ac.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Loader2 size={22} className="animate-spin" style={{ color: ac.color }} />
+              <div
+                className="relative w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm"
+                style={{ background: ac.bg, border: `1px solid ${ac.border}` }}
+              >
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: ac.color }} />
               </div>
             </div>
-            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.28em', textTransform: 'uppercase', color: ac.color, opacity: 0.6 }}>
+            <p className="text-[9px] font-black tracking-[0.28em] uppercase opacity-60" style={{ color: ac.color }}>
               {t('openingVault')}
             </p>
           </div>
 
         ) : pdfs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 24px', borderRadius: 28, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
-            <Library size={44} style={{ color: 'var(--text)', opacity: 0.2, margin: '0 auto 14px' }} />
-            <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
+          /* Empty state */
+          <div className="text-center py-16 px-6 rounded-3xl bg-card border border-dashed border-border opacity-70">
+            <Library className="w-11 h-11 text-text/20 mx-auto mb-3.5" />
+            <p className="text-[10px] font-black tracking-[0.2em] uppercase text-text/40">
               {t('noFilesUploaded')}
             </p>
-          </div>) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          </div>
+
+        ) : (
+          /* PDF list */
+          <div className="flex flex-col gap-3">
             {pdfs.map((pdf, index) => (
               <div
                 key={pdf.id}
+                className="group relative rounded-2xl bg-card border border-border p-4 flex items-center justify-between gap-3 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-opacity-50 hover:-translate-y-0.5"
                 style={{
-                  borderRadius: 26,
-                  background: 'var(--card)',
-                  border: '1px solid var(--border)',
-                  padding: '16px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  position: 'relative',
-                  overflow: 'hidden',
                   animation: 'fadeSlideIn 0.35s ease both',
                   animationDelay: `${index * 0.06}s`,
                 }}
               >
-                <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: ac.color, boxShadow: `0 0 10px ${ac.glow}` }} />
+                {/* Left accent bar */}
+                <div
+                  className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-full transition-all group-hover:top-1/5 group-hover:bottom-1/5"
+                  style={{ background: ac.color, boxShadow: `0 0 10px ${ac.glow}` }}
+                />
 
-                <div style={{ position: 'absolute', right: 60, top: '50%', transform: 'translateY(-50%)', fontSize: 52, fontWeight: 900, fontStyle: 'italic', color: ac.color, opacity: 0.04, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>
+                {/* Large background number */}
+                <div
+                  className="absolute right-14 top-1/2 -translate-y-1/2 text-5xl font-black italic opacity-[0.04] pointer-events-none select-none"
+                  style={{ color: ac.color }}
+                >
                   {String(index + 1).padStart(2, '0')}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0, paddingLeft: 10 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 16, background: ac.bg, border: `1px solid ${ac.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 4px 14px ${ac.glow}` }}>
+                {/* PDF info */}
+                <div className="flex items-center gap-3.5 flex-1 min-w-0 pl-2.5">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md"
+                    style={{ background: ac.bg, border: `1px solid ${ac.border}`, boxShadow: `0 4px 14px ${ac.glow}` }}
+                  >
                     <FileDown size={20} style={{ color: ac.color }} />
                   </div>
 
-                  <div style={{ minWidth: 0 }}>
-                    <h4 style={{ fontSize: 13, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 5 }}>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] leading-tight text-text truncate mb-1">
                       {pdf.title}
                     </h4>
-                    <p style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3 }}>
+                    <p className="text-[8px] font-black tracking-[0.15em] uppercase text-text/30">
                       {pdf.size} · {new Date(pdf.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                 </div>
 
+                {/* Download button */}
                 <button
                   onClick={() => handleDownload(pdf.drive_id)}
-                  className="active:scale-90 transition-transform"
-                  style={{ width: 44, height: 44, borderRadius: 15, background: `linear-gradient(135deg, ${ac.color}, ${ac.color}cc)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 6px 20px ${ac.glow}`, border: 'none', cursor: 'pointer' }}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 hover:scale-105"
+                  style={{
+                    background: `linear-gradient(135deg, ${ac.color}, ${ac.color}cc)`,
+                    boxShadow: `0 6px 20px ${ac.glow}`,
+                  }}
                 >
-                  <Download size={18} />
+                  <Download size={18} className="text-white" />
                 </button>
               </div>
             ))}
@@ -175,10 +190,16 @@ export default function PDFVault() {
         )}
       </div>
 
-      <style>{`
+      <style jsx>{`
         @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </main>

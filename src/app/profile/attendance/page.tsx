@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -31,7 +31,7 @@ export default function StudentAttendance() {
 
   if (!mounted) return null;
 
-  // Stats for the current month
+  // Stats for current month
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -42,13 +42,15 @@ export default function StudentAttendance() {
   const presentCount = monthLogs.filter(l => l.status.toLowerCase().trim() === 'present').length;
   const absentCount  = monthLogs.filter(l => l.status.toLowerCase().trim() === 'absent').length;
   const totalLogged  = presentCount + absentCount;
-  const attendancePct = totalLogged > 0 ? Math.round((presentCount / totalLogged) * 100) : 0;const renderCells = () => {
+  const attendancePct = totalLogged > 0 ? Math.round((presentCount / totalLogged) * 100) : 0;
+
+  const renderCells = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
     const calendarDays = eachDayOfInterval({ start: startOfWeek(monthStart), end: endOfWeek(monthEnd) });
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {calendarDays.map(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const isCurrentMonth = isSameMonth(day, monthStart);
@@ -56,7 +58,7 @@ export default function StudentAttendance() {
           const dayLog = logs.find(l => (l.date.includes('T') ? l.date.split('T')[0] : l.date) === dateStr);
           const isHoliday = holidays.includes(dateStr);
 
-          let bg = 'rgba(128,128,128,0.07)';
+          let bg = 'rgba(128,128,128,0.05)';
           let color = 'var(--text)';
           let border = 'transparent';
           let glow = 'none';
@@ -73,21 +75,14 @@ export default function StudentAttendance() {
           return (
             <div
               key={day.toISOString()}
+              className="aspect-square flex items-center justify-center rounded-xl text-xs font-black transition-all duration-200 hover:scale-105 hover:shadow-md"
               style={{
-                aspectRatio: '1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 12,
-                fontSize: 11,
-                fontWeight: 900,
                 background: bg,
                 color: color,
                 border: `1px solid ${border}`,
                 boxShadow: glow,
                 opacity: !isCurrentMonth ? 0 : 1,
                 fontStyle: today ? 'italic' : 'normal',
-                transition: 'all 0.2s',
               }}
             >
               {isCurrentMonth ? format(day, 'd') : ''}
@@ -98,70 +93,78 @@ export default function StudentAttendance() {
     );
   };
 
-  return (
-    <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
+  const statCards = [
+    { label: t('present'), value: presentCount, color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+    { label: t('absent'),  value: absentCount,  color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.2)'  },
+    { label: '%',          value: `${attendancePct}%`, color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)' },
+  ];
 
+  return (
+    <div className="min-h-screen pb-32 font-sans bg-background text-text">
       {/* Ambient orbs */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-8%', right: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.09) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div className="absolute -top-[8%] -right-[10%] w-72 h-72 rounded-full bg-blue-500/10 blur-[60px]" />
+        <div className="absolute bottom-[15%] -left-[10%] w-64 h-64 rounded-full bg-emerald-500/8 blur-[60px]" />
       </div>
 
       <div className="px-5 pt-24">
-
-        {/* ── Header ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+        {/* Header */}
+        <div className="flex justify-between items-start mb-7">
           <div>
-            <h1 style={{ fontSize: 38, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
+            <h1 className="text-4xl font-black italic uppercase tracking-[-0.03em] leading-[0.92] text-text">
               {t('my')}{' '}
-              <span style={{ color: '#3b82f6', textShadow: '0 0 24px rgba(59,130,246,0.35)' }}>{t('record')}</span>
+              <span className="text-blue-500" style={{ textShadow: '0 0 24px rgba(59,130,246,0.35)' }}>
+                {t('record')}
+              </span>
             </h1>
-            <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 8 }}>
+            <p className="text-[9px] font-extrabold tracking-[0.2em] uppercase text-text/30 mt-2">
               {t('verifiedId')}: {studentId}
             </p>
           </div>
           <button
             onClick={() => router.push('/profile')}
-            className="active:scale-90 transition-transform"
-            style={{ width: 42, height: 42, borderRadius: 14, background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', opacity: 0.5 }}
+            className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-text/50 transition-all duration-200 active:scale-90 hover:bg-border/20 hover:scale-105"
           >
             <ChevronLeft size={18} />
           </button>
         </div>
 
-        {/* ── Stats Row ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
-          {[
-            { label: t('present'), value: presentCount, color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
-            { label: t('absent'),  value: absentCount,  color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.2)'  },
-            { label: '%',          value: `${attendancePct}%`, color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)' },
-          ].map((stat, i) => (
-            <div key={i} style={{ borderRadius: 20, background: stat.bg, border: `1px solid ${stat.border}`, padding: '14px 12px', textAlign: 'center' }}>
-              <p style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.03em', color: stat.color, lineHeight: 1, marginBottom: 4 }}>{stat.value}</p>
-              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: stat.color, opacity: 0.7 }}>{stat.label}</p>
+        {/* Stats Row */}
+        <div className="grid grid-cols-3 gap-2.5 mb-5">
+          {statCards.map((stat, i) => (
+            <div
+              key={i}
+              className="rounded-xl p-3.5 text-center transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+              style={{ background: stat.bg, border: `1px solid ${stat.border}` }}
+            >
+              <p className="text-2xl font-black italic tracking-[-0.03em] leading-tight mb-1" style={{ color: stat.color }}>
+                {stat.value}
+              </p>
+              <p className="text-[8px] font-black tracking-[0.18em] uppercase opacity-70" style={{ color: stat.color }}>
+                {stat.label}
+              </p>
             </div>
           ))}
-        </div>{/* ── Calendar Card ── */}
-        <div style={{ borderRadius: 32, background: 'var(--card)', border: '1px solid var(--border)', padding: '22px 18px', marginBottom: 20 }}>
+        </div>
 
-          {/* Month nav */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22, paddingLeft: 4, paddingRight: 4 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', color: 'var(--text)' }}>
+        {/* Calendar Card */}
+        <div className="rounded-3xl bg-card border border-border p-5 mb-5 transition-all duration-200 hover:shadow-lg">
+          {/* Month navigation */}
+          <div className="flex items-center justify-between mb-5 px-1">
+            <h2 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text">
               {format(currentMonth, 'MMMM')}{' '}
-              <span style={{ color: '#3b82f6' }}>{format(currentMonth, 'yyyy')}</span>
+              <span className="text-blue-500">{format(currentMonth, 'yyyy')}</span>
             </h2>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="flex gap-2">
               <button
                 onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="active:scale-90 transition-transform"
-                style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(128,128,128,0.07)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', cursor: 'pointer' }}
+                className="w-8 h-8 rounded-lg bg-border/20 border border-border flex items-center justify-center text-text/70 transition-all duration-200 active:scale-90 hover:bg-border/40 hover:scale-105"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
                 onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="active:scale-90 transition-transform"
-                style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(128,128,128,0.07)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', cursor: 'pointer' }}
+                className="w-8 h-8 rounded-lg bg-border/20 border border-border flex items-center justify-center text-text/70 transition-all duration-200 active:scale-90 hover:bg-border/40 hover:scale-105"
               >
                 <ChevronRight size={16} />
               </button>
@@ -169,9 +172,9 @@ export default function StudentAttendance() {
           </div>
 
           {/* Day headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 10 }}>
+          <div className="grid grid-cols-7 mb-2.5">
             {['S','M','T','W','T','F','S'].map((d, i) => (
-              <div key={i} style={{ textAlign: 'center', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', color: 'var(--text)', opacity: 0.25, textTransform: 'uppercase', paddingBottom: 4 }}>
+              <div key={i} className="text-center text-[9px] font-black tracking-[0.1em] text-text/30 uppercase pb-1">
                 {d}
               </div>
             ))}
@@ -181,17 +184,17 @@ export default function StudentAttendance() {
           {renderCells()}
         </div>
 
-        {/* ── Legend ── */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 20, paddingBottom: 8 }}>
+        {/* Legend */}
+        <div className="flex justify-center gap-5 pb-2">
           {[
             { color: '#10b981', label: t('present') },
             { color: '#ef4444', label: t('absent')  },
             { color: '#f59e0b', label: t('holiday') },
             { color: '#3b82f6', label: 'Today'      },
           ].map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}80` }} />
-              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35 }}>
+            <div key={i} className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full shadow-sm" style={{ background: item.color, boxShadow: `0 0 6px ${item.color}80` }} />
+              <span className="text-[8px] font-black tracking-[0.15em] uppercase text-text/30">
                 {item.label}
               </span>
             </div>

@@ -81,207 +81,193 @@ export default function Dashboard() {
   }, [router]);
 
   if (loading || !student) return (
-    <div className="h-svh flex items-center justify-center" style={{ background: 'var(--background)' }}>
-      <div style={{ position: 'relative' }}>
-        <div className="absolute inset-0 rounded-full animate-ping" style={{ border: '2px solid rgba(59,130,246,0.25)' }} />
-        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-          <Loader2 className="animate-spin" size={22} style={{ color: '#3b82f6' }} />
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="relative">
+        <div className="absolute inset-0 rounded-full animate-ping bg-blue-500/20" />
+        <div className="relative w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center backdrop-blur-sm">
+          <Loader2 className="animate-spin w-5 h-5 text-blue-500" />
         </div>
       </div>
     </div>
   );
 
   const clearance = getClearanceLevel(student.paid_till);
-
   const badgeConfig: Record<string, { bg: string; border: string; label: string; color: string }> = {
-    cleared:  { bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.25)',  label: t('paidTill'),     color: '#10b981' },
-    warning:  { bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.3)',   label: t('dueSoon'),      color: '#f59e0b' },
-    alert:    { bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.3)',   label: t('overdue'),      color: '#f97316' },
-    danger:   { bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.25)',   label: t('actionNeeded'), color: '#ef4444' },
+    cleared:  { bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', label: t('paidTill'),     color: 'text-emerald-500' },
+    warning:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/30',   label: t('dueSoon'),      color: 'text-amber-500' },
+    alert:    { bg: 'bg-orange-500/10',  border: 'border-orange-500/30',   label: t('overdue'),      color: 'text-orange-500' },
+    danger:   { bg: 'bg-red-500/10',    border: 'border-red-500/25',   label: t('actionNeeded'), color: 'text-red-500' },
   };
   const badge = badgeConfig[clearance.level];
-  return (
-    <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
 
-      {/* Ambient orbs */}
+  return (
+    <div className="min-h-screen pb-32 font-sans bg-background text-text">
+      {/* Ambient background orbs (soft & modern) */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-5%', right: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div className="absolute -top-[20%] -right-[20%] w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[80px]" />
+        <div className="absolute bottom-[10%] -left-[20%] w-[350px] h-[350px] rounded-full bg-emerald-500/5 blur-[80px]" />
+        <div className="absolute top-[40%] left-[30%] w-[200px] h-[200px] rounded-full bg-amber-500/5 blur-[60px]" />
       </div>
 
-      {/* ── HERO ── */}
+      {/* Hero section */}
       <div className="px-5 pt-28 pb-6">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          
-          {/* Avatar & Name block */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
-            {/* Cube-shaped Profile Picture */}
-            <div style={{ 
-              width: 64, 
-              height: 64, 
-              borderRadius: 20, 
-              background: 'rgba(59,130,246,0.1)', 
-              border: '1px solid rgba(59,130,246,0.2)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              flexShrink: 0, 
-              overflow: 'hidden',
-              boxShadow: '0 4px 15px rgba(59,130,246,0.15)'
-            }}>
+        <div className="flex justify-between items-center gap-3">
+          {/* Avatar + name */}
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10 overflow-hidden">
               {student.avatar_url ? (
-                <img src={student.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={student.avatar_url} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <span style={{ fontSize: 28, fontWeight: 900, fontStyle: 'italic', color: '#3b82f6' }}>
+                <span className="text-3xl font-black italic text-blue-500">
                   {student.name[0]}
                 </span>
               )}
             </div>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, marginBottom: 4 }}>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-extrabold tracking-[0.22em] uppercase text-text/40 mb-1">
                 {t('welcome')}
               </p>
-              <h1 style={{ fontSize: 30, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.95, color: 'var(--text)' }}>
+              <h1 className="text-3xl font-black italic uppercase tracking-[-0.02em] leading-[0.95] text-text">
                 {student.name.split(' ')[0].split('').map((char: string, i: number) => (
-                  <span key={i} style={{ color: i === 0 ? '#3b82f6' : 'var(--text)' }}>{char}</span>
+                  <span key={i} className={i === 0 ? 'text-blue-500' : 'text-text'}>{char}</span>
                 ))}
               </h1>
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-text/30 mt-1.5 truncate">
                 {student.class} {t('student')} · ID: {student.id}
               </p>
             </div>
           </div>
 
           {/* Fee badge */}
-          <div style={{ flexShrink: 0, padding: '10px 14px', borderRadius: 16, background: badge.bg, border: `1px solid ${badge.border}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: badge.color, opacity: 0.8 }}>
+          <div className={`shrink-0 px-3 py-2 rounded-xl ${badge.bg} ${badge.border} border flex flex-col items-center gap-0.5 backdrop-blur-sm`}>
+            <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${badge.color}/80`}>
               {badge.label}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', color: badge.color }}>
+            <span className={`text-xs font-black italic uppercase tracking-[-0.02em] ${badge.color}`}>
               {student.paid_till || t('pending')}
             </span>
           </div>
         </div>
 
-        {/* Thin accent line */}
-        <div style={{ marginTop: 24, height: 1, background: 'linear-gradient(90deg, rgba(59,130,246,0.4), transparent)', borderRadius: 1 }} />
+        {/* Accent divider */}
+        <div className="mt-6 h-px bg-gradient-to-r from-blue-500/40 to-transparent rounded-full" />
       </div>
 
-      <div className="px-5 space-y-3">
-
-        {/* ── LIVE NOTICE ── */}
-        <div style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '20px 20px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', right: -8, top: -8, opacity: 0.05 }}>
-            <Megaphone size={72} style={{ color: '#3b82f6' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 8px rgba(59,130,246,0.6)', animation: 'pulse 2s infinite' }} />
-            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#3b82f6' }}>
+      {/* Card grid */}
+      <div className="px-5 space-y-4">
+        {/* Live Notice */}
+        <div className="relative rounded-3xl bg-card border border-border p-5 overflow-hidden transition-all duration-200 hover:scale-[1.01] hover:shadow-xl cursor-pointer">
+          <Megaphone className="absolute -right-3 -top-3 w-20 h-20 text-blue-500/5" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
+            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-blue-500">
               {t('liveNotice')}
             </span>
           </div>
-          <p style={{ fontSize: 13, fontWeight: 800, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.45, color: 'var(--text)', position: 'relative', zIndex: 1 }}>
-            "{globalNotice}"
+          <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">
+            “{globalNotice}”
           </p>
         </div>
 
-        {/* ── CLASS UPDATE ── */}
-        <div style={{ borderRadius: 28, background: 'rgba(249,115,22,0.04)', border: '1px dashed rgba(249,115,22,0.25)', padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', right: -8, top: -8, opacity: 0.05 }}>
-            <Bell size={72} style={{ color: '#f97316' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <Bell size={9} style={{ color: '#f97316' }} />
-            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#f97316' }}>
+        {/* Class Update */}
+        <div className="relative rounded-3xl bg-orange-500/5 border border-orange-500/20 p-5 overflow-hidden transition-all duration-200 hover:scale-[1.01]">
+          <Bell className="absolute -right-3 -top-3 w-20 h-20 text-orange-500/5" />
+          <div className="flex items-center gap-2 mb-3">
+            <Bell className="w-3 h-3 text-orange-500" />
+            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-orange-500">
               {student.class} {t('update')}
             </span>
           </div>
-          <p style={{ fontSize: 13, fontWeight: 800, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', lineHeight: 1.45, color: 'var(--text)', position: 'relative', zIndex: 1 }}>
-            {classNotice ? `"${classNotice}"` : "No specific updates for your class today. Keep studying! 🦊"}
+          <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">
+            {classNotice ? `“${classNotice}”` : "No specific updates for your class today. Keep studying! 🦊"}
           </p>
         </div>
 
-        {/* ── FEE DIARY ── */}
+        {/* Fee Diary Card */}
         <div
           onClick={() => router.push('/fees')}
-          style={{ borderRadius: 28, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'transform 0.15s, opacity 0.15s', position: 'relative', overflow: 'hidden' }}
-          className="active:scale-[0.98]"
+          className="group relative rounded-3xl bg-emerald-500/5 border border-emerald-500/20 p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-emerald-500/40 overflow-hidden"
         >
-          <div style={{ position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)', opacity: 0.04 }}>
-            <Wallet size={90} style={{ color: '#10b981' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 18, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Wallet size={24} style={{ color: '#10b981' }} />
+          <Wallet className="absolute -right-5 -top-5 w-28 h-28 text-emerald-500/5 group-hover:scale-110 transition-transform duration-300" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <Wallet className="w-6 h-6 text-emerald-500" />
             </div>
             <div>
-              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#10b981', marginBottom: 3 }}>{t('financeNode')}</p>
-              <h3 style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1 }}>{t('feeDiary')}</h3>
-            </div>
-          </div>
-          <ChevronRight size={16} style={{ color: 'rgba(16,185,129,0.5)', flexShrink: 0 }} />
-        </div>
-
-        {/* ── RANK ── */}
-        <div
-          onClick={() => router.push('/leaderboard')}
-          style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
-          className="active:scale-[0.98]"
-        >
-          <div style={{ position: 'absolute', right: -16, top: '50%', transform: 'translateY(-50%)', opacity: 0.04 }}>
-            <Trophy size={90} style={{ color: '#f5c842' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 18, background: 'rgba(245,200,66,0.1)', border: '1px solid rgba(245,200,66,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Trophy size={24} style={{ color: '#f5c842' }} />
-            </div>
-            <div>
-              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#f5c842', marginBottom: 3 }}>{t('rank')}</p>
-              <h3 style={{ fontSize: 28, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1, textShadow: rank === 1 ? '0 0 20px rgba(245,200,66,0.3)' : 'none' }}>
-                {rank === 1 ? <Crown size={20} style={{ display: 'inline', color: '#f5c842', marginRight: 4 }} /> : null}#{rank}
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-emerald-500 mb-1">
+                {t('financeNode')}
+              </p>
+              <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-tight">
+                {t('feeDiary')}
               </h3>
             </div>
           </div>
-          <ChevronRight size={16} style={{ color: 'rgba(200,200,200,0.3)', flexShrink: 0 }} />
+          <ChevronRight className="w-4 h-4 text-emerald-500/40 group-hover:translate-x-1 transition-transform" />
         </div>
 
-        {/* ── SYLLABUS ── */}
+        {/* Rank Card */}
+        <div
+          onClick={() => router.push('/leaderboard')}
+          className="group relative rounded-3xl bg-card border border-border p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg overflow-hidden"
+        >
+          <Trophy className="absolute -right-5 -top-5 w-28 h-28 text-yellow-500/5 group-hover:scale-110 transition-transform duration-300" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-yellow-500 mb-1">
+                {t('rank')}
+              </p>
+              <h3 className="text-3xl font-black italic uppercase tracking-[-0.03em] text-text leading-tight flex items-center gap-1">
+                {rank === 1 && <Crown className="w-5 h-5 text-yellow-500 -mt-1" />}#{rank}
+              </h3>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-border group-hover:translate-x-1 transition-transform" />
+        </div>
+
+        {/* Syllabus Card */}
         <div
           onClick={() => router.push('/syllabus')}
-          style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-          className="active:scale-[0.98]"
+          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ListChecks size={20} style={{ color: '#ef4444' }} />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <ListChecks className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, marginBottom: 3 }}>{t('syllabus')}</p>
-              <h4 style={{ fontSize: 15, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1 }}>{t('trackProgress')}</h4>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-text/40 mb-1">
+                {t('syllabus')}
+              </p>
+              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
+                {t('trackProgress')}
+              </h4>
             </div>
           </div>
-          <ArrowUpRight size={16} style={{ color: 'rgba(200,200,200,0.3)', flexShrink: 0 }} />
+          <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
         </div>
 
-        {/* ── WHATSAPP ── */}
+        {/* WhatsApp Card */}
         <div
           onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')}
-          style={{ borderRadius: 28, background: 'var(--card)', border: '1px solid var(--border)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-          className="active:scale-[0.98]"
+          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-green-500/30"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 16, background: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(37,211,102,0.25)' }}>
-              <MessageSquare size={20} fill="white" style={{ color: 'white' }} />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#25D366] flex items-center justify-center shadow-lg shadow-green-500/20">
+              <MessageSquare className="w-5 h-5 text-white fill-white" />
             </div>
             <div>
-              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: '#25d366', marginBottom: 3 }}>{t('support')}</p>
-              <h4 style={{ fontSize: 15, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1 }}>{t('whatsappGroup')}</h4>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-[#25D366] mb-1">
+                {t('support')}
+              </p>
+              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
+                {t('whatsappGroup')}
+              </h4>
             </div>
           </div>
-          <ArrowUpRight size={16} style={{ color: 'rgba(200,200,200,0.3)', flexShrink: 0 }} />
+          <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
         </div>
-
       </div>
     </div>
   );
