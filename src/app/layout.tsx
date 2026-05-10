@@ -14,10 +14,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter(); 
   
+  // 🛡️ Route Detectors
   const isLogin = pathname === '/login' || pathname === '/';
-  // 🛡️ Check if the current route is part of the Admin Hub
   const isAdmin = pathname.startsWith('/admin');
   
+  // 🎮 Detect if we are inside an actual game (not the lobby, not the leaderboard)
+  const isGamePage = pathname.startsWith('/arcade/') && pathname !== '/arcade/leaderboard';
+
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [lang, setLang] = useState('EN');
   const [mounted, setMounted] = useState(false);
@@ -76,10 +79,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://cdn.tailwindcss.com" strategy="afterInteractive" />
         
         <LanguageContext.Provider value={{ lang, t, toggleLang }}>
-          {!isLogin && (
+          {/* 🚀 Hide Header on Login AND Game Pages */}
+          {!isLogin && !isGamePage && (
             <header className={`fixed top-0 left-0 right-0 px-6 pt-10 pb-4 z-[100] flex justify-between items-center backdrop-blur-md transition-all duration-500 bg-gradient-to-b ${isDarkMode ? 'from-[#050508] via-[#050508]/80' : 'from-[#f4f7f6] via-[#f4f7f6]/80'} to-transparent`}>
               
-              {/* 🚀 LOGO & BRANDING INTEGRATION */}
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="AltumCore Logo" className="w-8 h-8 object-contain drop-shadow-sm" />
                 <h1 className="text-xl font-black italic uppercase tracking-tighter text-[var(--text)] pt-1">
@@ -99,10 +102,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </header>
           )}
 
-          {/* We adjust the bottom padding dynamically. 
-            If it's an admin page, we don't need the massive 32px bottom padding for the nav bar!
-          */}
-          <main className={`h-svh overflow-y-auto pt-20 ${isAdmin ? 'pb-10' : 'pb-32'}`}>
+          {/* 🚀 Remove Top/Bottom Padding completely if it's a game page */}
+          <main className={`h-svh overflow-y-auto ${isGamePage ? 'p-0' : `pt-20 ${isAdmin ? 'pb-10' : 'pb-32'}`}`}>
             <AnimatePresence mode="wait">
               <motion.div key={pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 {children}
@@ -110,8 +111,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AnimatePresence>
           </main>
 
-          {/* 🚀 Only show Bottom Navigation if NOT on Login AND NOT on Admin pages */}
-          {!isLogin && !isAdmin && (
+          {/* 🚀 Hide Bottom Nav on Login, Admin, AND Game Pages */}
+          {!isLogin && !isAdmin && !isGamePage && (
             <div className="fixed bottom-6 left-6 right-6 z-[100]">
               <nav className={`h-20 border backdrop-blur-2xl rounded-[35px] flex justify-between items-center shadow-2xl px-3 bg-[var(--card)]/90 border-[var(--border)] ${isDarkMode ? 'shadow-black/50' : 'shadow-[0_15px_40px_rgba(0,0,0,0.08)]'}`}>
                 <LayoutGroup>

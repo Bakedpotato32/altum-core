@@ -2,18 +2,30 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Trophy, Zap, Gamepad2 } from 'lucide-react';
-import { SnakeLogo, FlappyLogo, TetrisLogo, DashLogo, BreakoutLogo, SpaceLogo } from '@/components/ArcadeIcons';
+import { 
+  SnakeLogo, FlappyLogo, TetrisLogo, DashLogo, BreakoutLogo, SpaceLogo,
+  TowerLogo, CrossyLogo, DefenderLogo, CombatLogo, RunnerLogo, SlicerLogo 
+} from '@/components/ArcadeIcons';
 
 export default function ArcadeLobby() {
   const router = useRouter();
 
   const GAMES = [
+    // Phase 1 Games
     { id: 'snake', name: 'Neon Snake', sub: 'Classic Retro Action', color: 'text-emerald-500', Icon: SnakeLogo },
     { id: 'flappy', name: 'Flappy Altu', sub: 'Gravity Protocol', color: 'text-violet-500', Icon: FlappyLogo },
     { id: 'tetris', name: 'Tetris Core', sub: 'Geometric Alignment', color: 'text-blue-500', Icon: TetrisLogo },
     { id: 'dino', name: 'Altu Dash', sub: 'Infinite Runner', color: 'text-amber-500', Icon: DashLogo },
     { id: 'breakout', name: 'Neon Breakout', sub: 'Reflex Protocol', color: 'text-rose-500', Icon: BreakoutLogo },
     { id: 'space', name: 'Starship Altu', sub: 'Bullet Hell Protocol', color: 'text-cyan-400', Icon: SpaceLogo },
+    
+    // Phase 2 Games
+    { id: 'tower', name: 'Neon Tower', sub: 'Precision Stacking', color: 'text-yellow-400', Icon: TowerLogo },
+    { id: 'crossy', name: 'Crossy Altu', sub: 'Isometric Survival', color: 'text-teal-400', Icon: CrossyLogo },
+    { id: 'defender', name: 'Core Defender', sub: 'Tactical Defense', color: 'text-indigo-400', Icon: DefenderLogo },
+    { id: 'combat', name: 'Vector Combat', sub: 'Top-Down Shooter', color: 'text-red-500', Icon: CombatLogo },
+    { id: 'runner', name: 'Synth Runner', sub: '3D Speed Protocol', color: 'text-fuchsia-400', Icon: RunnerLogo },
+    { id: 'slicer', name: 'Fruit Slicer', sub: 'Kinetic Slashing', color: 'text-orange-500', Icon: SlicerLogo },
   ];
 
   return (

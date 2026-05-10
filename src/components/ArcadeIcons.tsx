@@ -87,3 +87,62 @@ export const CandyLogo = ({ className }: { className?: string }) => (
     <circle cx="50" cy="50" r="12" fill="currentColor" />
   </svg>
 );
+// --- PHASE 2 GAMES ---
+
+// NEON TOWER - Stacking Blocks & Crane Hook
+export const TowerLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 5V20" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
+    <path d="M40 20H60L60 30" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
+    <rect x="35" y="45" width="30" height="15" rx="2" stroke="currentColor" strokeWidth="6"/>
+    <rect x="25" y="65" width="50" height="15" rx="2" fill="currentColor"/>
+    <rect x="15" y="85" width="70" height="15" rx="2" fill="currentColor"/>
+  </svg>
+);
+
+// CROSSY ALTU - Isometric Perspective Road
+export const CrossyLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 50L50 30L90 50L50 70L10 50Z" stroke="currentColor" strokeWidth="6" strokeLinejoin="round"/>
+    <path d="M30 60L50 80L70 60" stroke="currentColor" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" opacity="0.5"/>
+    <path d="M50 15V25M50 35V45" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
+  </svg>
+);
+
+// CORE DEFENDER - Turret & Energy Shield
+export const DefenderLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 10L90 30V60L50 90L10 60V30L50 10Z" stroke="currentColor" strokeWidth="6" strokeLinejoin="round" opacity="0.4"/>
+    <circle cx="50" cy="50" r="15" fill="currentColor"/>
+    <path d="M50 50L80 20M50 50L20 20" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+  </svg>
+);
+
+// VECTOR COMBAT - Top-Down Tank
+export const CombatLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="25" y="20" width="15" height="60" rx="4" stroke="currentColor" strokeWidth="6"/>
+    <rect x="60" y="20" width="15" height="60" rx="4" stroke="currentColor" strokeWidth="6"/>
+    <rect x="40" y="40" width="20" height="25" rx="2" fill="currentColor"/>
+    <path d="M50 40V10" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+  </svg>
+);
+
+// SYNTH WAVE RUNNER - 3D Grid Perspective
+export const RunnerLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 40L10 90M50 40L90 90M50 40V90" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
+    <path d="M20 75H80M35 55H65" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
+    <circle cx="50" cy="35" r="15" fill="currentColor"/>
+  </svg>
+);
+
+// FRUIT SLICER - Slashed Core
+export const SlicerLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M25 50C25 36.1929 36.1929 25 50 25C63.8071 25 75 36.1929 75 50" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+    <path d="M75 60C75 73.8071 63.8071 85 50 85C36.1929 85 25 73.8071 25 60" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+    <path d="M10 90L90 10" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
+    <circle cx="70" cy="30" r="4" fill="currentColor"/>
+  </svg>
+);

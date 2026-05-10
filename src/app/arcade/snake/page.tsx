@@ -33,6 +33,7 @@ export default function NeonSnake() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [pulse, setPulse] = useState(false); // For eating food impact
 
   // Core Mechanics Refs
   const directionRef = useRef(INITIAL_DIRECTION);
@@ -40,7 +41,34 @@ export default function NeonSnake() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const touchStartRef = useRef<{x: number, y: number} | null>(null);
 
-  // Initialize Audio Engine
+  // --- FULLSCREEN LOGIC ---
+  const requestFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => console.log(err));
+    } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
+      (elem as any).webkitRequestFullscreen();
+    } else if ((elem as any).msRequestFullscreen) { /* IE11 */
+      (elem as any).msRequestFullscreen();
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+    }
+  };
+
+  const handleBack = () => {
+    exitFullscreen();
+    router.back();
+  };
+
+  // --- AUDIO ENGINE ---
   const initAudio = () => {
     if (!audioCtxRef.current) {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -145,6 +173,7 @@ export default function NeonSnake() {
   };
 
   const startGame = () => {
+    requestFullscreen(); // Engage Immersive Mode
     initAudio();
     setSnake(INITIAL_SNAKE);
     setDirection(INITIAL_DIRECTION);
@@ -253,6 +282,10 @@ export default function NeonSnake() {
           playSound(isGold ? 'eat_gold' : 'eat');
           spawnFood();
           
+          // Visual Impact
+          setPulse(true);
+          setTimeout(() => setPulse(false), 150);
+
           if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
             window.navigator.vibrate(isGold ? [30, 30, 30] : 40);
           }
@@ -271,7 +304,8 @@ export default function NeonSnake() {
   const speedMultiplier = ((INITIAL_SPEED - speed) / (INITIAL_SPEED - MIN_SPEED) * 100).toFixed(0);
 
   return (
-    <div className={`min-h-[100dvh] pb-40 font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-y-auto transition-colors duration-200 ${flash ? 'bg-red-950/30' : ''}`}>
+    // Note: touch-none, overscroll-none, and overflow-hidden prevent native scrolling/swiping
+    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden touch-none overscroll-none transition-colors duration-200 ${flash ? 'bg-red-950/30' : ''}`}>
       
       {/* Background Ambience */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
@@ -284,7 +318,7 @@ export default function NeonSnake() {
         {/* Header Area */}
         <div className="flex justify-between items-center mb-4">
           <div className="flex gap-2">
-            <button onClick={() => router.back()} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-emerald-500 shadow-sm">
+            <button onClick={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-emerald-500 shadow-sm z-50">
               <ChevronLeft size={20} />
             </button>
             {hasStarted && !gameOver && (
@@ -305,7 +339,7 @@ export default function NeonSnake() {
 
         {/* Score Board */}
         <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+          <div className={`flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm relative overflow-hidden transition-transform duration-100 ${pulse ? 'scale-105 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : ''}`}>
             <div className="absolute top-0 right-0 p-1 opacity-20 flex items-center">
               <Zap size={10} className="text-emerald-500" />
               <span className="text-[8px] font-black">{speedMultiplier}%</span>
@@ -323,7 +357,7 @@ export default function NeonSnake() {
 
         {/* Game Board Wrapper (for swipe detection) */}
         <div 
-          className={`relative aspect-square w-full max-w-[300px] mx-auto bg-[#050505] rounded-none border ${flash ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.4)]' : 'border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.15)]'} overflow-hidden flex items-center justify-center transition-all duration-200`}
+          className={`relative aspect-square w-full max-w-[300px] mx-auto bg-[#050505] rounded-[8px] border ${flash ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.4)]' : 'border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.15)]'} overflow-hidden flex items-center justify-center transition-all duration-200`}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -336,12 +370,14 @@ export default function NeonSnake() {
             {/* Render Snake */}
             {snake.map((segment, index) => {
               const isHead = index === 0;
+              // Fade opacity out towards the tail for a sleek neon effect
+              const opacity = 1 - (index / snake.length) * 0.7;
               
               return (
                 <div 
                   key={`snake-${index}`}
-                  className={`transition-all duration-75 flex items-center justify-center ${isHead ? 'bg-emerald-400 z-10 scale-[1.15] shadow-[0_0_15px_rgba(52,211,153,1)] rounded-[6px]' : 'bg-emerald-600 scale-[0.85] rounded-[3px]'}`}
-                  style={{ gridColumnStart: segment.x + 1, gridRowStart: segment.y + 1 }}
+                  className={`transition-all duration-75 flex items-center justify-center ${isHead ? 'bg-emerald-400 z-10 scale-[1.15] shadow-[0_0_15px_rgba(52,211,153,1)] rounded-[6px]' : 'bg-emerald-500 scale-[0.9] rounded-[4px]'}`}
+                  style={{ gridColumnStart: segment.x + 1, gridRowStart: segment.y + 1, opacity: isHead ? 1 : opacity }}
                 >
                   {/* The Eyes */}
                   {isHead && (
@@ -370,6 +406,7 @@ export default function NeonSnake() {
               <button onClick={startGame} className="px-8 py-4 bg-emerald-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-2 hover:bg-emerald-400 active:scale-95 transition-all shadow-[0_0_25px_rgba(16,185,129,0.5)]">
                 <Play size={18} fill="currentColor" /> Initiate
               </button>
+              <p className="text-[8px] font-black text-emerald-500/50 uppercase tracking-[0.2em] mt-6">Engages Fullscreen Mode</p>
             </div>
           )}
 
@@ -400,7 +437,7 @@ export default function NeonSnake() {
         </div>
 
         {/* D-PAD */}
-        <div className="mt-6 max-w-[220px] mx-auto w-full grid grid-cols-3 grid-rows-3 gap-2 touch-none select-none">
+        <div className="mt-auto mb-10 max-w-[220px] mx-auto w-full grid grid-cols-3 grid-rows-3 gap-2 touch-none select-none">
           <div /> 
           <button 
             onTouchStart={(e) => { e.preventDefault(); changeDirection({ x: 0, y: -1 }); }}

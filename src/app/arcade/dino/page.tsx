@@ -1,28 +1,32 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Trophy, Play, RotateCcw, Footprints, Zap, Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, Trophy, Play, RotateCcw, Footprints, Zap, Loader2, FastForward, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// --- CALIBRATED CONSTANTS ---
-const GRAVITY = 0.55;
+// --- CALIBRATED ENGINE CONSTANTS ---
+const CANVAS_WIDTH = 340;
+const CANVAS_HEIGHT = 400;
+const GRAVITY = 0.6;
 const JUMP_FORCE = -11.5;
-const GROUND_Y = 300;
+const GROUND_Y = 310;
 const INITIAL_SPEED = 5.5;
-const MAX_SPEED = 14;
-const SPAWN_INTERVAL = 1500; // ms
+const MAX_SPEED = 15;
+const SPAWN_INTERVAL = 1400; // ms
 
 export default function AltuDash() {
   const router = useRouter();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // UI States
+  // React UI States
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [render, setRender] = useState(0);
 
-  // Engine Refs (The "Brain")
+  // --- HARDCORE ENGINE REFS (Bypasses React for 60fps smoothness) ---
+  const isRunning = useRef(false);
+  const gameStateRef = useRef<'idle' | 'playing' | 'gameover'>('idle');
   const altyY = useRef(GROUND_Y);
   const velocity = useRef(0);
   const isCrouching = useRef(false);
@@ -32,18 +36,38 @@ export default function AltuDash() {
   const distance = useRef(0);
   const frameCount = useRef(0);
   const lastSpawnTime = useRef(0);
+  const scoreRef = useRef(0);
   const requestRef = useRef<number>();
   const audioCtxRef = useRef<AudioContext | null>(null);
-
-  // Background Parallax Refs
-  const bgPos1 = useRef(0);
-  const bgPos2 = useRef(0);
+  const canvasFlashAlpha = useRef(0); // Canvas-native flash (Zero lag)
 
   useEffect(() => {
     const saved = localStorage.getItem('altyDashHS');
     if (saved) setHighScore(parseInt(saved, 10));
   }, []);
 
+  // --- FULLSCREEN LOGIC ---
+  const requestFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.log(err));
+    else if ((elem as any).webkitRequestFullscreen) (elem as any).webkitRequestFullscreen();
+    else if ((elem as any).msRequestFullscreen) (elem as any).msRequestFullscreen();
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+    }
+  };
+
+  const handleBack = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    exitFullscreen();
+    router.back();
+  };
+
+  // --- AUDIO & HAPTICS ---
   const initAudio = () => {
     if (!audioCtxRef.current) {
       const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -65,170 +89,301 @@ export default function AltuDash() {
     osc.start(); osc.stop(ctx.currentTime + duration);
   };
 
-  const resetEngine = () => {
+  const vibrate = (pattern: number | number[]) => {
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(pattern);
+    }
+  };
+
+  // --- CORE GAME LOOP ---
+  const handleGameOver = async () => {
+    isRunning.current = false;
+    gameStateRef.current = 'gameover';
+    setGameState('gameover');
+    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    
+    playSound(100, 'sawtooth', 0.2, 0.5);
+    vibrate([150, 50, 200, 100, 300]); 
+
+    if (scoreRef.current > highScore) {
+      setHighScore(scoreRef.current);
+      localStorage.setItem('altyDashHS', scoreRef.current.toString());
+    }
+
+    const studentId = localStorage.getItem('studentId');
+    if (studentId && scoreRef.current > 5) {
+      setIsSyncing(true);
+      try {
+        const { data: existing } = await supabase.from('arcade_scores').select('*').eq('student_id', studentId).eq('game_name', 'dino').maybeSingle();
+        if (!existing) {
+          await supabase.from('arcade_scores').insert([{ student_id: studentId, game_name: 'dino', score: scoreRef.current }]);
+        } else if (scoreRef.current > existing.score) {
+          await supabase.from('arcade_scores').update({ score: scoreRef.current }).eq('id', existing.id);
+        }
+      } catch (e) {}
+      setIsSyncing(false);
+    }
+  };
+
+  const update = useCallback(() => {
+    if (!isRunning.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas) return;
+
+    frameCount.current++;
+    distance.current += gameSpeed.current;
+
+    // --- STATE UPDATES (Throttled for React) ---
+    const currentScore = Math.floor(distance.current / 10);
+    if (currentScore !== scoreRef.current) {
+        scoreRef.current = currentScore;
+        setScore(currentScore);
+        
+        // Milestone Speed Up - Using Canvas Flash to prevent DOM Repaint lag
+        if (currentScore > 0 && currentScore % 100 === 0) {
+           playSound(800, 'sine', 0.1, 0.2);
+           setTimeout(() => playSound(1200, 'sine', 0.1, 0.2), 100);
+           vibrate([50, 50, 50]);
+           canvasFlashAlpha.current = 0.6; // Triggers high-perf canvas flash
+        }
+    }
+
+    if (frameCount.current % 600 === 0) {
+        gameSpeed.current = Math.min(MAX_SPEED, gameSpeed.current + 0.4);
+    }
+
+    // --- PHYSICS ---
+    velocity.current += GRAVITY;
+    if (isCrouching.current && altyY.current < GROUND_Y) {
+      velocity.current += GRAVITY * 1.5; // Fast fall
+    }
+    
+    altyY.current += velocity.current;
+    if (altyY.current >= GROUND_Y) {
+      altyY.current = GROUND_Y;
+      velocity.current = 0;
+    }
+
+    // --- RENDERING ---
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Parallax Stars
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 20; i++) {
+        let sx = CANVAS_WIDTH - ((i * 87 + (distance.current * 0.1)) % CANVAS_WIDTH);
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(sx, (i * 43) % CANVAS_HEIGHT, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+
+    // Ground
+    ctx.fillStyle = '#f59e0b';
+    ctx.globalAlpha = 0.2;
+    ctx.fillRect(0, GROUND_Y + 40, CANVAS_WIDTH, CANVAS_HEIGHT - (GROUND_Y + 40));
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, GROUND_Y + 40, CANVAS_WIDTH, 2);
+
+    // Particles Trail
+    if (altyY.current === GROUND_Y && frameCount.current % 4 === 0) {
+      particles.current.push({ x: 60, y: GROUND_Y + 35, life: 1, speedX: gameSpeed.current * 0.8 });
+    }
+    ctx.fillStyle = '#f97316';
+    particles.current.forEach(p => {
+        p.x -= p.speedX;
+        p.life -= 0.05;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillRect(p.x, p.y, 8 * p.life, 3);
+    });
+    particles.current = particles.current.filter(p => p.life > 0);
+    ctx.globalAlpha = 1;
+
+    // Spawning Obstacles
+    const now = Date.now();
+    if (now - lastSpawnTime.current > Math.max(600, SPAWN_INTERVAL - (gameSpeed.current * 70))) {
+      const type = Math.random() > 0.65 && distance.current > 800 ? 'air' : 'ground';
+      obstacles.current.push({
+        id: now,
+        x: CANVAS_WIDTH,
+        width: type === 'air' ? 24 : 20 + Math.random() * 15,
+        height: type === 'air' ? 24 : 35 + Math.random() * 45,
+        type
+      });
+      lastSpawnTime.current = now;
+    }
+
+    // --- ALTU (THE FOX) VECTOR DRAWING ---
+    const foxY = isCrouching.current ? altyY.current + 20 : altyY.current;
+    
+    ctx.fillStyle = '#f97316';
+    ctx.shadowBlur = 15; ctx.shadowColor = '#f97316';
+    ctx.beginPath();
+    
+    if (isCrouching.current) {
+        // Aerodynamic Ducking Shape
+        ctx.moveTo(70, foxY + 20); // tail bottom
+        ctx.lineTo(75, foxY + 10); // tail top
+        ctx.lineTo(90, foxY + 10); // back
+        ctx.lineTo(105, foxY); // head top
+        ctx.lineTo(115, foxY + 10); // nose
+        ctx.lineTo(100, foxY + 20); // belly
+        ctx.fill();
+        
+        // Ear
+        ctx.fillStyle = '#fb923c';
+        ctx.beginPath();
+        ctx.moveTo(95, foxY + 5); ctx.lineTo(100, foxY - 5); ctx.lineTo(105, foxY + 5);
+        ctx.fill();
+
+        // Eye
+        ctx.fillStyle = 'white';
+        ctx.fillRect(102, foxY + 8, 3, 3);
+    } else {
+        // Full Running Fox Shape
+        ctx.moveTo(65, foxY + 20); // tail out back
+        ctx.lineTo(75, foxY + 15); // tail base
+        ctx.lineTo(80, foxY + 5); // back
+        ctx.lineTo(95, foxY); // head top
+        ctx.lineTo(105, foxY + 10); // nose
+        ctx.lineTo(95, foxY + 20); // chest
+        ctx.lineTo(95, foxY + 40); // front leg
+        ctx.lineTo(88, foxY + 40);
+        ctx.lineTo(88, foxY + 30); // belly
+        ctx.lineTo(82, foxY + 40); // back leg
+        ctx.lineTo(75, foxY + 40);
+        ctx.lineTo(75, foxY + 25); // butt
+        ctx.fill();
+
+        // Ear
+        ctx.fillStyle = '#fb923c';
+        ctx.beginPath();
+        ctx.moveTo(85, foxY + 5); ctx.lineTo(90, foxY - 8); ctx.lineTo(95, foxY + 2);
+        ctx.fill();
+
+        // Eye
+        ctx.fillStyle = 'white';
+        ctx.fillRect(95, foxY + 8, 3, 3);
+    }
+    ctx.shadowBlur = 0;
+
+    // Precise Fox Hitbox
+    const altyHitbox = isCrouching.current 
+        ? { left: 70, right: 115, top: foxY, bottom: foxY + 20 }
+        : { left: 75, right: 105, top: foxY, bottom: foxY + 40 };
+
+    // Draw & Detect Obstacles
+    obstacles.current.forEach(obs => {
+        obs.x -= gameSpeed.current;
+
+        if (obs.type === 'air') {
+            ctx.fillStyle = '#22d3ee';
+            ctx.shadowBlur = 15; ctx.shadowColor = '#22d3ee';
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width/2, GROUND_Y - 25, obs.width/2, 0, Math.PI*2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(obs.x, GROUND_Y + 40);
+            ctx.lineTo(obs.x + obs.width/2, GROUND_Y + 40 - obs.height);
+            ctx.lineTo(obs.x + obs.width, GROUND_Y + 40);
+            ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+
+        const obsHitbox = {
+            left: obs.x + 4,
+            right: obs.x + obs.width - 4,
+            top: obs.type === 'air' ? GROUND_Y - 25 - obs.width/2 : GROUND_Y + 40 - obs.height + 4,
+            bottom: obs.type === 'air' ? GROUND_Y - 25 + obs.width/2 : GROUND_Y + 40
+        };
+
+        if (
+            altyHitbox.right > obsHitbox.left &&
+            altyHitbox.left < obsHitbox.right &&
+            altyHitbox.bottom > obsHitbox.top &&
+            altyHitbox.top < obsHitbox.bottom
+        ) {
+            handleGameOver();
+        }
+    });
+    obstacles.current = obstacles.current.filter(o => o.x > -50);
+
+    // Canvas Native Flash (No DOM lag)
+    if (canvasFlashAlpha.current > 0) {
+        ctx.fillStyle = `rgba(250, 204, 21, ${canvasFlashAlpha.current})`;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        canvasFlashAlpha.current -= 0.03;
+    }
+
+    if (isRunning.current) requestRef.current = requestAnimationFrame(update);
+  }, []);
+
+  const initiateGame = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    requestFullscreen();
+    initAudio();
+    
+    // Hard Reset Engine
     altyY.current = GROUND_Y;
     velocity.current = 0;
+    isCrouching.current = false;
     obstacles.current = [];
     particles.current = [];
     gameSpeed.current = INITIAL_SPEED;
     distance.current = 0;
     frameCount.current = 0;
-    lastSpawnTime.current = Date.now();
+    lastSpawnTime.current = Date.now() - SPAWN_INTERVAL; // Force instant spawn
+    scoreRef.current = 0;
+    canvasFlashAlpha.current = 0;
     setScore(0);
-  };
-
-  const spawnObstacle = () => {
-    const type = Math.random() > 0.75 && distance.current > 1000 ? 'air' : 'ground';
-    obstacles.current.push({
-      id: Date.now(),
-      x: 400,
-      width: 25 + Math.random() * 25,
-      height: type === 'air' ? 25 : 35 + Math.random() * 45,
-      type
-    });
-  };
-
-  const handleGameOver = async () => {
-    setGameState('gameover');
-    playSound(100, 'sawtooth', 0.2, 0.5);
-    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
-
-    const finalScore = Math.floor(distance.current / 10);
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      localStorage.setItem('altyDashHS', finalScore.toString());
-    }
-
-    const studentId = localStorage.getItem('studentId');
-    if (studentId && finalScore > 5) {
-      setIsSyncing(true);
-      try {
-        const { data: existing } = await supabase.from('arcade_scores').select('*').eq('student_id', studentId).eq('game_name', 'dino').maybeSingle();
-        if (!existing) {
-          await supabase.from('arcade_scores').insert([{ student_id: studentId, game_name: 'dino', score: finalScore }]);
-        } else if (finalScore > existing.score) {
-          await supabase.from('arcade_scores').update({ score: finalScore }).eq('id', existing.id);
-        }
-      } catch (e) {}
-      setIsSyncing(false);
-    }
-    if (requestRef.current) cancelAnimationFrame(requestRef.current);
-  };
-
-  const update = useCallback(() => {
-    if (gameState !== 'playing') return;
-
-    frameCount.current++;
     
-    // 1. Parallax Movement
-    bgPos1.current = (bgPos1.current - (gameSpeed.current * 0.2)) % 400;
-    bgPos2.current = (bgPos2.current - (gameSpeed.current * 0.5)) % 400;
-
-    // 2. Physics & Jump Smoothness
-    velocity.current += GRAVITY;
-    altyY.current += velocity.current;
-
-    if (altyY.current > GROUND_Y) {
-      altyY.current = GROUND_Y;
-      velocity.current = 0;
-    }
-
-    // 3. Spawning System
-    const now = Date.now();
-    if (now - lastSpawnTime.current > Math.max(700, SPAWN_INTERVAL - (gameSpeed.current * 100))) {
-      spawnObstacle();
-      lastSpawnTime.current = now;
-    }
-
-    // 4. Particle Trail
-    if (altyY.current === GROUND_Y && frameCount.current % 5 === 0) {
-        particles.current.push({ x: 75, y: GROUND_Y + 35, life: 1 });
-    }
-
-    // 5. World Update
-    distance.current += gameSpeed.current;
-    setScore(Math.floor(distance.current / 10));
-
-    // Increase difficulty
-    if (frameCount.current % 1000 === 0) {
-        gameSpeed.current = Math.min(MAX_SPEED, gameSpeed.current + 0.4);
-        playSound(600, 'sine', 0.05, 0.1);
-    }
-
-    obstacles.current.forEach(obs => {
-      obs.x -= gameSpeed.current;
-
-      // Tight Hitbox Detection
-      const altyHitbox = {
-        left: 75,
-        right: 100,
-        top: isCrouching.current ? altyY.current + 22 : altyY.current + 5,
-        bottom: altyY.current + 38
-      };
-
-      const obsHitbox = {
-        left: obs.x,
-        right: obs.x + obs.width,
-        top: obs.type === 'air' ? GROUND_Y - 45 : GROUND_Y + 40 - obs.height,
-        bottom: obs.type === 'air' ? GROUND_Y - 15 : GROUND_Y + 40
-      };
-
-      if (
-        altyHitbox.right > obsHitbox.left &&
-        altyHitbox.left < obsHitbox.right &&
-        altyHitbox.bottom > obsHitbox.top &&
-        altyHitbox.top < obsHitbox.bottom
-      ) {
-        handleGameOver();
-      }
-    });
-
-    particles.current.forEach(p => {
-        p.x -= gameSpeed.current;
-        p.life -= 0.02;
-    });
-
-    obstacles.current = obstacles.current.filter(o => o.x > -100);
-    particles.current = particles.current.filter(p => p.life > 0);
-
-    setRender(f => f + 1);
+    gameStateRef.current = 'playing';
+    setGameState('playing');
+    isRunning.current = true;
     requestRef.current = requestAnimationFrame(update);
-  }, [gameState]);
+  };
 
-  useEffect(() => {
-    if (gameState === 'playing') requestRef.current = requestAnimationFrame(update);
-    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
-  }, [gameState, update]);
-
-  const handleAction = () => {
-    if (gameState === 'idle' || gameState === 'gameover') {
-      initAudio();
-      resetEngine();
-      setGameState('playing');
-      return;
-    }
-    // Jump
-    if (altyY.current === GROUND_Y && !isCrouching.current) {
+  const handleJump = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (gameStateRef.current === 'playing' && altyY.current >= GROUND_Y - 5) { 
       velocity.current = JUMP_FORCE;
       playSound(400, 'triangle', 0.1, 0.1);
+      vibrate(15);
     }
+  };
+
+  const handleDuckStart = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (gameStateRef.current === 'playing') {
+      isCrouching.current = true;
+      playSound(250, 'sine', 0.05, 0.05);
+      vibrate(10);
+    }
+  };
+
+  const handleDuckEnd = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    isCrouching.current = false;
   };
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') handleAction();
-      if (e.code === 'ArrowDown') isCrouching.current = true;
+      if (e.code === 'Space' || e.code === 'ArrowUp') handleJump(e as any);
+      if (e.code === 'ArrowDown') handleDuckStart(e as any);
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'ArrowDown') isCrouching.current = false;
+      if (e.code === 'ArrowDown') handleDuckEnd(e as any);
     };
     window.addEventListener('keydown', handleKey);
     window.addEventListener('keyup', handleKeyUp);
     return () => { window.removeEventListener('keydown', handleKey); window.removeEventListener('keyup', handleKeyUp); };
-  }, [gameState]);
+  }, [handleJump, handleDuckStart, handleDuckEnd]);
 
   return (
-    <div className="min-h-[100dvh] pb-40 font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden touch-none select-none">
+    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden select-none touch-none overscroll-none transition-colors duration-200 ${gameState === 'gameover' ? 'bg-red-950/20' : ''}`}>
       
       {/* Dynamic Ambient Background */}
       <div className="fixed inset-0 -z-10 pointer-events-none transition-colors duration-1000">
@@ -236,11 +391,11 @@ export default function AltuDash() {
         <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-orange-500/10 blur-[80px]" />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col items-center relative z-10">
+      <div className="w-full max-w-md px-5 flex flex-col h-full relative z-10">
         
         {/* Header */}
-        <div className="w-full flex justify-between items-center mb-6">
-          <button onClick={() => router.back()} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500">
+        <div className="flex justify-between items-center mb-6">
+          <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 z-50 shadow-sm cursor-pointer hover:text-amber-500">
             <ChevronLeft size={20} />
           </button>
           <div className="text-right">
@@ -250,10 +405,12 @@ export default function AltuDash() {
         </div>
 
         {/* Stats */}
-        <div className="w-full flex gap-3 mb-6">
-          <div className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm">
+        <div className="flex gap-3 mb-6">
+          <div className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm relative">
             <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Distance</span>
-            <span className="text-3xl font-black italic text-[var(--text)] leading-none">{score}<span className="text-sm ml-1 text-zinc-500 font-bold">m</span></span>
+            <span className="text-3xl font-black italic text-[var(--text)] leading-none flex items-center">
+              {score}<span className="text-sm ml-1 text-zinc-500 font-bold">m</span>
+            </span>
           </div>
           <div className="flex-1 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-3 flex flex-col items-center justify-center shadow-inner">
             <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest flex items-center gap-1 mb-1">
@@ -263,140 +420,61 @@ export default function AltuDash() {
           </div>
         </div>
 
-        {/* --- THE GAME WORLD --- */}
-        <div 
-          onClick={handleAction}
-          className="relative w-full h-[380px] bg-[#020202] rounded-[32px] border-2 border-[var(--border)] overflow-hidden shadow-2xl cursor-pointer group"
-        >
-          {/* Layer 1: Stars (Slow) */}
-          <div className="absolute inset-0 opacity-[0.2]" style={{ 
-              backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', 
-              backgroundSize: '100px 100px',
-              backgroundPosition: `${bgPos1.current}px 0px`
-          }} />
-
-          {/* Layer 2: Distant Grid (Medium) */}
-          <div className="absolute inset-0 opacity-[0.05]" style={{ 
-              backgroundImage: 'linear-gradient(90deg, #fff 1px, transparent 1px)', 
-              backgroundSize: '40px 100%',
-              backgroundPosition: `${bgPos2.current}px 0px`
-          }} />
-
-          {/* Ground Surface */}
-          <div className="absolute bottom-0 w-full h-[40px] bg-gradient-to-t from-amber-500/10 to-transparent border-t border-amber-500/20" />
-
-          {/* Particles Trail */}
-          {particles.current.map((p, i) => (
-              <div key={i} className="absolute bg-orange-500/40 rounded-full" 
-                   style={{ left: p.x, top: p.y, width: 4 * p.life, height: 4 * p.life, opacity: p.life }} />
-          ))}
-
-          {/* ALTU (The Fox) */}
-          <div 
-            className={`absolute transition-transform duration-75 ${altyY.current < GROUND_Y ? 'rotate-12' : ''}`}
-            style={{ 
-              left: 70, 
-              top: isCrouching.current ? altyY.current + 20 : altyY.current, 
-              width: 35, 
-              height: isCrouching.current ? 20 : 40 
-            }}
-          >
-            {/* Main Body */}
-            <div className={`w-full h-full bg-orange-500 rounded-lg border-2 border-orange-300 shadow-[0_0_20px_rgba(249,115,22,0.7)] relative ${altyY.current === GROUND_Y ? 'animate-bounce' : ''}`} style={{ animationDuration: '0.4s' }}>
-                {/* Eyes */}
-                <div className="absolute top-2 right-2 flex gap-0.5">
-                    <div className="w-1 h-1 bg-white rounded-full" />
-                    <div className="w-1 h-1 bg-white rounded-full" />
-                </div>
-                {/* Ear */}
-                <div className="absolute -top-1 left-1 w-2 h-2 bg-orange-400 rotate-45" />
-            </div>
-          </div>
-
-          {/* Obstacles */}
-          {obstacles.current.map((obs) => (
-            <div 
-              key={obs.id}
-              className={`absolute transition-shadow duration-300 ${obs.type === 'air' ? 'bg-cyan-400 border-cyan-200 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.8)]' : 'bg-red-500 border-red-300 rounded-lg shadow-[0_0_20px_rgba(239,68,68,0.4)]'}`}
-              style={{ 
-                left: obs.x, 
-                width: obs.width, 
-                height: obs.height, 
-                top: obs.type === 'air' ? GROUND_Y - 35 : GROUND_Y + 40 - obs.height,
-                borderWidth: '2px'
-              }}
-            >
-                {obs.type === 'air' && <Zap size={10} className="text-white absolute inset-0 m-auto animate-pulse" />}
-            </div>
-          ))}
+        {/* --- THE GAME CANVAS --- */}
+        <div className={`relative w-full aspect-[4/5] max-h-[380px] bg-[#020202] rounded-[32px] border-2 transition-all duration-300 overflow-hidden shadow-2xl ${gameState === 'gameover' ? 'border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.3)]' : 'border-[var(--border)]'}`}>
+          
+          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full block" />
 
           {/* Overlays */}
           {gameState === 'idle' && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 pointer-events-none">
               <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center mb-4 border border-amber-500/40 animate-pulse">
                 <Footprints size={40} className="text-amber-500" />
               </div>
               <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-6">Altu Dash Protocol</p>
-              <button className="px-10 py-4 bg-amber-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 transition-all shadow-[0_0_30px_rgba(245,158,11,0.5)]">
+              <button onPointerDown={initiateGame} className="px-10 py-4 bg-amber-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(245,158,11,0.5)] pointer-events-auto active:scale-95 transition-all">
                 <Play size={18} fill="currentColor" /> Initiate Dash
               </button>
             </div>
           )}
 
           {gameState === 'gameover' && (
-            <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20">
-              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4 border border-red-500/40">
+            <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 pointer-events-none">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4 border border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
                 <Zap size={32} className="text-red-500" />
               </div>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1">Core Impact</h2>
+              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">Core Impact</h2>
               <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-8">System offline at {score}m</p>
               
-              <button onClick={(e) => { e.stopPropagation(); handleAction(); }} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 transition-all shadow-2xl">
+              <button onPointerDown={initiateGame} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 shadow-2xl pointer-events-auto active:scale-95 transition-all">
                 <RotateCcw size={18} /> Reboot
               </button>
-              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase tracking-widest animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing Cloud Data...</p>}
+              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase tracking-widest animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing Data...</p>}
             </div>
           )}
         </div>
         
-        {/* --- HIGH-POLISH CONTROLS --- */}
-        <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-[280px]">
+        {/* --- HIGH-POLISH ERGONOMIC CONTROLS --- */}
+        <div className="mt-6 mb-auto flex justify-center gap-6 w-full touch-none select-none">
              <button 
-                onPointerDown={(e) => { e.preventDefault(); handleAction(); }}
-                className="aspect-square bg-[var(--card)] border-2 border-[var(--border)] rounded-[32px] flex flex-col items-center justify-center active:scale-90 active:bg-amber-500/20 active:border-amber-500/40 transition-all shadow-lg group"
+                onPointerDown={handleJump}
+                className="w-[130px] h-[100px] bg-[var(--card)] border-2 border-[var(--border)] rounded-[32px] flex flex-col items-center justify-center active:scale-95 active:bg-amber-500/20 active:border-amber-500/50 transition-all shadow-lg group cursor-pointer"
              >
-                <ArrowUp size={40} className="text-zinc-500 group-active:text-amber-500 mb-1" />
-                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Jump</span>
+                <ArrowUp size={44} className="text-zinc-500 group-active:text-amber-500 mb-1 drop-shadow-sm" />
+                <span className="text-[10px] font-black text-zinc-500 group-active:text-amber-500 uppercase tracking-widest">Jump</span>
              </button>
              <button 
-                onPointerDown={(e) => { e.preventDefault(); isCrouching.current = true; playSound(200, 'sine', 0.05, 0.05); }}
-                onPointerUp={(e) => { e.preventDefault(); isCrouching.current = false; }}
-                onPointerLeave={(e) => { e.preventDefault(); isCrouching.current = false; }}
-                className="aspect-square bg-[var(--card)] border-2 border-[var(--border)] rounded-[32px] flex flex-col items-center justify-center active:scale-90 active:bg-cyan-500/20 active:border-cyan-500/40 transition-all shadow-lg group"
+                onPointerDown={handleDuckStart}
+                onPointerUp={handleDuckEnd}
+                onPointerLeave={handleDuckEnd}
+                className="w-[130px] h-[100px] bg-[var(--card)] border-2 border-[var(--border)] rounded-[32px] flex flex-col items-center justify-center active:scale-95 active:bg-cyan-500/20 active:border-cyan-500/50 transition-all shadow-lg group cursor-pointer"
              >
-                <ArrowDown size={40} className="text-zinc-500 group-active:text-cyan-500 mb-1" />
-                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Duck</span>
+                <ArrowDown size={44} className="text-zinc-500 group-active:text-cyan-500 mb-1 drop-shadow-sm" />
+                <span className="text-[10px] font-black text-zinc-500 group-active:text-cyan-500 uppercase tracking-widest">Duck</span>
              </button>
         </div>
-
-        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] mt-8 opacity-40">
-          Avoid Red Cores • Duck under Cyan Orbs
-        </p>
 
       </div>
     </div>
   );
 }
-
-// Minimal Arrow Icons
-const ArrowUp = ({ size, className }: any) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 19V5M5 12l7-7 7 7"/>
-  </svg>
-);
-
-const ArrowDown = ({ size, className }: any) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 5v14M5 12l7 7 7-7"/>
-  </svg>
-);

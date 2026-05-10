@@ -3,7 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, Trophy, Medal, Crown, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { SnakeLogo, FlappyLogo, TetrisLogo, DashLogo, BreakoutLogo, SpaceLogo } from '@/components/ArcadeIcons';
+import { 
+  SnakeLogo, FlappyLogo, TetrisLogo, DashLogo, BreakoutLogo, SpaceLogo,
+  TowerLogo, CrossyLogo, DefenderLogo, CombatLogo, RunnerLogo, SlicerLogo 
+} from '@/components/ArcadeIcons';
 
 const ARCADE_GAMES = [
   { id: 'snake', name: 'Snake', icon: SnakeLogo, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', glow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]' },
@@ -12,6 +15,13 @@ const ARCADE_GAMES = [
   { id: 'dino', name: 'Dash', icon: DashLogo, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-[0_0_15px_rgba(245,158,11,0.2)]' },
   { id: 'breakout', name: 'Breakout', icon: BreakoutLogo, color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/30', glow: 'shadow-[0_0_15px_rgba(244,63,94,0.2)]' },
   { id: 'space', name: 'Space', icon: SpaceLogo, color: 'text-cyan-400', bg: 'bg-cyan-400/10', border: 'border-cyan-400/30', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.2)]' },
+  
+  { id: 'tower', name: 'Tower', icon: TowerLogo, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/30', glow: 'shadow-[0_0_15px_rgba(250,204,21,0.2)]' },
+  { id: 'crossy', name: 'Crossy', icon: CrossyLogo, color: 'text-teal-400', bg: 'bg-teal-400/10', border: 'border-teal-400/30', glow: 'shadow-[0_0_15px_rgba(45,212,191,0.2)]' },
+  { id: 'defender', name: 'Defender', icon: DefenderLogo, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/30', glow: 'shadow-[0_0_15px_rgba(129,140,248,0.2)]' },
+  { id: 'combat', name: 'Combat', icon: CombatLogo, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-[0_0_15px_rgba(239,68,68,0.2)]' },
+  { id: 'runner', name: 'Runner', icon: RunnerLogo, color: 'text-fuchsia-400', bg: 'bg-fuchsia-400/10', border: 'border-fuchsia-400/30', glow: 'shadow-[0_0_15px_rgba(232,121,249,0.2)]' },
+  { id: 'slicer', name: 'Slicer', icon: SlicerLogo, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30', glow: 'shadow-[0_0_15px_rgba(249,115,22,0.2)]' },
 ];
 
 export default function ArcadeLeaderboard() {
@@ -59,8 +69,10 @@ export default function ArcadeLeaderboard() {
 
   return (
     <div className="min-h-screen pb-40 font-sans bg-[var(--background)] text-[var(--text)] px-5 pt-20 relative overflow-hidden">
+      
+      {/* Dynamic Background Blur mapped to the active tab's specific color */}
       <div className="fixed inset-0 -z-10 pointer-events-none transition-colors duration-700 ease-in-out">
-        <div className={`absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full ${activeTab === 'snake' ? 'bg-emerald-500/10' : activeTab === 'flappy' ? 'bg-violet-500/10' : activeTab === 'tetris' ? 'bg-blue-500/10' : activeTab === 'space' ? 'bg-cyan-400/10' : 'bg-amber-500/10'} blur-[80px]`} />
+        <div className={`absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full ${activeGameInfo.bg} blur-[80px]`} />
       </div>
 
       <button onClick={() => router.back()} className="flex items-center gap-1.5 mb-6 active:scale-95 transition-transform text-[10px] font-black tracking-[0.18em] uppercase text-zinc-500 hover:text-[var(--text)]">

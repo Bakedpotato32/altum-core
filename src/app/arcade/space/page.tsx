@@ -27,6 +27,7 @@ export default function StarshipAltu() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [weaponLevel, setWeaponLevel] = useState(1);
   const [hp, setHp] = useState(MAX_HP);
+  const [flashColor, setFlashColor] = useState<string | null>(null); // Natively handles screen flashes
 
   // Engine Refs
   const player = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT - 60, w: PLAYER_SIZE, h: PLAYER_SIZE });
@@ -49,6 +50,28 @@ export default function StarshipAltu() {
     if (saved) setHighScore(parseInt(saved, 10));
   }, []);
 
+  // --- FULLSCREEN LOGIC ---
+  const requestFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.log(err));
+    else if ((elem as any).webkitRequestFullscreen) (elem as any).webkitRequestFullscreen();
+    else if ((elem as any).msRequestFullscreen) (elem as any).msRequestFullscreen();
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+    }
+  };
+
+  const handleBack = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    exitFullscreen();
+    router.back();
+  };
+
+  // --- AUDIO & HAPTICS ---
   const initAudio = () => {
     if (!audioCtxRef.current) {
       const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -70,6 +93,17 @@ export default function StarshipAltu() {
     osc.start(); osc.stop(ctx.currentTime + duration);
   };
 
+  const vibrate = (pattern: number | number[]) => {
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(pattern);
+    }
+  };
+
+  const triggerFlash = (color: string) => {
+    setFlashColor(color);
+    setTimeout(() => setFlashColor(null), 150);
+  };
+
   const createExplosion = (x: number, y: number, color: string, amount = 12) => {
     for (let i = 0; i < amount; i++) {
       particles.current.push({ x, y, dx: (Math.random() - 0.5) * 12, dy: (Math.random() - 0.5) * 12, life: 1.0, color });
@@ -79,8 +113,9 @@ export default function StarshipAltu() {
   const handleGameOver = async () => {
     setGameState('gameover');
     createExplosion(player.current.x, player.current.y, '#22d3ee', 40);
+    triggerFlash('rgba(239, 68, 68, 0.4)'); // Red flash
     playSound(100, 'sawtooth', 0.2, 0.8);
-    if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200, 100, 400]);
+    vibrate([200, 100, 200, 100, 400]);
 
     if (scoreRef.current > highScore) {
       setHighScore(scoreRef.current);
@@ -107,9 +142,10 @@ export default function StarshipAltu() {
     hpRef.current -= 1;
     setHp(hpRef.current);
     shakeRef.current = 15;
+    triggerFlash('rgba(239, 68, 68, 0.3)');
     playSound(150, 'square', 0.1, 0.3);
     createExplosion(player.current.x + PLAYER_SIZE/2, player.current.y + PLAYER_SIZE/2, '#22d3ee', 10);
-    if (window.navigator.vibrate) window.navigator.vibrate(100);
+    vibrate(100);
     
     // Downgrade weapon on hit
     if (weaponRef.current > 1) {
@@ -206,6 +242,8 @@ export default function StarshipAltu() {
         if (Math.abs(pu.x - (p.x + p.w/2)) < 25 && Math.abs(pu.y - (p.y + p.h/2)) < 25) {
             pu.collected = true;
             playSound(1200, 'sine', 0.1, 0.2);
+            vibrate(30);
+            triggerFlash('rgba(34, 211, 238, 0.2)');
             if (pu.type === 'weapon') {
                 weaponRef.current = Math.min(3, weaponRef.current + 1);
                 setWeaponLevel(weaponRef.current);
@@ -230,9 +268,9 @@ export default function StarshipAltu() {
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Engine glow
+        // Dynamic Engine glow based on movement/time
         ctx.fillStyle = "#facc15";
-        ctx.fillRect(p.x + p.w/2 - 2, p.y + p.h - 5, 4, Math.random() * 8 + 4);
+        ctx.fillRect(p.x + p.w/2 - 2, p.y + p.h - 5, 4, Math.random() * 8 + 6);
     }
 
     // Auto-fire
@@ -339,51 +377,63 @@ export default function StarshipAltu() {
     if (gameState === 'playing') requestRef.current = requestAnimationFrame(draw);
   }, [gameState]);
 
-  const handleMove = (e: any) => {
+  // Use Pointer Event for better touch lock without scrolling
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (gameState !== 'playing') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     
-    // Allows full 2D movement slightly above the finger so it's not hidden
-    const x = (clientX - rect.left) * (CANVAS_WIDTH / rect.width);
-    const y = (clientY - rect.top) * (CANVAS_HEIGHT / rect.height);
+    const x = (e.clientX - rect.left) * (CANVAS_WIDTH / rect.width);
+    const y = (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height);
     
     player.current.x = Math.max(0, Math.min(CANVAS_WIDTH - PLAYER_SIZE, x - PLAYER_SIZE / 2));
     player.current.y = Math.max(0, Math.min(CANVAS_HEIGHT - PLAYER_SIZE, y - PLAYER_SIZE));
   };
 
-  const startNewGame = () => {
+  const startNewGame = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    requestFullscreen();
     initAudio();
-    scoreRef.current = 0; setScore(0);
-    weaponRef.current = 1; setWeaponLevel(1);
-    hpRef.current = MAX_HP; setHp(MAX_HP);
+    
+    // HARD RESET ENGINE - Fixes ghost arrays from previous session
+    scoreRef.current = 0; 
+    setScore(0);
+    weaponRef.current = 1; 
+    setWeaponLevel(1);
+    hpRef.current = MAX_HP; 
+    setHp(MAX_HP);
     shakeRef.current = 0;
-    enemies.current = []; bullets.current = []; particles.current = []; powerUps.current = [];
+    frameCount.current = 0; 
+    enemies.current = []; 
+    bullets.current = []; 
+    particles.current = []; 
+    powerUps.current = [];
     player.current = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT - 80, w: PLAYER_SIZE, h: PLAYER_SIZE };
+    
     setGameState('playing');
   };
 
   useEffect(() => {
     if (gameState === 'playing') requestRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(requestRef.current!);
+    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current!); };
   }, [gameState, draw]);
 
   return (
-    <div className="min-h-[100dvh] pb-40 font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden touch-none select-none">
+    // STRICT TOUCH LOCK
+    <div className="h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden touch-none overscroll-none select-none">
       
-      <div className="fixed inset-0 -z-10 pointer-events-none">
+      {/* Background Ambience */}
+      <div className="fixed inset-0 -z-10 pointer-events-none transition-colors duration-500" style={{ backgroundColor: flashColor || 'transparent' }}>
         <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full bg-cyan-500/10 blur-[80px]" />
         <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-blue-500/10 blur-[80px]" />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col items-center relative z-10">
+      <div className="w-full max-w-md px-5 flex flex-col items-center h-full relative z-10">
         
         {/* Header */}
         <div className="w-full flex justify-between items-center mb-6">
-          <button onClick={() => router.back()} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500">
+          <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-cyan-500 shadow-sm z-50 cursor-pointer">
             <ChevronLeft size={20} />
           </button>
           <div className="text-right">
@@ -404,45 +454,47 @@ export default function StarshipAltu() {
           </div>
         </div>
 
-        {/* Game Canvas */}
+        {/* Game Canvas Wrapper */}
         <div 
-          onMouseMove={handleMove} onTouchMove={handleMove}
-          className="relative w-full aspect-[34/48] bg-[#050505] rounded-[32px] border-2 border-[var(--border)] overflow-hidden shadow-2xl cursor-crosshair"
+          onPointerMove={handlePointerMove}
+          className={`relative w-full aspect-[34/48] max-h-[500px] bg-[#050505] rounded-[32px] border-2 transition-all overflow-hidden shadow-2xl touch-none ${flashColor ? 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)]' : 'border-[var(--border)]'}`}
         >
           {/* Integrity (HP) UI overlay */}
           {gameState === 'playing' && (
-            <div className="absolute top-4 left-4 flex gap-1.5 z-10">
+            <div className="absolute top-4 left-4 flex gap-1.5 z-10 pointer-events-none">
                {Array.from({ length: MAX_HP }).map((_, i) => (
                  <Shield key={i} size={14} className={i < hp ? "text-cyan-400 fill-cyan-400/20 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]" : "text-zinc-700"} />
                ))}
             </div>
           )}
 
-          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full" />
+          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full block touch-none" />
 
+          {/* Overlays */}
           {gameState === 'idle' && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 pointer-events-none">
               <SpaceLogo className="w-20 h-20 text-cyan-500 mb-6 drop-shadow-[0_0_15px_rgba(34,211,238,0.6)] animate-pulse" />
-              <button onClick={startNewGame} className="px-10 py-4 bg-cyan-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-[0_0_30px_rgba(34,211,238,0.4)]">
+              <button onPointerDown={startNewGame} className="px-10 py-4 bg-cyan-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-[0_0_30px_rgba(34,211,238,0.4)] pointer-events-auto transition-all">
                 <Play size={18} fill="currentColor" /> Initialize
               </button>
+              <p className="text-[8px] font-black text-cyan-300/60 uppercase tracking-[0.2em] mt-4">Engages Fullscreen</p>
             </div>
           )}
 
           {gameState === 'gameover' && (
-            <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 p-6 text-center">
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1">Hull Breach</h2>
+            <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 p-6 text-center pointer-events-none">
+              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">Hull Breach</h2>
               <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-8">Ship Destroyed at {score} pts</p>
-              <button onClick={startNewGame} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-2xl">
+              <button onPointerDown={startNewGame} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-2xl pointer-events-auto transition-all">
                 <RotateCcw size={18} /> Reboot
               </button>
-              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase tracking-widest animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing Cloud...</p>}
+              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase tracking-widest animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing Data...</p>}
             </div>
           )}
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap justify-center gap-4 mt-6 opacity-60">
+        <div className="flex flex-wrap justify-center gap-4 mt-6 opacity-60 w-full pointer-events-none">
            <div className="flex items-center gap-1.5 bg-[var(--card)] px-3 py-1.5 rounded-full border border-[var(--border)] shadow-sm">
              <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
              <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest">Upgrade</span>

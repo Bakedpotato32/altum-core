@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Trophy, Play, RotateCcw, LayoutGrid, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Zap, Pause } from 'lucide-react';
+import { ChevronLeft, Trophy, Play, RotateCcw, LayoutGrid, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Zap, Pause, FastForward } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 // --- GAME CONSTANTS ---
@@ -33,12 +33,47 @@ export default function TetrisCore() {
   const [highScore, setHighScore] = useState(0);
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover' | 'paused'>('idle');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [flash, setFlash] = useState(false); // Screen flash for line clears
 
   const speedRef = useRef(INITIAL_SPEED);
   const scoreRef = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gameLoopRef = useRef<any>(null);
 
+  useEffect(() => {
+    const saved = localStorage.getItem('tetrisHighScore');
+    if (saved) setHighScore(parseInt(saved, 10));
+  }, []);
+
+  // --- FULLSCREEN LOGIC ---
+  const requestFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch((err) => console.log(err));
+    } else if ((elem as any).webkitRequestFullscreen) {
+      (elem as any).webkitRequestFullscreen();
+    } else if ((elem as any).msRequestFullscreen) {
+      (elem as any).msRequestFullscreen();
+    }
+  };
+
+  const exitFullscreen = () => {
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+    }
+  };
+
+  const handleBack = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    exitFullscreen();
+    router.back();
+  };
+
+  // --- AUDIO & HAPTICS ---
   const initAudio = () => {
     if (!audioCtxRef.current) {
       const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -53,7 +88,6 @@ export default function TetrisCore() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
-
     osc.start();
 
     if (type === 'move') {
@@ -76,7 +110,13 @@ export default function TetrisCore() {
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
       osc.stop(ctx.currentTime + 0.5);
     } else {
-        osc.stop();
+      osc.stop();
+    }
+  };
+
+  const vibrate = (pattern: number | number[]) => {
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(pattern);
     }
   };
 
@@ -98,7 +138,7 @@ export default function TetrisCore() {
   const handleGameOver = useCallback(async () => {
     setGameState('gameover');
     playSound('gameover');
-    if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
+    vibrate([200, 100, 200, 100, 400]);
     
     if (scoreRef.current > highScore) {
       setHighScore(scoreRef.current);
@@ -122,7 +162,7 @@ export default function TetrisCore() {
     const keys = Object.keys(TETROMINOS);
     const randomType = type || keys[Math.floor(Math.random() * keys.length)];
     const newPiece = {
-      pos: { x: Math.floor(COLS / 2) - 1, y: 0 },
+      pos: { x: Math.floor(COLS / 2) - 2, y: 0 }, 
       tetromino: TETROMINOS[randomType],
       type: randomType
     };
@@ -146,7 +186,8 @@ export default function TetrisCore() {
     return matrix[0].map((_: any, index: any) => matrix.map((col: any) => col[index]).reverse());
   };
 
-  const handleRotate = () => {
+  const handleRotate = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!activePiece || gameState !== 'playing') return;
     const newShape = rotate(activePiece.tetromino.shape);
     let newPos = { ...activePiece.pos };
@@ -159,14 +200,17 @@ export default function TetrisCore() {
     }
     setActivePiece({ ...activePiece, pos: newPos, tetromino: { ...activePiece.tetromino, shape: newShape } });
     playSound('rotate');
+    vibrate(15);
   };
 
-  const handleMove = (dir: number) => {
+  const handleMove = (dir: number, e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!activePiece || gameState !== 'playing') return;
     const newPos = { ...activePiece.pos, x: activePiece.pos.x + dir };
     if (!isCollision(newPos, activePiece.tetromino.shape, board)) {
       setActivePiece({ ...activePiece, pos: newPos });
       playSound('move');
+      vibrate(10);
     }
   };
 
@@ -191,7 +235,7 @@ export default function TetrisCore() {
       });
 
       while (filteredBoard.length < ROWS) {
-        filteredBoard.unshift(Array( COLS).fill(0));
+        filteredBoard.unshift(Array(COLS).fill(0));
       }
 
       if (linesCleared > 0) {
@@ -200,7 +244,10 @@ export default function TetrisCore() {
         setScore(scoreRef.current);
         speedRef.current = Math.max(100, INITIAL_SPEED - (Math.floor(scoreRef.current / 1000) * 100));
         playSound('clear');
-        if (window.navigator.vibrate) window.navigator.vibrate(50);
+        vibrate([50, 50, 50]);
+        
+        setFlash(true);
+        setTimeout(() => setFlash(false), 150);
       }
 
       return filteredBoard;
@@ -210,7 +257,8 @@ export default function TetrisCore() {
     spawnPiece(nextPiece?.type);
   }, [nextPiece, spawnPiece]);
 
-  const drop = useCallback(() => {
+  const drop = useCallback((e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!activePiece || gameState !== 'playing') return;
     const newPos = { ...activePiece.pos, y: activePiece.pos.y + 1 };
     
@@ -218,10 +266,12 @@ export default function TetrisCore() {
       setActivePiece({ ...activePiece, pos: newPos });
     } else {
       performLock(activePiece);
+      vibrate(20);
     }
   }, [activePiece, board, gameState, isCollision, performLock]);
 
-  const handleHardDrop = () => {
+  const handleHardDrop = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!activePiece || gameState !== 'playing') return;
     let newY = activePiece.pos.y;
     while (!isCollision({ x: activePiece.pos.x, y: newY + 1 }, activePiece.tetromino.shape, board)) {
@@ -230,10 +280,11 @@ export default function TetrisCore() {
     const finalPiece = { ...activePiece, pos: { ...activePiece.pos, y: newY } };
     setActivePiece(finalPiece);
     performLock(finalPiece);
-    if (window.navigator.vibrate) window.navigator.vibrate(40);
+    vibrate(40);
   };
 
-  const handleHold = () => {
+  const handleHold = (e?: React.SyntheticEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!canHold || gameState !== 'playing' || !activePiece) return;
     const currentType = activePiece.type;
     if (holdPiece) {
@@ -243,9 +294,11 @@ export default function TetrisCore() {
     }
     setHoldPiece({ type: currentType, tetromino: TETROMINOS[currentType] });
     setCanHold(false);
+    vibrate(15);
   };
 
   const startGame = () => {
+    requestFullscreen();
     initAudio();
     setBoard(createEmptyBoard());
     setScore(0);
@@ -257,13 +310,13 @@ export default function TetrisCore() {
     const keys = Object.keys(TETROMINOS);
     const t1 = keys[Math.floor(Math.random() * keys.length)];
     const t2 = keys[Math.floor(Math.random() * keys.length)];
-    setActivePiece({ pos: { x: 4, y: 0 }, tetromino: TETROMINOS[t1], type: t1 });
+    setActivePiece({ pos: { x: 3, y: 0 }, tetromino: TETROMINOS[t1], type: t1 });
     setNextPiece({ type: t2, tetromino: TETROMINOS[t2] });
   };
 
   useEffect(() => {
     if (gameState === 'playing') {
-      gameLoopRef.current = setInterval(drop, speedRef.current);
+      gameLoopRef.current = setInterval(() => drop(), speedRef.current);
     } else {
       clearInterval(gameLoopRef.current);
     }
@@ -282,15 +335,19 @@ export default function TetrisCore() {
   const ghost = getGhostPos();
 
   return (
-    <div className="min-h-[100dvh] pb-40 font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-y-auto select-none touch-none">
+    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden select-none touch-none overscroll-none transition-colors duration-200 ${flash ? 'bg-blue-500/20' : ''}`}>
+      
+      {/* Background Ambience */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full bg-blue-500/10 blur-[80px]" />
         <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-indigo-500/10 blur-[80px]" />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col relative z-10">
+      <div className="w-full max-w-md px-5 flex flex-col h-full relative z-10">
+        
+        {/* Header Area */}
         <div className="flex justify-between items-center mb-4">
-          <button onClick={() => router.back()} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500">
+          <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-blue-500 shadow-sm z-50">
             <ChevronLeft size={20} />
           </button>
           <div className="text-right">
@@ -298,7 +355,10 @@ export default function TetrisCore() {
           </div>
         </div>
 
-        <div className="flex gap-4 mb-4 h-[440px]">
+        {/* Game Layout Wrapper */}
+        <div className="flex gap-4 mb-4 flex-1 max-h-[460px]">
+          
+          {/* Left Column: Hold & Score */}
           <div className="flex flex-col gap-3 w-20">
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-2 flex flex-col items-center shadow-sm">
               <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest mb-1">HOLD</span>
@@ -315,7 +375,8 @@ export default function TetrisCore() {
             </div>
           </div>
 
-          <div className="relative flex-1 bg-[#050505] rounded-2xl border-2 border-blue-500/20 overflow-hidden shadow-2xl">
+          {/* Main Board */}
+          <div className={`relative flex-1 bg-[#050505] rounded-2xl border-2 transition-all duration-100 overflow-hidden shadow-2xl ${flash ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.6)]' : 'border-blue-500/20'}`}>
             <div className="absolute inset-0 grid grid-cols-10 grid-rows-20 opacity-[0.05] pointer-events-none">
               {Array.from({ length: 200 }).map((_, i) => <div key={i} className="border-[0.5px] border-white" />)}
             </div>
@@ -336,23 +397,28 @@ export default function TetrisCore() {
 
             {gameState === 'idle' && (
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 p-6 text-center">
-                <LayoutGrid size={48} className="text-blue-500 mb-4 animate-pulse" />
-                <button onClick={startGame} className="w-full py-4 bg-blue-600 text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
+                <LayoutGrid size={48} className="text-blue-500 mb-4 animate-pulse drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]" />
+                <button onClick={startGame} className="w-full py-4 bg-blue-600 text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)]">
                   <Play size={18} fill="currentColor" /> Initialize
                 </button>
+                <p className="text-[8px] font-black text-blue-300/60 uppercase tracking-[0.2em] mt-4">Engages Fullscreen</p>
               </div>
             )}
 
             {gameState === 'gameover' && (
               <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 p-6 text-center">
-                <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-1">Grid Overload</h2>
-                <button onClick={startGame} className="w-full py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-xl">
+                <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">Grid Overload</h2>
+                <div className="h-4 mb-4">
+                  {isSyncing && <p className="text-[8px] font-black text-white/50 uppercase tracking-widest animate-pulse">Syncing...</p>}
+                </div>
+                <button onClick={startGame} className="w-full py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-xl transition-all">
                   <RotateCcw size={18} /> Reboot
                 </button>
               </div>
             )}
           </div>
 
+          {/* Right Column: Next & Pause */}
           <div className="w-16 flex flex-col gap-3">
              <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-2 flex flex-col items-center shadow-sm">
                 <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest mb-1">NEXT</span>
@@ -361,38 +427,43 @@ export default function TetrisCore() {
                 </div>
              </div>
              <button 
-                onClick={() => setGameState(gameState === 'paused' ? 'playing' : 'paused')}
-                className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl flex flex-col items-center justify-center active:scale-90 transition-all text-zinc-500"
+                onPointerDown={(e) => { e.preventDefault(); setGameState(gameState === 'paused' ? 'playing' : 'paused'); }}
+                className={`flex-1 bg-[var(--card)] border rounded-2xl flex flex-col items-center justify-center active:scale-90 transition-all shadow-sm ${gameState === 'paused' ? 'text-amber-500 border-amber-500/50' : 'text-zinc-500 border-[var(--border)]'}`}
               >
-                <Pause size={20} />
+                {gameState === 'paused' ? <Play size={20} /> : <Pause size={20} />}
              </button>
           </div>
         </div>
 
-        <div className="mt-4 w-full grid grid-cols-4 gap-3 touch-none">
-          <button onTouchStart={() => handleMove(-1)} className="aspect-square bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:scale-90 transition-all shadow-sm">
-            <ArrowLeft className="text-zinc-500" />
+        {/* OVERHAULED D-PAD CONTROLS */}
+        <div className="mt-6 mb-auto w-full max-w-[340px] mx-auto grid grid-cols-4 gap-3 touch-none select-none">
+          <button onPointerDown={(e) => handleMove(-1, e)} className="h-20 bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:text-blue-500 active:scale-[0.85] transition-all shadow-sm text-zinc-500">
+            <ArrowLeft size={32} />
           </button>
-          <div className="grid grid-rows-2 gap-2">
-            <button onTouchStart={handleRotate} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:scale-90 transition-all shadow-sm">
-              <RotateCcw size={18} className="text-blue-500" />
+          
+          <div className="grid grid-rows-2 gap-2 h-20">
+            <button onPointerDown={(e) => handleRotate(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:scale-[0.85] transition-all shadow-sm">
+              <RotateCcw size={24} className="text-blue-500" />
             </button>
-            <button onTouchStart={handleHardDrop} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-orange-500/20 active:scale-90 transition-all shadow-sm">
-              <ArrowUp size={18} className="text-orange-500" />
+            <button onPointerDown={(e) => handleHardDrop(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-orange-500/20 active:border-orange-500/50 active:scale-[0.85] transition-all shadow-sm">
+              <FastForward size={24} className="text-orange-500 rotate-90" />
             </button>
           </div>
-          <button onTouchStart={() => handleMove(1)} className="aspect-square bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:scale-90 transition-all shadow-sm">
-            <ArrowRight className="text-zinc-500" />
+
+          <button onPointerDown={(e) => handleMove(1, e)} className="h-20 bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:text-blue-500 active:scale-[0.85] transition-all shadow-sm text-zinc-500">
+            <ArrowRight size={32} />
           </button>
-          <div className="grid grid-rows-2 gap-2">
-            <button onTouchStart={handleHold} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-purple-500/20 active:scale-90 transition-all shadow-sm">
-              <Zap size={18} className="text-purple-500" />
+          
+          <div className="grid grid-rows-2 gap-2 h-20">
+            <button onPointerDown={(e) => handleHold(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-purple-500/20 active:border-purple-500/50 active:scale-[0.85] transition-all shadow-sm">
+              <Zap size={20} className="text-purple-500" />
             </button>
-            <button onTouchStart={drop} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:scale-90 transition-all shadow-sm">
-              <ArrowDown size={18} className="text-zinc-500" />
+            <button onPointerDown={(e) => drop(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:scale-[0.85] transition-all shadow-sm">
+              <ArrowDown size={24} className="text-zinc-500" />
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
@@ -400,34 +471,34 @@ export default function TetrisCore() {
 
 const Block = ({ x, y, color, isGhost = false }: any) => (
   <div 
-    className="absolute rounded-[4px]"
+    className="absolute rounded-[3px] transition-all duration-75"
     style={{
       left: `${x * 10}%`,
       top: `${y * 5}%`,
       width: '10%',
       height: '5%',
       backgroundColor: isGhost ? 'transparent' : color,
-      border: isGhost ? `2px dashed ${color}44` : 'none',
-      boxShadow: isGhost ? 'none' : `inset 0 0 8px rgba(255,255,255,0.3), 0 0 10px ${color}66`,
+      border: isGhost ? `2px dashed ${color}66` : '1px solid rgba(0,0,0,0.3)',
+      boxShadow: isGhost ? 'none' : `inset 2px 2px 4px rgba(255,255,255,0.4), inset -2px -2px 4px rgba(0,0,0,0.4), 0 0 8px ${color}44`,
       zIndex: isGhost ? 5 : 10
     }}
   />
 );
 
 const MiniPreview = ({ piece }: any) => (
-  <div className="relative w-10 h-10">
+  <div className="relative w-12 h-12">
     {piece.tetromino.shape.map((row: any, y: number) => row.map((value: number, x: number) => (
       value !== 0 && (
         <div 
           key={`${x}-${y}`}
           className="absolute rounded-[2px]"
           style={{
-            left: `${x * 8}px`,
-            top: `${y * 8}px`,
-            width: '7px',
-            height: '7px',
+            left: `${x * 9}px`,
+            top: `${y * 9}px`,
+            width: '8px',
+            height: '8px',
             backgroundColor: piece.tetromino.color,
-            boxShadow: `0 0 4px ${piece.tetromino.color}`
+            boxShadow: `inset 1px 1px 2px rgba(255,255,255,0.4), 0 0 4px ${piece.tetromino.color}`
           }}
         />
       )
