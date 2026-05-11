@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Calendar, Star, ArrowUpRight, Zap, Loader2, MessageSquare, Trophy, ChevronRight, Crown, ListChecks, Bell, Megaphone, Wallet, Gamepad2 } from 'lucide-react';
+import { Calendar, Star, ArrowUpRight, Zap, Loader2, MessageSquare, Trophy, ChevronRight, Crown, ListChecks, Bell, Megaphone, Wallet, Gamepad2, Calculator } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -79,6 +79,7 @@ export default function Dashboard() {
     };
     fetchDashboardData();
   }, [router]);
+
   if (loading || !student) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="relative">
@@ -101,17 +102,14 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen pb-32 font-sans bg-background text-text">
-      {/* Ambient background orbs (soft & modern) */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
         <div className="absolute -top-[20%] -right-[20%] w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[80px]" />
         <div className="absolute bottom-[10%] -left-[20%] w-[350px] h-[350px] rounded-full bg-emerald-500/5 blur-[80px]" />
         <div className="absolute top-[40%] left-[30%] w-[200px] h-[200px] rounded-full bg-amber-500/5 blur-[60px]" />
       </div>
 
-      {/* Hero section */}
       <div className="px-5 pt-28 pb-6">
         <div className="flex justify-between items-center gap-3">
-          {/* Avatar + name */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10 overflow-hidden">
               {student.avatar_url ? (
@@ -137,7 +135,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Fee badge */}
           <div className={`shrink-0 px-3 py-2 rounded-xl ${badge.bg} ${badge.border} border flex flex-col items-center gap-0.5 backdrop-blur-sm`}>
             <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${badge.color}/80`}>
               {badge.label}
@@ -147,42 +144,54 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
-
-        {/* Accent divider */}
         <div className="mt-6 h-px bg-gradient-to-r from-blue-500/40 to-transparent rounded-full" />
       </div>
 
-      {/* Card grid */}
       <div className="px-5 space-y-4">
-        {/* Live Notice */}
+        {/* Live Notice & Update Cards */}
         <div className="relative rounded-3xl bg-card border border-border p-5 overflow-hidden transition-all duration-200 hover:scale-[1.01] hover:shadow-xl cursor-pointer">
           <Megaphone className="absolute -right-3 -top-3 w-20 h-20 text-blue-500/5" />
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
-            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-blue-500">
-              {t('liveNotice')}
-            </span>
+            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-blue-500">{t('liveNotice')}</span>
           </div>
-          <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">
-            “{globalNotice}”
-          </p>
+          <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">“{globalNotice}”</p>
         </div>
 
-        {/* Class Update */}
         <div className="relative rounded-3xl bg-orange-500/5 border border-orange-500/20 p-5 overflow-hidden transition-all duration-200 hover:scale-[1.01]">
           <Bell className="absolute -right-3 -top-3 w-20 h-20 text-orange-500/5" />
           <div className="flex items-center gap-2 mb-3">
             <Bell className="w-3 h-3 text-orange-500" />
-            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-orange-500">
-              {student.class} {t('update')}
-            </span>
+            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-orange-500">{student.class} {t('update')}</span>
           </div>
           <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">
             {classNotice ? `“${classNotice}”` : "No specific updates for your class today. Keep studying! 🦊"}
           </p>
         </div>
 
-        {/* Fee Diary Card */}
+        {/* Learning Lab Card - NEW! */}
+        <div
+          onClick={() => router.push('/learning-lab')}
+          className="group relative rounded-3xl bg-cyan-500/5 border border-cyan-500/20 p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-cyan-500/40 overflow-hidden"
+        >
+          <Calculator className="absolute -right-5 -top-5 w-28 h-28 text-cyan-500/5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500" />
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <Calculator className="w-6 h-6 text-cyan-500" />
+            </div>
+            <div>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-cyan-500 mb-1">
+                Smart Tools
+              </p>
+              <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-tight">
+                Learning Lab
+              </h3>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-cyan-500/40 group-hover:translate-x-1 transition-transform" />
+        </div>
+
+        {/* Existing Grid Cards */}
         <div
           onClick={() => router.push('/fees')}
           className="group relative rounded-3xl bg-emerald-500/5 border border-emerald-500/20 p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-emerald-500/40 overflow-hidden"
@@ -193,17 +202,13 @@ export default function Dashboard() {
               <Wallet className="w-6 h-6 text-emerald-500" />
             </div>
             <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-emerald-500 mb-1">
-                {t('financeNode')}
-              </p>
-              <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-tight">
-                {t('feeDiary')}
-              </h3>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-emerald-500 mb-1">{t('financeNode')}</p>
+              <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-tight">{t('feeDiary')}</h3>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-emerald-500/40 group-hover:translate-x-1 transition-transform" />
         </div>
-        {/* Rank Card */}
+        
         <div
           onClick={() => router.push('/leaderboard')}
           className="group relative rounded-3xl bg-card border border-border p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg overflow-hidden"
@@ -214,9 +219,7 @@ export default function Dashboard() {
               <Trophy className="w-6 h-6 text-yellow-500" />
             </div>
             <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-yellow-500 mb-1">
-                {t('rank')}
-              </p>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-yellow-500 mb-1">{t('rank')}</p>
               <h3 className="text-3xl font-black italic uppercase tracking-[-0.03em] text-text leading-tight flex items-center gap-1">
                 {rank === 1 && <Crown className="w-5 h-5 text-yellow-500 -mt-1" />}#{rank}
               </h3>
@@ -225,7 +228,6 @@ export default function Dashboard() {
           <ChevronRight className="w-4 h-4 text-border group-hover:translate-x-1 transition-transform" />
         </div>
 
-        {/* Syllabus Card */}
         <div
           onClick={() => router.push('/syllabus')}
           className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-red-500/30"
@@ -235,18 +237,13 @@ export default function Dashboard() {
               <ListChecks className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-text/40 mb-1">
-                {t('syllabus')}
-              </p>
-              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
-                {t('trackProgress')}
-              </h4>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-text/40 mb-1">{t('syllabus')}</p>
+              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">{t('trackProgress')}</h4>
             </div>
           </div>
           <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
         </div>
 
-        {/* Arcade Card */}
         <div
           onClick={() => router.push('/arcade')}
           className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-violet-500/30"
@@ -256,18 +253,14 @@ export default function Dashboard() {
               <Gamepad2 className="w-5 h-5 text-violet-500" />
             </div>
             <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-violet-500 mb-1">
-                Altum Arcade
-              </p>
-              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
-                Mini Games
-              </h4>
+              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-violet-500 mb-1">Altum Arcade</p>
+              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">Mini Games</h4>
             </div>
           </div>
           <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
         </div>
 
-        {/* WhatsApp Card */}
+        {/* WhatsApp Card - RESTORED! */}
         <div
           onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')}
           className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-green-500/30"
