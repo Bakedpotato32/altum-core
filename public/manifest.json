@@ -4,6 +4,8 @@
   "description": "Premium Educational Portal for Students",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "minimal-ui", "standalone"],
+  "orientation": "portrait",
   "background_color": "#050508",
   "theme_color": "#050508",
   "icons": [
