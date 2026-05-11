@@ -4,7 +4,7 @@ import {
   ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon,
   Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee,
   Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight,
-  FileBarChart, Sunrise, Sunset, Moon, Activity
+  FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2, Trash2, X, ChevronDown
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +31,21 @@ type StatCardProps = {
   delay?: number;
 };
 
+const ARCADE_GAMES = [
+  { id: 'snake', name: 'Neon Snake' },
+  { id: 'flappy', name: 'Flappy Altu' },
+  { id: 'tetris', name: 'Tetris Core' },
+  { id: 'dino', name: 'Altu Dash' },
+  { id: 'breakout', name: 'Neon Breakout' },
+  { id: 'space', name: 'Starship Altu' },
+  { id: 'tower', name: 'Neon Tower' },
+  { id: 'crossy', name: 'Crossy Altu' },
+  { id: 'defender', name: 'Core Defender' },
+  { id: 'combat', name: 'Vector Combat' },
+  { id: 'runner', name: 'Synth Runner' },
+  { id: 'slicer', name: 'Fruit Slicer' },
+];
+
 export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
   const [studentCount, setStudentCount] = useState(0);
@@ -42,6 +57,13 @@ export default function AdminDashboard() {
   const [staffName, setStaffName] = useState<string | null>(null);
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Arcade Leaderboard State
+  const [showArcade, setShowArcade] = useState(false);
+  const [selectedGame, setSelectedGame] = useState('snake');
+  const [arcadeScores, setArcadeScores] = useState<any[]>([]);
+  const [loadingScores, setLoadingScores] = useState(false);
+  const [wipingScores, setWipingScores] = useState(false);
 
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
@@ -105,6 +127,72 @@ export default function AdminDashboard() {
     fetchAdminData();
   }, [router]);
 
+  // --- ARCADE LEADERBOARD LOGIC ---
+  const fetchScores = async () => {
+    setLoadingScores(true);
+    try {
+      const { data: scores } = await supabase
+        .from('arcade_scores')
+        .select('*')
+        .eq('game_name', selectedGame)
+        .order('score', { ascending: false })
+        .limit(50);
+
+      if (!scores || scores.length === 0) {
+        setArcadeScores([]);
+        return;
+      }
+
+      const studentIds = [...new Set(scores.map(s => s.student_id))];
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, name, class')
+        .in('id', studentIds);
+
+      const merged = scores.map(score => {
+        const student = students?.find(s => s.id === score.student_id);
+        return {
+          ...score,
+          student_name: student ? student.name : 'Unknown Player',
+          student_class: student ? student.class : '—'
+        };
+      });
+
+      setArcadeScores(merged);
+    } catch (err) {
+      console.error("Error fetching scores:", err);
+    } finally {
+      setLoadingScores(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showArcade) fetchScores();
+  }, [showArcade, selectedGame]);
+
+  const handleWipeLeaderboard = async () => {
+    const gameName = ARCADE_GAMES.find(g => g.id === selectedGame)?.name;
+    const confirmWipe = window.confirm(`Are you absolutely sure you want to delete ALL scores for ${gameName}? This cannot be undone.`);
+    if (!confirmWipe) return;
+
+    setWipingScores(true);
+    try {
+      const { error } = await supabase
+        .from('arcade_scores')
+        .delete()
+        .eq('game_name', selectedGame);
+        
+      if (!error) {
+        setArcadeScores([]);
+      }
+    } catch (err) {
+      console.error("Error wiping scores:", err);
+    } finally {
+      setWipingScores(false);
+    }
+  };
+  // --------------------------------
+
   const handleUpdateNotice = async () => {
     setSaving(true);
     const role = localStorage.getItem('role');
@@ -143,7 +231,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-svh bg-background text-text relative overflow-x-hidden selection:bg-blue-500/30">
-      {/* Global Animations */}
       <style>{`
         @keyframes mesh {
           0%, 100% { transform: translate(0, 0) scale(1); }
@@ -163,10 +250,6 @@ export default function AdminDashboard() {
           50% { transform: scale(1.05); }
           100% { transform: scale(1); opacity: 1; }
         }
-        @keyframes shimmer {
-          0% { background-position: -1000px 0; }
-          100% { background-position: 1000px 0; }
-        }
         .mesh-blob {
           animation: mesh 20s ease-in-out infinite;
         }
@@ -178,47 +261,23 @@ export default function AdminDashboard() {
           animation: scaleIn 0.5s ease-out forwards;
           opacity: 0;
         }
-        .skeleton {
-          background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.03) 75%);
-          background-size: 1000px 100%;
-          animation: shimmer 2s infinite;
-        }
-        .card-shine {
-          position: relative;
-          overflow: hidden;
-        }
-        .card-shine::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent);
-          transition: left 0.7s;
-        }
-        .card-shine:hover::before {
-          left: 100%;
-        }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* Ambient Background - Light Theme */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-400/10 blur-[120px] mesh-blob" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-400/10 blur-[100px] mesh-blob" style={{ animationDelay: '-5s' }} />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-emerald-400/8 blur-[80px] mesh-blob" style={{ animationDelay: '-10s' }} />
+      {/* Ambient Background (Restored but subtle) */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[120px] mesh-blob" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[100px] mesh-blob" style={{ animationDelay: '-5s' }} />
+        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-emerald-500/5 blur-[80px] mesh-blob" style={{ animationDelay: '-10s' }} />
       </div>
 
-      <div className="relative z-10 px-5 pt-14 pb-40 min-h-svh">
+      {/* Adjusted padding top (pt-24) to clear the global Altum Core navbar */}
+      <div className="relative z-10 px-5 pt-24 pb-40 min-h-svh">
         
         {/* Header */}
         <header className="flex items-start justify-between mb-8 animate-fade-up" style={{ animationDelay: '0ms' }}>
           <div className="flex items-center gap-4">
-            {/* Avatar — Fixed with visible border, shadow, and depth */}
             <div className="relative group">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-[0_4px_20px_rgba(59,130,246,0.3)] ring-2 ring-white ring-offset-2 ring-offset-background transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_6px_28px_rgba(59,130,246,0.4)]">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-[0_4px_20px_rgba(59,130,246,0.3)] ring-2 ring-white ring-offset-2 ring-offset-background transition-all duration-300 group-hover:scale-105">
                 {initials}
               </div>
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full flex items-center justify-center ring-2 ring-white">
@@ -256,48 +315,18 @@ export default function AdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3 mb-8 animate-fade-up" style={{ animationDelay: '100ms' }}>
-          <StatCard
-            icon={<GraduationCap size={18} />}
-            label="Students"
-            value={String(studentCount)}
-            color="bg-purple-500/10 border-purple-500/20"
-            iconColor="text-purple-500"
-            delay={0}
-          />
-          <StatCard
-            icon={<ShieldCheck size={18} />}
-            label="Access"
-            value={master ? 'Full' : 'Limited'}
-            color="bg-blue-500/10 border-blue-500/20"
-            iconColor="text-blue-500"
-            delay={1}
-          />
-          {!master && (
-            <StatCard
-              icon={<Users size={18} />}
-              label="Class"
-              value={assignedClass ?? '—'}
-              color="bg-cyan-500/10 border-cyan-500/20"
-              iconColor="text-cyan-500"
-              delay={2}
-            />
-          )}
-          {master && (
-            <StatCard
-              icon={<Activity size={18} />}
-              label="Status"
-              value="Active"
-              color="bg-emerald-500/10 border-emerald-500/20"
-              iconColor="text-emerald-500"
-              delay={2}
-            />
+          <StatCard icon={<GraduationCap size={18} />} label="Students" value={String(studentCount)} color="bg-card border border-border" iconColor="text-purple-500" delay={0} />
+          <StatCard icon={<ShieldCheck size={18} />} label="Access" value={master ? 'Full' : 'Limited'} color="bg-card border border-border" iconColor="text-blue-500" delay={1} />
+          {!master ? (
+            <StatCard icon={<Users size={18} />} label="Class" value={assignedClass ?? '—'} color="bg-card border border-border" iconColor="text-cyan-500" delay={2} />
+          ) : (
+            <StatCard icon={<Activity size={18} />} label="Status" value="Active" color="bg-card border border-border" iconColor="text-emerald-500" delay={2} />
           )}
         </div>
 
         {/* Notice Board */}
         <div className="mb-8 animate-fade-up" style={{ animationDelay: '200ms' }}>
-          <div className="relative bg-card/80 backdrop-blur-xl rounded-3xl p-5 overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow duration-300">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
+          <div className="relative bg-card rounded-3xl p-5 overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow duration-300">
             
             <div className="flex items-center justify-between mb-4 relative z-10">
               <div className="flex items-center gap-3">
@@ -314,7 +343,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-16 rounded-full bg-zinc-200 overflow-hidden">
+                <div className="h-1.5 w-16 rounded-full bg-background border border-border overflow-hidden">
                   <div 
                     className="h-full rounded-full bg-blue-500 transition-all duration-300"
                     style={{ width: `${Math.min((notice.length / 300) * 100, 100)}%` }}
@@ -347,9 +376,7 @@ export default function AdminDashboard() {
               }`}
             >
               {saved ? (
-                <span className="flex items-center gap-2 animate-[success-pop_0.4s_ease-out]">
-                  <Sparkles size={14} /> Board Updated
-                </span>
+                <span className="flex items-center gap-2 animate-[success-pop_0.4s_ease-out]"><Sparkles size={14} /> Board Updated</span>
               ) : saving ? (
                 <><Loader2 size={14} className="animate-spin" /> Syncing...</>
               ) : (
@@ -364,28 +391,8 @@ export default function AdminDashboard() {
           <section className="mb-8 animate-fade-up" style={{ animationDelay: '300ms' }}>
             <SectionTitle icon={<Settings2 size={13} />} label="System Config" />
             <div className="grid grid-cols-2 gap-3">
-              <AdminCard
-                onClick={() => router.push('/admin/classes')}
-                icon={<ShieldCheck size={22} />}
-                label="Structure"
-                title="Class Config"
-                detail="Add / Remove"
-                borderAccent="border-indigo-500"
-                iconBg="bg-indigo-500/10"
-                textAccent="text-indigo-500"
-                delay={0}
-              />
-              <AdminCard
-                onClick={() => router.push('/admin/subjects')}
-                icon={<BookMarked size={22} />}
-                label="Curriculum"
-                title="Subject Config"
-                detail="Manage"
-                borderAccent="border-rose-500"
-                iconBg="bg-rose-500/10"
-                textAccent="text-rose-500"
-                delay={1}
-              />
+              <AdminCard onClick={() => router.push('/admin/classes')} icon={<ShieldCheck size={22} />} label="Structure" title="Class Config" detail="Add / Remove" borderAccent="border-indigo-500" iconBg="bg-indigo-500/10" textAccent="text-indigo-500" delay={0} />
+              <AdminCard onClick={() => router.push('/admin/subjects')} icon={<BookMarked size={22} />} label="Curriculum" title="Subject Config" detail="Manage" borderAccent="border-rose-500" iconBg="bg-rose-500/10" textAccent="text-rose-500" delay={1} />
             </div>
           </section>
         )}
@@ -395,107 +402,136 @@ export default function AdminDashboard() {
           <section className="mb-8 animate-fade-up" style={{ animationDelay: '400ms' }}>
             <SectionTitle icon={<IndianRupee size={13} />} label="Finance & HR" />
             <div className="grid grid-cols-2 gap-3">
-              <AdminCard
-                onClick={() => router.push('/admin/fees')}
-                icon={<IndianRupee size={22} />}
-                label="Finance"
-                title="Fee Ledger"
-                detail="Collect & Setup"
-                borderAccent="border-emerald-500"
-                iconBg="bg-emerald-500/10"
-                textAccent="text-emerald-500"
-                featured
-                delay={0}
-              />
-              <AdminCard
-                onClick={() => router.push('/admin/staff')}
-                icon={<Users size={22} />}
-                label="Management"
-                title="Staff Hub"
-                detail="Teachers"
-                borderAccent="border-cyan-500"
-                iconBg="bg-cyan-500/10"
-                textAccent="text-cyan-500"
-                featured
-                delay={1}
-              />
+              <AdminCard onClick={() => router.push('/admin/fees')} icon={<IndianRupee size={22} />} label="Finance" title="Fee Ledger" detail="Collect & Setup" borderAccent="border-emerald-500" iconBg="bg-emerald-500/10" textAccent="text-emerald-500" featured delay={0} />
+              <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users size={22} />} label="Management" title="Staff Hub" detail="Teachers" borderAccent="border-cyan-500" iconBg="bg-cyan-500/10" textAccent="text-cyan-500" featured delay={1} />
             </div>
           </section>
         )}
 
         {/* Core Modules */}
-        <section className="animate-fade-up" style={{ animationDelay: '500ms' }}>
+        <section className="mb-8 animate-fade-up" style={{ animationDelay: '500ms' }}>
           <SectionTitle icon={<ListChecks size={13} />} label="Core Modules" />
           <div className="grid grid-cols-2 gap-3">
-            <AdminCard
-              onClick={() => router.push('/admin/ledger')}
-              icon={<UserPlus size={22} />}
-              label="Enrollment"
-              title="Ledger"
-              detail={`${studentCount} Active`}
-              borderAccent="border-purple-500"
-              iconBg="bg-purple-500/10"
-              textAccent="text-purple-500"
-              delay={0}
-            />
-            <AdminCard
-              onClick={() => router.push('/admin/attendance')}
-              icon={<CalendarIcon size={22} />}
-              label="Attendance"
-              title="Roll Call"
-              detail="Cloud Synced"
-              borderAccent="border-blue-500"
-              iconBg="bg-blue-500/10"
-              textAccent="text-blue-500"
-              delay={1}
-            />
-            <AdminCard
-              onClick={() => router.push('/admin/marks')}
-              icon={<Trophy size={22} />}
-              label="Academic"
-              title="Marks Entry"
-              detail="Log Scores"
-              borderAccent="border-yellow-500"
-              iconBg="bg-yellow-500/10"
-              textAccent="text-yellow-500"
-              delay={2}
-            />
-            <AdminCard
-              onClick={() => router.push('/admin/upload')}
-              icon={<UploadCloud size={22} />}
-              label="Library"
-              title="PDF Vault"
-              detail="Sync Notes"
-              borderAccent="border-green-500"
-              iconBg="bg-green-500/10"
-              textAccent="text-green-500"
-              delay={3}
-            />
-            <AdminCard
-              onClick={() => router.push('/admin/syllabus')}
-              icon={<ListChecks size={22} />}
-              label="Planning"
-              title="Syllabus"
-              detail="Track"
-              borderAccent="border-red-500"
-              iconBg="bg-red-500/10"
-              textAccent="text-red-500"
-              delay={4}
-            />
-            <AdminCard
-              onClick={() => router.push('/admin/reports')}
-              icon={<FileBarChart size={22} />}
-              label="Analysis"
-              title="Report Gen"
-              detail="Export PDFs"
-              borderAccent="border-blue-500"
-              iconBg="bg-blue-500/10"
-              textAccent="text-blue-500"
-              delay={5}
-            />
+            <AdminCard onClick={() => router.push('/admin/ledger')} icon={<UserPlus size={22} />} label="Enrollment" title="Ledger" detail={`${studentCount} Active`} borderAccent="border-purple-500" iconBg="bg-purple-500/10" textAccent="text-purple-500" delay={0} />
+            <AdminCard onClick={() => router.push('/admin/attendance')} icon={<CalendarIcon size={22} />} label="Attendance" title="Roll Call" detail="Cloud Synced" borderAccent="border-blue-500" iconBg="bg-blue-500/10" textAccent="text-blue-500" delay={1} />
+            <AdminCard onClick={() => router.push('/admin/marks')} icon={<Trophy size={22} />} label="Academic" title="Marks Entry" detail="Log Scores" borderAccent="border-yellow-500" iconBg="bg-yellow-500/10" textAccent="text-yellow-500" delay={2} />
+            <AdminCard onClick={() => router.push('/admin/upload')} icon={<UploadCloud size={22} />} label="Library" title="PDF Vault" detail="Sync Notes" borderAccent="border-green-500" iconBg="bg-green-500/10" textAccent="text-green-500" delay={3} />
+            <AdminCard onClick={() => router.push('/admin/syllabus')} icon={<ListChecks size={22} />} label="Planning" title="Syllabus" detail="Track" borderAccent="border-red-500" iconBg="bg-red-500/10" textAccent="text-red-500" delay={4} />
+            <AdminCard onClick={() => router.push('/admin/reports')} icon={<FileBarChart size={22} />} label="Analysis" title="Report Gen" detail="Export PDFs" borderAccent="border-blue-500" iconBg="bg-blue-500/10" textAccent="text-blue-500" delay={5} />
           </div>
         </section>
+
+        {/* Campus Extras (Arcade) */}
+        {master && (
+          <section className="animate-fade-up" style={{ animationDelay: '600ms' }}>
+            <SectionTitle icon={<Gamepad2 size={13} />} label="Campus Extras" />
+            <div className="grid grid-cols-2 gap-3">
+              <AdminCard 
+                onClick={() => setShowArcade(true)} 
+                icon={<Trophy size={22} />} 
+                label="Entertainment" 
+                title="Arcade DB" 
+                detail="Leaderboards" 
+                borderAccent="border-orange-500" 
+                iconBg="bg-orange-500/10" 
+                textAccent="text-orange-500" 
+                delay={0} 
+              />
+            </div>
+          </section>
+        )}
       </div>
+
+      {/* --- THEME-AWARE ARCADE LEADERBOARD MODAL --- */}
+      {showArcade && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-background rounded-t-[2.5rem] sm:rounded-3xl h-[85vh] sm:h-[80vh] flex flex-col overflow-hidden shadow-2xl border border-border animate-slide-up">
+            
+            {/* Modal Header */}
+            <div className="p-6 border-b border-border flex items-center justify-between bg-card shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-orange-500/10 text-orange-500 rounded-xl border border-orange-500/20 shadow-sm">
+                  <Gamepad2 size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-tight text-text">Arcade DB</h2>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Global Leaderboards</p>
+                </div>
+              </div>
+              <button onClick={() => setShowArcade(false)} className="p-2 bg-background text-zinc-500 rounded-full border border-border hover:bg-card active:scale-95 transition-all shadow-sm">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* NATIVE DROPDOWN SELECTOR */}
+            <div className="px-5 py-4 border-b border-border bg-background shrink-0">
+              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-1">Target Databank</label>
+              <div className="relative">
+                <select
+                  value={selectedGame}
+                  onChange={(e) => setSelectedGame(e.target.value)}
+                  className="w-full appearance-none bg-card border border-border rounded-xl px-4 py-3.5 text-sm font-black text-text uppercase tracking-wider outline-none focus:border-orange-500 focus:ring-[3px] focus:ring-orange-500/20 transition-all shadow-sm cursor-pointer"
+                >
+                  {ARCADE_GAMES.map(game => (
+                    <option key={game.id} value={game.id}>{game.name}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500 bg-card pl-2">
+                  <ChevronDown size={16} />
+                </div>
+              </div>
+            </div>
+
+            {/* Score List */}
+            <div className="flex-1 overflow-y-auto p-4 bg-background">
+              {loadingScores ? (
+                <div className="h-full flex flex-col items-center justify-center gap-3 text-zinc-500">
+                  <Loader2 size={24} className="animate-spin text-orange-500" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Fetching Data...</p>
+                </div>
+              ) : arcadeScores.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center gap-3 text-zinc-400">
+                  <Trophy size={32} />
+                  <p className="text-[10px] font-black uppercase tracking-widest">No scores recorded yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {arcadeScores.map((score, idx) => (
+                    <div key={score.id} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl shadow-sm hover:border-orange-500/30 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <span className={`text-lg font-black italic w-6 text-center ${idx === 0 ? 'text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' : idx === 1 ? 'text-zinc-400' : idx === 2 ? 'text-amber-600' : 'text-zinc-500'}`}>
+                          #{idx + 1}
+                        </span>
+                        <div>
+                          <p className="text-sm font-black text-text capitalize">{score.student_name}</p>
+                          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">{score.student_id} • Class {score.student_class}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-black italic text-orange-500">{score.score}</p>
+                        <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">{new Date(score.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer (Danger Zone) */}
+            <div className="p-4 bg-card border-t border-border shrink-0">
+              <button
+                onClick={handleWipeLeaderboard}
+                disabled={wipingScores || arcadeScores.length === 0}
+                className="w-full py-3.5 bg-red-500 text-white shadow-lg shadow-red-500/20 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {wipingScores ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Wipe {ARCADE_GAMES.find(g => g.id === selectedGame)?.name} Leaderboard
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -515,11 +551,11 @@ function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string })
 function StatCard({ icon, label, value, color, iconColor, delay = 0 }: StatCardProps) {
   return (
     <div 
-      className={`group relative p-4 rounded-3xl border ${color} transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 cursor-default overflow-hidden animate-fade-up`}
+      className={`group relative p-4 rounded-3xl ${color} shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 cursor-default overflow-hidden animate-fade-up`}
       style={{ animationDelay: `${delay * 100}ms` }}
     >
       <div className="relative z-10">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${iconColor} bg-white/60 shadow-sm`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${iconColor} bg-background shadow-sm border border-border`}>
           {icon}
         </div>
         <p className="text-[8px] font-black text-zinc-500 uppercase tracking-[2px] mb-1.5">{label}</p>
@@ -538,13 +574,12 @@ function AdminCard({
       onClick={onClick}
       className={`
         ${featured ? 'p-5' : 'p-4'}
-        group relative bg-card/80 backdrop-blur-md
+        group relative bg-card shadow-sm
         border border-border border-l-[3px] ${borderAccent.replace('border-l-', 'border-')}
         rounded-2xl cursor-pointer
         transition-all duration-500 ease-out
-        hover:bg-card hover:shadow-lg hover:-translate-y-1.5
+        hover:shadow-md hover:-translate-y-1
         active:scale-[0.97]
-        card-shine
         animate-fade-up
       `}
       style={{ animationDelay: `${delay * 80}ms` }}
@@ -569,7 +604,7 @@ function AdminCard({
         <span className={`text-[8px] font-bold uppercase tracking-[2px] ${textAccent}`}>
           {detail}
         </span>
-        <div className="w-6 h-6 rounded-full bg-border/30 border border-border flex items-center justify-center group-hover:bg-border/50 transition-all duration-300">
+        <div className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center group-hover:bg-border/50 transition-all duration-300">
           <ChevronRight size={12} className="text-zinc-500 group-hover:text-text transition-all duration-300 group-hover:translate-x-0.5" />
         </div>
       </div>
@@ -593,7 +628,6 @@ function LoadingScreen() {
       `}</style>
       
       <div className="w-full max-w-md space-y-6 px-5">
-        {/* Header Skeleton */}
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl skeleton" />
           <div className="space-y-2 flex-1">
@@ -601,22 +635,12 @@ function LoadingScreen() {
             <div className="h-5 w-40 rounded-full skeleton" />
           </div>
         </div>
-
-        {/* Stats Skeleton */}
         <div className="grid grid-cols-3 gap-3">
-          {[1,2,3].map(i => (
-            <div key={i} className="h-24 rounded-3xl skeleton" />
-          ))}
+          {[1,2,3].map(i => <div key={i} className="h-24 rounded-3xl skeleton" />)}
         </div>
-
-        {/* Notice Skeleton */}
         <div className="h-48 rounded-3xl skeleton" />
-
-        {/* Cards Skeleton */}
         <div className="grid grid-cols-2 gap-3">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="h-32 rounded-2xl skeleton" />
-          ))}
+          {[1,2,3,4].map(i => <div key={i} className="h-32 rounded-2xl skeleton" />)}
         </div>
       </div>
     </div>
