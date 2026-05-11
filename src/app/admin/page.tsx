@@ -4,7 +4,8 @@ import {
   ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon,
   Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee,
   Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight,
-  FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2, Trash2, X, ChevronDown
+  FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2, Trash2, X, ChevronDown,
+  Smartphone, UserX, CheckCircle, Search, RefreshCcw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,7 @@ type StatCardProps = {
   color: string;
   iconColor: string;
   delay?: number;
+  pulse?: boolean;
 };
 
 const ARCADE_GAMES = [
@@ -46,9 +48,161 @@ const ARCADE_GAMES = [
   { id: 'slicer', name: 'Fruit Slicer' },
 ];
 
+// --- COMPONENT: PERMANENT DEVICE SECURITY GATE ---
+function DeviceSecurityGate() {
+  const [requests, setRequests] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('students')
+      .select('id, name, class, device_id, pending_device_id, device_status')
+      .order('device_status', { ascending: false }); 
+    
+    if (data) setRequests(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchRequests(); }, []);
+
+  const approveDevice = async (studentId: string, newDeviceId: string) => {
+    setActionId(studentId);
+    const { error } = await supabase.from('students').update({ 
+      device_id: newDeviceId, device_status: 'verified', pending_device_id: null 
+    }).eq('id', studentId);
+    if (!error) fetchRequests();
+    setActionId(null);
+  };
+
+  const blockStudent = async (studentId: string) => {
+    setActionId(studentId);
+    await supabase.from('students').update({ device_status: 'blocked' }).eq('id', studentId);
+    fetchRequests();
+    setActionId(null);
+  };
+
+  const filtered = requests.filter(r => 
+    (r.device_status !== 'verified' || searchQuery !== '') && 
+    r.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="mb-8 animate-fade-up" style={{ animationDelay: '150ms' }}>
+      <div className="bg-card border border-border rounded-[2rem] p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20">
+              <ShieldCheck className="text-orange-500" size={18} />
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-[2px] text-text">Security Gate</h3>
+              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Device Binding Control</p>
+            </div>
+          </div>
+          <button onClick={fetchRequests} className="p-2 hover:bg-zinc-500/10 rounded-xl transition-colors">
+            <RefreshCcw size={14} className={loading ? 'animate-spin text-orange-500' : 'text-zinc-400'} />
+          </button>
+        </div>
+
+        <div className="relative mb-4">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" size={12} />
+          <input 
+            type="text" placeholder="Search student device..." value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-background border border-border rounded-2xl py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase outline-none focus:border-orange-500/50 transition-all"
+          />
+        </div>
+
+        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+          {loading ? (
+             <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-orange-500" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-8 border-2 border-dashed border-border rounded-[1.5rem]">
+              <p className="text-[10px] font-black text-zinc-400 uppercase italic">All Systems Secure</p>
+            </div>
+          ) : (
+            filtered.map((student) => (
+              <div key={student.id} className="p-4 rounded-[1.5rem] bg-background border border-border flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-[11px] font-black italic uppercase text-text">{student.name}</h4>
+                    <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">ID: {student.id} • {student.class}</p>
+                  </div>
+                  <span className={`text-[7px] font-black px-2 py-0.5 rounded-md uppercase ${
+                    student.device_status === 'blocked' ? 'bg-red-500 text-white' : 
+                    student.device_status === 'pending' ? 'bg-orange-500 text-white animate-pulse' : 'bg-emerald-500/10 text-emerald-500'
+                  }`}>
+                    {student.device_status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => approveDevice(student.id, student.pending_device_id || student.device_id)} disabled={!!actionId || student.device_status === 'verified'} className="bg-emerald-500 text-white py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 disabled:opacity-30">Approve</button>
+                  <button onClick={() => blockStudent(student.id)} disabled={!!actionId || student.device_status === 'blocked'} className="bg-red-500 text-white py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 disabled:opacity-30">Block</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- SHARED UI COMPONENTS ---
+function SectionTitle({ icon, label }: { icon: React.ReactNode, label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4 px-1">
+      <div className="p-1.5 bg-zinc-500/10 rounded-lg text-zinc-500">{icon}</div>
+      <h3 className="text-[10px] font-black uppercase tracking-[3px] text-zinc-500">{label}</h3>
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value, color, iconColor, delay, pulse }: StatCardProps) {
+  return (
+    <div className={`${color} p-4 rounded-[2rem] animate-scale-in ${pulse ? 'ring-2 ring-orange-500/50' : ''}`} style={{ animationDelay: `${100 + (delay ?? 0) * 50}ms` }}>
+      <div className={`${iconColor} mb-2 ${pulse ? 'animate-pulse' : ''}`}>{icon}</div>
+      <p className="text-[8px] font-black uppercase tracking-wider text-zinc-500 mb-0.5">{label}</p>
+      <p className="text-lg font-black italic tracking-tight text-text leading-none">{value}</p>
+    </div>
+  );
+}
+
+function AdminCard({ onClick, icon, label, title, detail, borderAccent, iconBg, textAccent, featured, delay }: AdminCardProps) {
+  return (
+    <button onClick={onClick} className={`group relative flex flex-col items-start p-5 rounded-[2rem] bg-card border border-border text-left transition-all duration-300 hover:shadow-xl active:scale-95 animate-fade-up overflow-hidden ${featured ? 'col-span-1 shadow-sm' : ''}`} style={{ animationDelay: `${300 + (delay ?? 0) * 50}ms` }}>
+      <div className={`absolute -right-4 -top-4 w-24 h-24 opacity-[0.03] ${textAccent} transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12`}>{icon}</div>
+      <div className={`w-12 h-12 rounded-2xl ${iconBg} ${textAccent} flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg`}>{icon}</div>
+      <p className={`text-[8px] font-black uppercase tracking-[2px] ${textAccent} mb-1.5`}>{label}</p>
+      <h3 className="text-sm font-black italic uppercase tracking-tight text-text leading-none mb-1.5">{title}</h3>
+      <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+        <p className="text-[9px] font-bold text-zinc-500">{detail}</p>
+        <ChevronRight size={10} className="text-zinc-500" />
+      </div>
+      <div className={`absolute bottom-0 left-0 h-1 w-0 ${borderAccent.replace('border-', 'bg-')} transition-all duration-500 group-hover:w-full`} />
+    </button>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className="fixed inset-0 bg-background z-[100] flex flex-col items-center justify-center gap-4">
+      <div className="w-16 h-16 relative">
+        <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full" />
+        <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+      <p className="text-[10px] font-black uppercase tracking-[4px] text-blue-500 animate-pulse">Syncing Altum Core</p>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
   const [studentCount, setStudentCount] = useState(0);
+  const [pendingSecurity, setPendingSecurity] = useState(0);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,20 +222,6 @@ export default function AdminDashboard() {
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
     return cls.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
-  };
-
-  const getGreetingIcon = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return <Sunrise size={14} className="text-amber-500" />;
-    if (hour < 17) return <Sunset size={14} className="text-orange-500" />;
-    return <Moon size={14} className="text-indigo-500" />;
   };
 
   const isMasterAdmin = (role: string | null, cls: string | null) =>
@@ -107,287 +247,101 @@ export default function AdminDashboard() {
         const master = isMasterAdmin(role, userClass);
         const noticeKey = master ? 'global_notice' : `notice_class_${cleanClass}`;
 
-        const { data: noticeData } = await supabase
-          .from('config').select('value').eq('key', noticeKey).maybeSingle();
+        const { data: noticeData } = await supabase.from('config').select('value').eq('key', noticeKey).maybeSingle();
         if (noticeData) setNotice(noticeData.value);
 
         let query = supabase.from('students').select('*', { count: 'exact', head: true });
-        if (role === 'teacher' && cleanClass !== 'all') {
-          query = query.eq('class', userClass);
-        }
+        if (role === 'teacher' && cleanClass !== 'all') query = query.eq('class', userClass);
         const { count } = await query;
         if (count !== null) setStudentCount(count);
-      } catch (err) {
-        console.error('Failed to fetch admin data:', err);
-      } finally {
-        setTimeout(() => setLoading(false), 400);
-      }
+
+        const { count: pCount } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('device_status', 'pending');
+        setPendingSecurity(pCount || 0);
+
+      } catch (err) { console.error(err); } finally { setTimeout(() => setLoading(false), 400); }
     };
 
     fetchAdminData();
   }, [router]);
 
-  // --- ARCADE LEADERBOARD LOGIC ---
-  const fetchScores = async () => {
-    setLoadingScores(true);
-    try {
-      const { data: scores } = await supabase
-        .from('arcade_scores')
-        .select('*')
-        .eq('game_name', selectedGame)
-        .order('score', { ascending: false })
-        .limit(50);
-
-      if (!scores || scores.length === 0) {
-        setArcadeScores([]);
-        return;
-      }
-
-      const studentIds = [...new Set(scores.map(s => s.student_id))];
-      const { data: students } = await supabase
-        .from('students')
-        .select('id, name, class')
-        .in('id', studentIds);
-
-      const merged = scores.map(score => {
-        const student = students?.find(s => s.id === score.student_id);
-        return {
-          ...score,
-          student_name: student ? student.name : 'Unknown Player',
-          student_class: student ? student.class : '—'
-        };
-      });
-
-      setArcadeScores(merged);
-    } catch (err) {
-      console.error("Error fetching scores:", err);
-    } finally {
-      setLoadingScores(false);
-    }
-  };
-
-  useEffect(() => {
-    if (showArcade) fetchScores();
-  }, [showArcade, selectedGame]);
-
-  const handleWipeLeaderboard = async () => {
-    const gameName = ARCADE_GAMES.find(g => g.id === selectedGame)?.name;
-    const confirmWipe = window.confirm(`Are you absolutely sure you want to delete ALL scores for ${gameName}? This cannot be undone.`);
-    if (!confirmWipe) return;
-
-    setWipingScores(true);
-    try {
-      const { error } = await supabase
-        .from('arcade_scores')
-        .delete()
-        .eq('game_name', selectedGame);
-        
-      if (!error) {
-        setArcadeScores([]);
-      }
-    } catch (err) {
-      console.error("Error wiping scores:", err);
-    } finally {
-      setWipingScores(false);
-    }
-  };
-  // --------------------------------
-
   const handleUpdateNotice = async () => {
     setSaving(true);
     const role = localStorage.getItem('role');
-    const cleanClass = sanitizeClass(assignedClass);
     const master = isMasterAdmin(role, assignedClass);
-    const noticeKey = master ? 'global_notice' : `notice_class_${cleanClass}`;
-
-    const { error } = await supabase.from('config').upsert({ key: noticeKey, value: notice });
+    const noticeKey = master ? 'global_notice' : `notice_class_${sanitizeClass(assignedClass)}`;
+    await supabase.from('config').upsert({ key: noticeKey, value: notice });
     setSaving(false);
-    if (!error) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    router.push('/login');
-  };
-
-  const master = isMasterAdmin(userRole, assignedClass);
-  const initials = staffName
-    ? staffName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : master ? 'PA' : 'T';
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
-  }, [notice]);
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <div className="min-h-svh bg-background text-text relative overflow-x-hidden selection:bg-blue-500/30">
       <style>{`
-        @keyframes mesh {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes success-pop {
-          0% { transform: scale(0.8); opacity: 0; }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .mesh-blob {
-          animation: mesh 20s ease-in-out infinite;
-        }
-        .animate-fade-up {
-          animation: fadeUp 0.6s ease-out forwards;
-          opacity: 0;
-        }
-        .animate-scale-in {
-          animation: scaleIn 0.5s ease-out forwards;
-          opacity: 0;
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-up { animation: fadeUp 0.6s ease-out forwards; opacity: 0; }
+        .animate-scale-in { animation: scaleIn 0.5s ease-out forwards; opacity: 0; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.05); border-radius: 20px; }
       `}</style>
 
-      {/* Ambient Background (Restored but subtle) */}
+      {/* Ambient Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[120px] mesh-blob" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[100px] mesh-blob" style={{ animationDelay: '-5s' }} />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-emerald-500/5 blur-[80px] mesh-blob" style={{ animationDelay: '-10s' }} />
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-500/5 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[100px]" />
       </div>
 
-      {/* Adjusted padding top (pt-24) to clear the global Altum Core navbar */}
       <div className="relative z-10 px-5 pt-24 pb-40 min-h-svh">
         
         {/* Header */}
-        <header className="flex items-start justify-between mb-8 animate-fade-up" style={{ animationDelay: '0ms' }}>
+        <header className="flex items-start justify-between mb-8 animate-fade-up">
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-[0_4px_20px_rgba(59,130,246,0.3)] ring-2 ring-white ring-offset-2 ring-offset-background transition-all duration-300 group-hover:scale-105">
-                {initials}
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-background rounded-full flex items-center justify-center ring-2 ring-white">
-                <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-              </div>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-lg ring-2 ring-white ring-offset-2 ring-offset-background uppercase">
+              {staffName ? staffName.slice(0,2) : 'PA'}
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                {getGreetingIcon()}
-                <p className="text-[10px] font-black uppercase tracking-[3px] text-zinc-500">{getGreeting()}</p>
-              </div>
-              <h1 className="text-2xl font-black text-text tracking-tight leading-none">
-                {staffName ?? (master ? 'Principal' : 'Teacher')}
-              </h1>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  master 
-                    ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' 
-                    : 'bg-purple-500/10 text-purple-600 border border-purple-500/20'
-                }`}>
-                  {master ? 'Master Admin' : `Class ${assignedClass}`}
-                </span>
-                <span className="text-[9px] text-zinc-500 font-medium">· Altum Core</span>
-              </div>
+              <p className="text-[10px] font-black uppercase tracking-[3px] text-zinc-500">Welcome Back</p>
+              <h1 className="text-2xl font-black text-text tracking-tight leading-none">{staffName ?? 'Principal'}</h1>
+              <span className="mt-1.5 inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                {isMasterAdmin(userRole, assignedClass) ? 'Master Admin' : `Class ${assignedClass}`}
+              </span>
             </div>
           </div>
-          
-          <button
-            onClick={handleLogout}
-            className="group p-3 rounded-2xl bg-card border border-border text-zinc-500 transition-all duration-300 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5 hover:shadow-lg active:scale-90"
-          >
-            <LogOut size={18} className="transition-transform group-hover:rotate-180 duration-500" />
-          </button>
+          <button onClick={() => { localStorage.clear(); router.push('/login'); }} className="p-3 rounded-2xl bg-card border border-border text-zinc-500 hover:text-red-500 transition-colors"><LogOut size={18} /></button>
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-8 animate-fade-up" style={{ animationDelay: '100ms' }}>
+        <div className="grid grid-cols-3 gap-3 mb-8">
           <StatCard icon={<GraduationCap size={18} />} label="Students" value={String(studentCount)} color="bg-card border border-border" iconColor="text-purple-500" delay={0} />
-          <StatCard icon={<ShieldCheck size={18} />} label="Access" value={master ? 'Full' : 'Limited'} color="bg-card border border-border" iconColor="text-blue-500" delay={1} />
-          {!master ? (
-            <StatCard icon={<Users size={18} />} label="Class" value={assignedClass ?? '—'} color="bg-card border border-border" iconColor="text-cyan-500" delay={2} />
-          ) : (
-            <StatCard icon={<Activity size={18} />} label="Status" value="Active" color="bg-card border border-border" iconColor="text-emerald-500" delay={2} />
-          )}
+          <StatCard icon={<ShieldCheck size={18} />} label="Security" value={pendingSecurity > 0 ? `${pendingSecurity} Alert` : 'Secure'} color="bg-card border border-border" iconColor={pendingSecurity > 0 ? "text-orange-500" : "text-blue-500"} delay={1} pulse={pendingSecurity > 0} />
+          <StatCard icon={<Activity size={18} />} label="Status" value="Live" color="bg-card border border-border" iconColor="text-emerald-500" delay={2} />
         </div>
+
+        {/* --- SECURITY GATE --- */}
+        {isMasterAdmin(userRole, assignedClass) && <DeviceSecurityGate />}
 
         {/* Notice Board */}
         <div className="mb-8 animate-fade-up" style={{ animationDelay: '200ms' }}>
-          <div className="relative bg-card rounded-3xl p-5 overflow-hidden border border-border shadow-sm hover:shadow-md transition-shadow duration-300">
-            
-            <div className="flex items-center justify-between mb-4 relative z-10">
+          <div className="bg-card rounded-3xl p-5 border border-border">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                  <Bell className="text-blue-500" size={16} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-[3px] text-text">
-                    {master ? 'Global Broadcast' : 'Class Notice'}
-                  </h3>
-                  <p className="text-[9px] text-zinc-500 mt-0.5 font-medium">
-                    {master ? 'Visible to all students' : `Only Class ${assignedClass}`}
-                  </p>
-                </div>
+                <Bell className="text-blue-500" size={16} />
+                <h3 className="text-xs font-black uppercase tracking-[3px] text-text">Broadcast</h3>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-16 rounded-full bg-background border border-border overflow-hidden">
-                  <div 
-                    className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                    style={{ width: `${Math.min((notice.length / 300) * 100, 100)}%` }}
-                  />
-                </div>
-                <span className="text-[9px] font-bold text-zinc-500 tabular-nums">
-                  {notice.length}/300
-                </span>
-              </div>
+              <span className="text-[9px] font-bold text-zinc-500">{notice.length}/300</span>
             </div>
-
-            <div className="relative z-10 mb-4">
-              <textarea
-                ref={textareaRef}
-                value={notice}
-                onChange={(e) => setNotice(e.target.value.slice(0, 300))}
-                rows={3}
-                className="w-full bg-background border border-border rounded-2xl p-4 text-sm font-semibold text-text placeholder:text-zinc-500 focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 outline-none transition-all resize-none leading-relaxed shadow-inner"
-                placeholder={master ? "Broadcast a message to all students..." : "Post a notice for your class..."}
-              />
-            </div>
-
-            <button
-              onClick={handleUpdateNotice}
-              disabled={saving}
-              className={`relative w-full py-3.5 rounded-2xl flex items-center justify-center gap-2.5 text-[11px] font-black uppercase tracking-[3px] transition-all duration-300 active:scale-[0.98] overflow-hidden disabled:opacity-60 ${
-                saved
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                  : 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-500'
-              }`}
-            >
-              {saved ? (
-                <span className="flex items-center gap-2 animate-[success-pop_0.4s_ease-out]"><Sparkles size={14} /> Board Updated</span>
-              ) : saving ? (
-                <><Loader2 size={14} className="animate-spin" /> Syncing...</>
-              ) : (
-                <><Save size={14} /> Update Board</>
-              )}
+            <textarea value={notice} onChange={(e) => setNotice(e.target.value.slice(0, 300))} rows={3} className="w-full bg-background border border-border rounded-2xl p-4 text-sm font-semibold outline-none focus:border-blue-500 mb-4 resize-none" placeholder="Write notice..." />
+            <button onClick={handleUpdateNotice} disabled={saving} className={`w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[3px] transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white'}`}>
+              {saved ? 'Board Updated' : 'Update Board'}
             </button>
           </div>
         </div>
 
-        {/* System Config */}
-        {master && (
+        {/* System Config (2 cards) */}
+        {isMasterAdmin(userRole, assignedClass) && (
           <section className="mb-8 animate-fade-up" style={{ animationDelay: '300ms' }}>
             <SectionTitle icon={<Settings2 size={13} />} label="System Config" />
             <div className="grid grid-cols-2 gap-3">
@@ -397,8 +351,8 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* Finance & Staff */}
-        {master && (
+        {/* Finance & Staff (2 cards) */}
+        {isMasterAdmin(userRole, assignedClass) && (
           <section className="mb-8 animate-fade-up" style={{ animationDelay: '400ms' }}>
             <SectionTitle icon={<IndianRupee size={13} />} label="Finance & HR" />
             <div className="grid grid-cols-2 gap-3">
@@ -408,7 +362,7 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* Core Modules */}
+        {/* Core Modules (6 cards) */}
         <section className="mb-8 animate-fade-up" style={{ animationDelay: '500ms' }}>
           <SectionTitle icon={<ListChecks size={13} />} label="Core Modules" />
           <div className="grid grid-cols-2 gap-3">
@@ -421,227 +375,15 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* Campus Extras (Arcade) */}
-        {master && (
+        {/* Campus Extras (1 card) */}
+        {isMasterAdmin(userRole, assignedClass) && (
           <section className="animate-fade-up" style={{ animationDelay: '600ms' }}>
             <SectionTitle icon={<Gamepad2 size={13} />} label="Campus Extras" />
             <div className="grid grid-cols-2 gap-3">
-              <AdminCard 
-                onClick={() => setShowArcade(true)} 
-                icon={<Trophy size={22} />} 
-                label="Entertainment" 
-                title="Arcade DB" 
-                detail="Leaderboards" 
-                borderAccent="border-orange-500" 
-                iconBg="bg-orange-500/10" 
-                textAccent="text-orange-500" 
-                delay={0} 
-              />
+              <AdminCard onClick={() => setShowArcade(true)} icon={<Trophy size={22} />} label="Entertainment" title="Arcade DB" detail="Leaderboards" borderAccent="border-orange-500" iconBg="bg-orange-500/10" textAccent="text-orange-500" delay={0} />
             </div>
           </section>
         )}
-      </div>
-
-      {/* --- THEME-AWARE ARCADE LEADERBOARD MODAL --- */}
-      {showArcade && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-background rounded-t-[2.5rem] sm:rounded-3xl h-[85vh] sm:h-[80vh] flex flex-col overflow-hidden shadow-2xl border border-border animate-slide-up">
-            
-            {/* Modal Header */}
-            <div className="p-6 border-b border-border flex items-center justify-between bg-card shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-orange-500/10 text-orange-500 rounded-xl border border-orange-500/20 shadow-sm">
-                  <Gamepad2 size={20} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black uppercase tracking-tight text-text">Arcade DB</h2>
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Global Leaderboards</p>
-                </div>
-              </div>
-              <button onClick={() => setShowArcade(false)} className="p-2 bg-background text-zinc-500 rounded-full border border-border hover:bg-card active:scale-95 transition-all shadow-sm">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* NATIVE DROPDOWN SELECTOR */}
-            <div className="px-5 py-4 border-b border-border bg-background shrink-0">
-              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2 block ml-1">Target Databank</label>
-              <div className="relative">
-                <select
-                  value={selectedGame}
-                  onChange={(e) => setSelectedGame(e.target.value)}
-                  className="w-full appearance-none bg-card border border-border rounded-xl px-4 py-3.5 text-sm font-black text-text uppercase tracking-wider outline-none focus:border-orange-500 focus:ring-[3px] focus:ring-orange-500/20 transition-all shadow-sm cursor-pointer"
-                >
-                  {ARCADE_GAMES.map(game => (
-                    <option key={game.id} value={game.id}>{game.name}</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500 bg-card pl-2">
-                  <ChevronDown size={16} />
-                </div>
-              </div>
-            </div>
-
-            {/* Score List */}
-            <div className="flex-1 overflow-y-auto p-4 bg-background">
-              {loadingScores ? (
-                <div className="h-full flex flex-col items-center justify-center gap-3 text-zinc-500">
-                  <Loader2 size={24} className="animate-spin text-orange-500" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Fetching Data...</p>
-                </div>
-              ) : arcadeScores.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center gap-3 text-zinc-400">
-                  <Trophy size={32} />
-                  <p className="text-[10px] font-black uppercase tracking-widest">No scores recorded yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {arcadeScores.map((score, idx) => (
-                    <div key={score.id} className="flex items-center justify-between p-4 bg-card border border-border rounded-2xl shadow-sm hover:border-orange-500/30 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <span className={`text-lg font-black italic w-6 text-center ${idx === 0 ? 'text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' : idx === 1 ? 'text-zinc-400' : idx === 2 ? 'text-amber-600' : 'text-zinc-500'}`}>
-                          #{idx + 1}
-                        </span>
-                        <div>
-                          <p className="text-sm font-black text-text capitalize">{score.student_name}</p>
-                          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">{score.student_id} • Class {score.student_class}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-black italic text-orange-500">{score.score}</p>
-                        <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">{new Date(score.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer (Danger Zone) */}
-            <div className="p-4 bg-card border-t border-border shrink-0">
-              <button
-                onClick={handleWipeLeaderboard}
-                disabled={wipingScores || arcadeScores.length === 0}
-                className="w-full py-3.5 bg-red-500 text-white shadow-lg shadow-red-500/20 rounded-xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {wipingScores ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                Wipe {ARCADE_GAMES.find(g => g.id === selectedGame)?.name} Leaderboard
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ==================== SUB COMPONENTS ==================== */
-
-function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2.5 mb-4 ml-1">
-      <span className="text-zinc-500">{icon}</span>
-      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-[4px]">{label}</span>
-      <div className="flex-1 h-px bg-border" />
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, color, iconColor, delay = 0 }: StatCardProps) {
-  return (
-    <div 
-      className={`group relative p-4 rounded-3xl ${color} shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 cursor-default overflow-hidden animate-fade-up`}
-      style={{ animationDelay: `${delay * 100}ms` }}
-    >
-      <div className="relative z-10">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${iconColor} bg-background shadow-sm border border-border`}>
-          {icon}
-        </div>
-        <p className="text-[8px] font-black text-zinc-500 uppercase tracking-[2px] mb-1.5">{label}</p>
-        <p className="text-xl font-black text-text tracking-tight">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function AdminCard({
-  onClick, icon, label, title, detail,
-  borderAccent, iconBg, textAccent, featured = false, delay = 0
-}: AdminCardProps) {
-  return (
-    <div
-      onClick={onClick}
-      className={`
-        ${featured ? 'p-5' : 'p-4'}
-        group relative bg-card shadow-sm
-        border border-border border-l-[3px] ${borderAccent.replace('border-l-', 'border-')}
-        rounded-2xl cursor-pointer
-        transition-all duration-500 ease-out
-        hover:shadow-md hover:-translate-y-1
-        active:scale-[0.97]
-        animate-fade-up
-      `}
-      style={{ animationDelay: `${delay * 80}ms` }}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`${iconBg} p-2.5 rounded-xl border border-border transition-all duration-500 group-hover:scale-110 group-hover:shadow-md`}>
-          <div className={textAccent}>{icon}</div>
-        </div>
-        {featured && (
-          <div className="px-1.5 py-0.5 rounded-md bg-border/50 border border-border">
-            <Sparkles size={10} className="text-zinc-500" />
-          </div>
-        )}
-      </div>
-
-      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-[3px] mb-1.5">{label}</p>
-      <p className="text-[15px] font-black text-text italic uppercase tracking-tight leading-none mb-3">
-        {title}
-      </p>
-
-      <div className="flex items-center justify-between">
-        <span className={`text-[8px] font-bold uppercase tracking-[2px] ${textAccent}`}>
-          {detail}
-        </span>
-        <div className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center group-hover:bg-border/50 transition-all duration-300">
-          <ChevronRight size={12} className="text-zinc-500 group-hover:text-text transition-all duration-300 group-hover:translate-x-0.5" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LoadingScreen() {
-  return (
-    <div className="min-h-svh bg-background flex flex-col items-center justify-center gap-6 p-6">
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -1000px 0; }
-          100% { background-position: 1000px 0; }
-        }
-        .skeleton {
-          background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.03) 75%);
-          background-size: 1000px 100%;
-          animation: shimmer 2s infinite;
-        }
-      `}</style>
-      
-      <div className="w-full max-w-md space-y-6 px-5">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl skeleton" />
-          <div className="space-y-2 flex-1">
-            <div className="h-3 w-20 rounded-full skeleton" />
-            <div className="h-5 w-40 rounded-full skeleton" />
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          {[1,2,3].map(i => <div key={i} className="h-24 rounded-3xl skeleton" />)}
-        </div>
-        <div className="h-48 rounded-3xl skeleton" />
-        <div className="grid grid-cols-2 gap-3">
-          {[1,2,3,4].map(i => <div key={i} className="h-32 rounded-2xl skeleton" />)}
-        </div>
       </div>
     </div>
   );

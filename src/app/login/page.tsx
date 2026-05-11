@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User, ArrowRight, Loader2, MessageSquare, Eye, EyeOff, Globe } from 'lucide-react';
 import { useLanguage } from '@/lib/LanguageContext';
+import { getDeviceId } from '@/lib/fingerprint'; // Ensure you created this file as discussed
 
 export default function LoginPage() {
   const { t, lang, toggleLang } = useLanguage();
@@ -18,6 +19,7 @@ export default function LoginPage() {
     if (!enteredId) return;
     setLoading(true);
 
+    // 1. MASTER ADMIN BYPASS (Developer Mode)
     if (enteredId === 'DOITHARDKARAN5219A') {
       localStorage.clear();
       localStorage.setItem('role', 'principal');
@@ -28,6 +30,7 @@ export default function LoginPage() {
     }
 
     try {
+      // 2. CHECK STAFF TABLE (Internal security for teachers)
       const { data: staffMember } = await supabase
         .from('staff')
         .select('*')
@@ -43,15 +46,46 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: student } = await supabase.from('students').select('*').eq('id', enteredId).single();
+      // 3. STUDENT DEVICE BINDING LOGIC
+      const currentDevice = getDeviceId();
+      const { data: student, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', enteredId)
+        .single();
 
       if (student) {
-        localStorage.clear();
-        localStorage.setItem('role', 'student');
-        localStorage.setItem('studentId', student.id);
-        localStorage.setItem('studentName', student.name);
-        localStorage.setItem('studentClass', student.class);
-        router.replace('/dashboard');
+        // CASE A: First time login (Bind the device)
+        if (!student.device_id) {
+          await supabase.from('students').update({ 
+            device_id: currentDevice,
+            device_status: 'verified' 
+          }).eq('id', enteredId);
+          
+          proceedToDashboard(student);
+        } 
+        // CASE B: Returning on the same device
+        else if (student.device_id === currentDevice) {
+          if (student.device_status === 'blocked') {
+            alert("This account has been suspended. Please contact Karan Sir.");
+            setLoading(false);
+            return;
+          }
+          proceedToDashboard(student);
+        } 
+        // CASE C: Security Breach / New Device
+        else {
+          // If status is already pending or verified on another device
+          // We flag this specific request for your approval
+          await supabase.from('students').update({ 
+            device_status: 'pending',
+            pending_device_id: currentDevice 
+          }).eq('id', enteredId);
+          
+          // Store ID in local storage temporarily to check status on the pending page
+          localStorage.setItem('attemptedLoginId', enteredId);
+          router.push('/verification-pending');
+        }
       } else {
         alert("ID not found or incorrect.");
         setLoading(false);
@@ -60,7 +94,18 @@ export default function LoginPage() {
       console.error(err);
       setLoading(false);
     }
-  };return (
+  };
+
+  const proceedToDashboard = (student: any) => {
+    localStorage.clear();
+    localStorage.setItem('role', 'student');
+    localStorage.setItem('studentId', student.id);
+    localStorage.setItem('studentName', student.name);
+    localStorage.setItem('studentClass', student.class);
+    router.replace('/dashboard');
+  };
+
+  return (
     <div style={{ minHeight: '100svh', background: 'var(--background)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', color: 'var(--text)', fontFamily: 'inherit', position: 'relative', overflow: 'hidden' }}>
 
       {/* Ambient orbs */}
@@ -109,7 +154,9 @@ export default function LoginPage() {
             </p>
             <div style={{ height: 1, width: 32, background: 'rgba(59,130,246,0.3)', borderRadius: 1 }} />
           </div>
-        </div>{/* ── Form ── */}
+        </div>
+
+        {/* ── Form ── */}
         <form onSubmit={handleLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Input */}
