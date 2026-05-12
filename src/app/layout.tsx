@@ -6,8 +6,6 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Home, BookOpen, MessagesSquare, User, Moon, Sun, Globe } from 'lucide-react'; 
 import { LanguageContext, dict } from '@/lib/LanguageContext';
 import Script from 'next/script';
-
-// 🚀 Native App Behavior
 import NativeAppBehavior from '@/components/NativeApp';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -67,48 +65,46 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
       </head>
 
-      <body className="antialiased font-sans bg-[var(--background)] overscroll-none touch-manipulation" suppressHydrationWarning>
-        
+      <body className="antialiased font-sans bg-background text-text overscroll-none touch-manipulation" suppressHydrationWarning>
         <NativeAppBehavior />
         <Script src="https://cdn.tailwindcss.com" strategy="afterInteractive" />
         
         <LanguageContext.Provider value={{ lang, t, toggleLang }}>
           {!isLogin && !isGamePage && (
             <header className={`fixed top-0 left-0 right-0 px-6 pt-10 pb-4 z-[100] flex justify-between items-center backdrop-blur-md transition-all duration-500 bg-gradient-to-b ${isDarkMode ? 'from-[#050508] via-[#050508]/80' : 'from-[#f4f7f6] via-[#f4f7f6]/80'} to-transparent`}>
-              
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="AltumCore Logo" className="w-8 h-8 object-contain drop-shadow-sm" />
-                <h1 className="text-xl font-black italic uppercase tracking-tighter text-[var(--text)] pt-1">
+                <h1 className="text-xl font-black italic uppercase tracking-tighter pt-1">
                   ALTUM<span className="text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]">CORE</span>
                 </h1>
               </div>
 
               <div className="flex items-center gap-3">
-                <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-[var(--card)] border-[var(--border)] active:scale-95 transition-all shadow-sm">
+                <button onClick={toggleLang} className="flex items-center gap-2 px-3 py-1.5 rounded-xl border bg-card border-border active:scale-95 transition-all shadow-sm">
                   <Globe size={12} className="text-blue-500" />
-                  <span className="text-[9px] font-black uppercase text-[var(--text)]">{lang === 'EN' ? 'EN / हिन्दी' : 'हिन्दी / EN'}</span>
+                  <span className="text-[9px] font-black uppercase">{lang === 'EN' ? 'EN / हिन्दी' : 'हिन्दी / EN'}</span>
                 </button>
-                <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center bg-[var(--card)] border-[var(--border)] shadow-sm active:scale-95 transition-all ${isDarkMode ? 'text-orange-400' : 'text-blue-600'}`}>
+                <button onClick={toggleTheme} className={`w-9 h-9 rounded-xl border flex items-center justify-center bg-card border-border shadow-sm active:scale-95 transition-all ${isDarkMode ? 'text-orange-400' : 'text-blue-600'}`}>
                   {isDarkMode ? <Moon size={16} /> : <Sun size={16} />}
                 </button>
               </div>
             </header>
           )}
 
+          {/* FIX: Removed w-[100vw] to prevent horizontal scroll bleed */}
           <div className="fixed inset-0 overflow-y-auto overflow-x-hidden">
-            <main className={`min-h-[100dvh] w-full ${isGamePage ? 'p-0' : `pt-20 ${isAdmin ? 'pb-10' : 'pb-32'}`}`}>
+            <main className={`min-h-[100svh] flex flex-col w-full ${isGamePage || isLogin ? 'p-0' : `pt-20 ${isAdmin ? 'pb-10' : 'pb-32'}`}`}>
               <AnimatePresence mode="wait">
-                <motion.div key={pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <motion.div key={pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex-1 flex flex-col w-full">
                   {children}
                 </motion.div>
               </AnimatePresence>
             </main>
           </div>
 
-          {/* Bottom Nav - Added pointer-events-none to container so it doesn't block chat input */}
           {!isLogin && !isAdmin && !isGamePage && (
             <div className="fixed bottom-6 left-6 right-6 z-[100] pointer-events-none">
-              <nav className={`h-20 border backdrop-blur-2xl rounded-[35px] flex justify-between items-center shadow-2xl px-3 bg-[var(--card)]/90 border-[var(--border)] pointer-events-auto ${isDarkMode ? 'shadow-black/50' : 'shadow-[0_15px_40px_rgba(0,0,0,0.08)]'}`}>
+              <nav className={`h-20 border backdrop-blur-2xl rounded-[35px] flex justify-between items-center shadow-2xl px-3 bg-card/90 border-border pointer-events-auto ${isDarkMode ? 'shadow-black/50' : 'shadow-[0_15px_40px_rgba(0,0,0,0.08)]'}`}>
                 <LayoutGroup>
                   <NavItem onClick={() => { const role = localStorage.getItem('role'); router.replace(role === 'principal' || role === 'teacher' ? '/admin' : '/dashboard'); }} icon={<Home size={22} />} active={pathname === '/dashboard' || pathname === '/admin'} />
                   <NavItem onClick={() => router.replace('/Materials')} icon={<BookOpen size={22} />} active={pathname.startsWith('/Materials')} />
