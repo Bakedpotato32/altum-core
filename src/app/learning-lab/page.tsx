@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   ChevronLeft, FlaskConical, Search, Calculator, 
-  Scale, Box, Triangle, Zap, Rocket, Lightbulb, Beaker, Atom 
+  Scale, Box, Triangle, Zap, Rocket, Lightbulb, Beaker, Atom,
+  Droplet, Globe, Waves, MoveHorizontal
 } from 'lucide-react';
 
 export default function LearningLab() {
@@ -86,7 +87,47 @@ export default function LearningLab() {
       border: 'border-orange-500/30',
       status: 'active'
     },
+    {
+      id: 'forces',
+      title: 'Force Tug-of-War',
+      description: 'Visualize balanced and unbalanced net forces.',
+      icon: MoveHorizontal,
+      color: 'text-orange-500',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/30',
+      status: 'active'
+    },
+    {
+      id: 'gravity',
+      title: 'Gravity Scale',
+      description: 'Weigh objects across the solar system in real-time.',
+      icon: Globe,
+      color: 'text-orange-500',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/30',
+      status: 'active'
+    },
+    {
+      id: 'buoyancy',
+      title: 'Buoyancy Engine',
+      description: 'Drop blocks in liquid to test Archimedes Principle.',
+      icon: Waves,
+      color: 'text-orange-500',
+      bg: 'bg-orange-500/10',
+      border: 'border-orange-500/30',
+      status: 'active'
+    },
     // --- CHEMISTRY ---
+    {
+      id: 'ph-lab',
+      title: 'pH Color Lab',
+      description: 'Dip test paper to identify acids, bases, and ions.',
+      icon: Droplet,
+      color: 'text-violet-500',
+      bg: 'bg-violet-500/10',
+      border: 'border-violet-500/30',
+      status: 'active'
+    },
     {
       id: 'equations',
       title: 'Equation Balancer',
