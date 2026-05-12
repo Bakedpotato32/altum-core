@@ -5,7 +5,7 @@ import {
   Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee,
   Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight,
   FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2, Trash2, X, ChevronDown,
-  Smartphone, UserX, CheckCircle, Search, RefreshCcw
+  Smartphone, UserX, CheckCircle, Search, RefreshCcw, ShieldAlert, MessagesSquare
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -32,21 +32,6 @@ type StatCardProps = {
   delay?: number;
   pulse?: boolean;
 };
-
-const ARCADE_GAMES = [
-  { id: 'snake', name: 'Neon Snake' },
-  { id: 'flappy', name: 'Flappy Altu' },
-  { id: 'tetris', name: 'Tetris Core' },
-  { id: 'dino', name: 'Altu Dash' },
-  { id: 'breakout', name: 'Neon Breakout' },
-  { id: 'space', name: 'Starship Altu' },
-  { id: 'tower', name: 'Neon Tower' },
-  { id: 'crossy', name: 'Crossy Altu' },
-  { id: 'defender', name: 'Core Defender' },
-  { id: 'combat', name: 'Vector Combat' },
-  { id: 'runner', name: 'Synth Runner' },
-  { id: 'slicer', name: 'Fruit Slicer' },
-];
 
 // --- COMPONENT: PERMANENT DEVICE SECURITY GATE ---
 function DeviceSecurityGate() {
@@ -210,14 +195,6 @@ export default function AdminDashboard() {
   const [assignedClass, setAssignedClass] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const router = useRouter();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Arcade Leaderboard State
-  const [showArcade, setShowArcade] = useState(false);
-  const [selectedGame, setSelectedGame] = useState('snake');
-  const [arcadeScores, setArcadeScores] = useState<any[]>([]);
-  const [loadingScores, setLoadingScores] = useState(false);
-  const [wipingScores, setWipingScores] = useState(false);
 
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
@@ -375,12 +352,13 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* Campus Extras (1 card) */}
+        {/* Campus & Social (2 cards) */}
         {isMasterAdmin(userRole, assignedClass) && (
           <section className="animate-fade-up" style={{ animationDelay: '600ms' }}>
-            <SectionTitle icon={<Gamepad2 size={13} />} label="Campus Extras" />
+            <SectionTitle icon={<MessagesSquare size={13} />} label="Campus & Social" />
             <div className="grid grid-cols-2 gap-3">
-              <AdminCard onClick={() => setShowArcade(true)} icon={<Trophy size={22} />} label="Entertainment" title="Arcade DB" detail="Leaderboards" borderAccent="border-orange-500" iconBg="bg-orange-500/10" textAccent="text-orange-500" delay={0} />
+              <AdminCard onClick={() => router.push('/admin/chat-mod')} icon={<ShieldAlert size={22} />} label="Moderation" title="Global Hub" detail="Manage Access" borderAccent="border-red-500" iconBg="bg-red-500/10" textAccent="text-red-500" delay={0} />
+              <AdminCard onClick={() => setShowArcade(true)} icon={<Trophy size={22} />} label="Entertainment" title="Arcade DB" detail="Leaderboards" borderAccent="border-orange-500" iconBg="bg-orange-500/10" textAccent="text-orange-500" delay={1} />
             </div>
           </section>
         )}

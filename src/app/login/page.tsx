@@ -106,7 +106,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100svh', background: 'var(--background)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', color: 'var(--text)', fontFamily: 'inherit', position: 'relative', overflow: 'hidden' }}>
+    // I replaced the inline layout styles with Tailwind classes to ensure perfect boundary control
+    <div className="relative flex flex-col items-center justify-center w-full min-h-[100dvh] px-6 py-8 overflow-hidden" style={{ background: 'var(--background)', color: 'var(--text)' }}>
 
       {/* Ambient orbs */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
@@ -119,7 +120,7 @@ export default function LoginPage() {
       <div style={{ position: 'absolute', top: 40, right: 20, zIndex: 10 }}>
         <button
           onClick={toggleLang}
-          className="active:scale-95 transition-transform"
+          className="active:scale-95 transition-transform shadow-sm"
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 14, background: 'var(--card)', border: '1px solid var(--border)', cursor: 'pointer' }}
         >
           <Globe size={12} style={{ color: '#3b82f6' }} />
@@ -157,10 +158,10 @@ export default function LoginPage() {
         </div>
 
         {/* ── Form ── */}
-        <form onSubmit={handleLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <form onSubmit={handleLogin} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box' }}>
 
           {/* Input */}
-          <div style={{ borderRadius: 24, background: 'var(--card)', border: '1px solid var(--border)', padding: '6px 6px 6px 6px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', transition: 'border-color 0.2s' }}
+          <div style={{ borderRadius: 24, background: 'var(--card)', border: '1px solid var(--border)', padding: '6px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
             onFocusCapture={e => (e.currentTarget.style.borderColor = 'rgba(59,130,246,0.45)')}
             onBlurCapture={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           >
@@ -174,7 +175,7 @@ export default function LoginPage() {
               placeholder={t('studentId')}
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text)', fontFamily: 'inherit', padding: '12px 4px' }}
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text)', fontFamily: 'inherit', padding: '12px 4px', width: '100%' }}
             />
 
             <button
@@ -191,7 +192,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className="active:scale-95 transition-transform"
-            style={{ width: '100%', borderRadius: 22, padding: '20px', background: loading ? 'rgba(59,130,246,0.5)' : 'linear-gradient(135deg, #1d4ed8, #3b82f6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 12px 36px rgba(59,130,246,0.4)', position: 'relative', overflow: 'hidden', transition: 'box-shadow 0.2s' }}
+            style={{ width: '100%', boxSizing: 'border-box', borderRadius: 22, padding: '20px', background: loading ? 'rgba(59,130,246,0.5)' : 'linear-gradient(135deg, #1d4ed8, #3b82f6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: loading ? 'none' : '0 12px 36px rgba(59,130,246,0.4)', position: 'relative', overflow: 'hidden' }}
           >
             {/* Shine overlay */}
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
@@ -203,7 +204,7 @@ export default function LoginPage() {
         </form>
 
         {/* ── Divider ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', margin: '28px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', margin: '28px 0', boxSizing: 'border-box' }}>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
           <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.2 }}>{t('help')}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
@@ -213,7 +214,7 @@ export default function LoginPage() {
         <button
           onClick={() => window.open('https://wa.me/917054937918?text=Hello%20Karan%20Sir,%20I%20need%20help%20with%20my%20login%20code.', '_blank')}
           className="active:scale-95 transition-transform"
-          style={{ width: '100%', borderRadius: 22, padding: '18px', background: 'var(--card)', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}
+          style={{ width: '100%', boxSizing: 'border-box', borderRadius: 22, padding: '18px', background: 'var(--card)', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 10, background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

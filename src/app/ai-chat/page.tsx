@@ -1,243 +1,232 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Zap, Loader2, Sparkles } from 'lucide-react';
-import { useLanguage } from '@/lib/LanguageContext';
+import { 
+    Send, ShieldAlert, Clock, MessagesSquare, User, 
+    AlertTriangle, MessageCircle, Reply, X 
+} from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
-export default function AIChat() {
-  const { t } = useLanguage();
-  const [messages, setMessages] = useState([
-    { id: 1, isGreeting: true, text: "", sender: 'ai' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    }
-  }, [messages, isLoading]);
+interface ChatMessage {
+    id: string;
+    sender_id: string; 
+    sender_name: string;
+    sender_batch: string;
+    sender_avatar: string;
+    message: string;
+    created_at: string;
+    reply_to_id?: string;
+    reply_to_name?: string;
+    reply_to_msg?: string;
+}
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+export default function GlobalChat() {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [newMessage, setNewMessage] = useState('');
+    const [isBanned, setIsBanned] = useState(false);
+    const [myProfile, setMyProfile] = useState({ id: '', name: '', batch: '', avatar: '' });
+    const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
-    const userMessage = input.trim();
-    setInput('');
+    const currentUserId = typeof window !== 'undefined' ? localStorage.getItem('studentId') || 'UNKNOWN' : '';
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const chatContext = messages
-      .slice(-4)
-      .map(m => `${m.sender === 'user' ? 'User' : 'Altu'}: ${m.isGreeting ? t('altuGreeting') : m.text}`)
-      .join('\n');
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
 
-    const messageWithHistory = `Past Chat Context:\n${chatContext}\n\nCurrent Question: ${userMessage}`;
+    useEffect(() => { scrollToBottom(); }, [messages]);
 
-    setMessages(prev => [...prev, { id: Date.now(), isGreeting: false, text: userMessage, sender: 'user' }]);
-    setIsLoading(true);
+    useEffect(() => {
+        if (currentUserId === 'UNKNOWN') return;
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageWithHistory }),
-      });
-
-      const data = await response.json();
-
-      if (data.text) {
-        setMessages(prev => [...prev, { id: Date.now(), isGreeting: false, text: data.text, sender: 'ai' }]);
-      } else {
-        throw new Error("Empty response");
-      }
-    } catch (error) {
-      console.error("Altu Error:", error);
-      setMessages(prev => [...prev, { id: Date.now(), isGreeting: false, text: t('networkError'), sender: 'ai' }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100svh', background: 'var(--background)', overflow: 'hidden', position: 'relative' }}>
-
-      {/* Ambient orbs */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-5%', right: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-        <div style={{ position: 'absolute', bottom: '20%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-      </div>
-
-      {/* ── Message List ── */}
-      <div
-        ref={scrollRef}
-        style={{ flex: 1, overflowY: 'auto', padding: '128px 20px 220px', display: 'flex', flexDirection: 'column', gap: 20 }}
-        className="scrollbar-hide"
-      >
-        <AnimatePresence initial={false}>
-          {messages.map((msg) => {
-            const isAI = msg.sender === 'ai';
-            return (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 14, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                style={{ display: 'flex', justifyContent: isAI ? 'flex-start' : 'flex-end' }}
-              >
-                <div style={{ maxWidth: '82%', position: 'relative' }}>
-
-                  {/* AI avatar dot */}
-                  {isAI && (
-                    <div style={{ position: 'absolute', top: -10, left: -8, width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--background)', boxShadow: '0 4px 12px rgba(59,130,246,0.4)', zIndex: 1 }}>
-                      <Bot size={13} style={{ color: '#fff' }} />
-                    </div>
-                  )}
-
-                  {/* Bubble */}
-                  <div style={{
-                    padding: '14px 18px',
-                    borderRadius: 24,
-                    borderTopLeftRadius: isAI ? 6 : 24,
-                    borderTopRightRadius: isAI ? 24 : 6,
-                    background: isAI
-                      ? 'var(--card)'
-                      : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                    border: isAI ? '1px solid var(--border)' : 'none',
-                    boxShadow: isAI
-                      ? '0 4px 20px rgba(0,0,0,0.06)'
-                      : '0 8px 28px rgba(59,130,246,0.35)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}>
-                    {/* Shine on user bubble */}
-                    {!isAI && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%)', pointerEvents: 'none' }} />
-                    )}
-                    <p style={{
-                      fontSize: 12,
-                      fontWeight: 800,
-                      fontStyle: 'italic',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.03em',
-                      lineHeight: 1.65,
-                      color: isAI ? 'var(--text)' : '#fff',
-                      position: 'relative',
-                      zIndex: 1,
-                      margin: 0,
-                    }}>
-                      {msg.isGreeting ? t('altuGreeting') : msg.text}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-
-          {/* Typing indicator */}
-          {isLoading && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              style={{ display: 'flex', justifyContent: 'flex-start' }}
-            >
-              <div style={{ padding: '14px 20px', borderRadius: 24, borderTopLeftRadius: 6, background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Loader2 size={14} className="animate-spin" style={{ color: '#3b82f6' }} />
-                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
-                  {t('altuThinking')}
-                </span>
-                {/* Pulsing dots */}
-                <div style={{ display: 'flex', gap: 3 }}>
-                  {[0,1,2].map(i => (
-                    <div key={i} className="animate-bounce" style={{ width: 4, height: 4, borderRadius: '50%', background: '#3b82f6', opacity: 0.6, animationDelay: `${i * 0.15}s` }} />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>{/* ── Gradient fade at bottom ── */}
-      <div
-        className="fixed pointer-events-none z-10"
-        style={{ bottom: 0, left: 0, right: 0, height: 200, background: 'linear-gradient(to top, var(--background) 40%, rgba(0,0,0,0) 100%)' }}
-      />
-
-      {/* ── Input Bar ── */}
-      <div style={{ position: 'fixed', bottom: 112, left: 0, right: 0, padding: '0 16px', zIndex: 30 }}>
-        <form
-          onSubmit={handleSend}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: 28,
-            padding: '6px 6px 6px 18px',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            gap: 10,
-          }}
-        >
-          {/* Altu icon inside input */}
-          <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 10, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Sparkles size={13} style={{ color: '#3b82f6' }} />
-          </div>
-
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading}
-            placeholder={isLoading ? t('altuProcessing') : t('typeDoubt')}
-            style={{
-              flex: 1,
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontSize: 11,
-              fontWeight: 800,
-              fontStyle: 'italic',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--text)',
-              fontFamily: 'inherit',
-              padding: '12px 0',
-            }}
-          />
-
-          {/* Send button */}
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="active:scale-90 transition-transform"
-            style={{
-              width: 46,
-              height: 46,
-              borderRadius: 20,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
-              flexShrink: 0,
-              background: isLoading || !input.trim()
-                ? 'rgba(128,128,128,0.1)'
-                : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              color: isLoading || !input.trim() ? 'rgba(128,128,128,0.4)' : '#fff',
-              boxShadow: isLoading || !input.trim() ? 'none' : '0 6px 20px rgba(59,130,246,0.4)',
-              transition: 'background 0.2s, box-shadow 0.2s, color 0.2s',
-            }}
-          >
-            {isLoading
-              ? <Loader2 size={17} className="animate-spin" />
-              : <Zap size={19} fill="currentColor" />
+        const fetchProfile = async () => {
+            const { data } = await supabase.from('students').select('name, class, avatar_url, chat_banned').eq('id', currentUserId).single();
+            if (data) {
+                if (data.chat_banned) setIsBanned(true);
+                else setMyProfile({ id: currentUserId, name: data.name || 'Student', batch: data.class || 'Batch-1', avatar: data.avatar_url || '' });
             }
-          </button>
-        </form>
-      </div>
+        };
+        fetchProfile();
 
-      <style>{`
-        input::placeholder { opacity: 0.3; }
-      `}</style>
-    </div>
-  );
+        const fetchMessages = async () => {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { data } = await supabase.from('global_chat').select('*').gte('created_at', yesterday).order('created_at', { ascending: true });
+            if (data) setMessages(data);
+        };
+        fetchMessages();
+
+        const channel = supabase.channel('public:global_chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_chat' }, (payload) => {
+            setMessages((prev) => [...prev, payload.new as ChatMessage]);
+        }).subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [currentUserId]);
+
+    const sendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || isBanned) return;
+
+        const textToSend = newMessage;
+        const replyData = replyingTo;
+        
+        setNewMessage(''); 
+        setReplyingTo(null);
+
+        await supabase.from('global_chat').insert([{
+            sender_id: myProfile.id,
+            sender_name: myProfile.name,
+            sender_batch: myProfile.batch,
+            sender_avatar: myProfile.avatar,
+            message: textToSend,
+            reply_to_id: replyData?.id || null,
+            reply_to_name: replyData?.sender_name || null,
+            reply_to_msg: replyData?.message || null
+        }]);
+    };
+
+    const formatTime = (isoString: string) => {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    if (isBanned) {
+        return (
+            <div className="min-h-[80vh] flex flex-col items-center justify-center px-8 text-center pb-20">
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border-2 border-red-500/20">
+                    <ShieldAlert className="w-10 h-10 text-red-500" />
+                </div>
+                <h1 className="text-2xl font-black italic uppercase text-text mb-2">Access Revoked</h1>
+                <p className="text-sm font-bold text-zinc-500 mb-8 max-w-[250px] leading-relaxed">Your chat privileges have been suspended. Contact Karan Sir.</p>
+                <a href="https://wa.me/917054937918" className="w-full max-w-[240px] py-4 rounded-2xl bg-emerald-500 text-white text-sm font-black uppercase shadow-lg flex items-center justify-center gap-2">Contact Admin</a>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative flex flex-col min-h-full">
+            
+            {/* STICKY HEADER */}
+            <div className="sticky top-0 z-[40] bg-background/90 backdrop-blur-xl border-b border-border px-5 py-4 mt-2">
+                <div className="flex items-center gap-4 mb-3">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-inner shrink-0"><MessagesSquare size={22} /></div>
+                    <div>
+                        <h1 className="text-xl font-black italic uppercase tracking-tighter text-text leading-none">Global Hub</h1>
+                        <p className="text-[10px] font-black text-zinc-500 flex items-center gap-1 uppercase tracking-widest mt-1"><Clock size={10} className="text-blue-500" /> Disappears in 24h</p>
+                    </div>
+                </div>
+                <div className="bg-orange-500/5 border border-orange-500/10 rounded-xl py-2 px-3 flex items-center justify-center gap-2 text-orange-500/80">
+                    <AlertTriangle size={12} className="shrink-0" /><span className="text-[8px] font-black uppercase tracking-widest leading-none text-center">Swipe messages to reply.</span>
+                </div>
+            </div>
+
+            {/* MESSAGE LIST */}
+            <div className="flex-1 px-4 pt-6 pb-64 space-y-6">
+                {messages.map((msg) => {
+                    const isMe = msg.sender_id === currentUserId;
+                    return (
+                        <div key={msg.id} className={`relative flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                            
+                            {/* THE SWIPEABLE CONTAINER */}
+                            <motion.div 
+                                drag="x"
+                                dragConstraints={{ left: isMe ? -100 : 0, right: isMe ? 0 : 100 }}
+                                dragSnapToOrigin={true}
+                                dragElastic={0.15}
+                                onDragEnd={(_, info) => {
+                                    // If others text: swipe right (+x). If my text: swipe left (-x).
+                                    const threshold = isMe ? -60 : 60;
+                                    const triggered = isMe ? info.offset.x < threshold : info.offset.x > threshold;
+                                    
+                                    if (triggered) {
+                                        setReplyingTo(msg);
+                                        if (window.navigator.vibrate) window.navigator.vibrate(10);
+                                    }
+                                }}
+                                className={`relative flex gap-2.5 max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                            >
+                                {/* Reply Icons revealed on swipe */}
+                                {!isMe && (
+                                    <div className="absolute left-[-45px] top-1/2 -translate-y-1/2 text-blue-500 opacity-40">
+                                        <Reply size={22} />
+                                    </div>
+                                )}
+                                {isMe && (
+                                    <div className="absolute right-[-45px] top-1/2 -translate-y-1/2 text-blue-500 opacity-40">
+                                        <Reply size={22} className="-scale-x-100" />
+                                    </div>
+                                )}
+
+                                <div className="shrink-0 mt-1">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden shadow-sm">
+                                        {msg.sender_avatar ? <img src={msg.sender_avatar} alt="pfp" className="w-full h-full object-cover" /> : <span className="text-[10px] font-black text-zinc-500 uppercase">{msg.sender_name.charAt(0)}</span>}
+                                    </div>
+                                </div>
+
+                                <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                    <div className={`flex items-center gap-2 mb-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                        <span className="text-[10px] font-black text-text uppercase tracking-tight">{msg.sender_name}</span>
+                                        <span className="text-[7px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/10 uppercase tracking-tighter">{msg.sender_batch}</span>
+                                    </div>
+
+                                    <div className={`px-4 py-2.5 shadow-sm text-sm font-semibold leading-relaxed break-words rounded-2xl ${isMe ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-card border border-border text-text rounded-tl-sm'}`}>
+                                        {msg.reply_to_msg && (
+                                            <div className={`mb-2 p-2 rounded-lg border-l-4 text-[11px] leading-snug line-clamp-2 ${isMe ? 'bg-black/20 border-white/40 text-white/80' : 'bg-zinc-500/10 border-blue-500 text-zinc-400'}`}>
+                                                <p className="font-black uppercase text-[9px] mb-0.5">Replying to {msg.reply_to_name}</p>
+                                                {msg.reply_to_msg}
+                                            </div>
+                                        )}
+                                        {msg.message}
+                                    </div>
+                                    <span className="text-[8px] font-bold text-zinc-500 mt-1 px-1 opacity-60">{formatTime(msg.created_at)}</span>
+                                </div>
+                            </motion.div>
+                        </div>
+                    );
+                })}
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* INPUT AREA + REPLY PREVIEW */}
+            <div className="fixed bottom-[115px] left-5 right-5 z-[60]">
+                <AnimatePresence>
+                    {replyingTo && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="bg-card/90 backdrop-blur-md border-2 border-border border-b-0 p-3 rounded-t-2xl flex items-center justify-between shadow-lg"
+                        >
+                            <div className="flex items-center gap-3 border-l-4 border-blue-500 pl-3 overflow-hidden">
+                                <Reply size={14} className="text-blue-500 shrink-0" />
+                                <div className="overflow-hidden">
+                                    <p className="text-[9px] font-black uppercase text-blue-500">Replying to {replyingTo.sender_name}</p>
+                                    <p className="text-xs font-bold text-zinc-400 truncate">{replyingTo.message}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setReplyingTo(null)} className="p-1.5 bg-zinc-800 rounded-full text-zinc-400 hover:text-white"><X size={14} /></button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <form onSubmit={sendMessage} className="relative group max-w-xl mx-auto">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl blur opacity-20 group-focus-within:opacity-40 transition-opacity" />
+                    <div className={`relative flex items-center gap-2 bg-card border-2 border-border p-1.5 shadow-2xl transition-all ${replyingTo ? 'rounded-b-[1.5rem] border-t-0' : 'rounded-[1.5rem]'}`}>
+                        <input
+                            type="text" value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Message students..."
+                            className="flex-1 bg-transparent pl-4 pr-2 py-3 text-sm font-bold placeholder:text-zinc-500 outline-none text-text"
+                        />
+                        <button type="submit" disabled={!newMessage.trim()} className="w-12 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg active:scale-90 transition-all disabled:opacity-30"><Send size={18} className="ml-0.5" /></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 }
