@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/clean-images?secret=altumcore2026",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
