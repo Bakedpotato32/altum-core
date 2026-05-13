@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User, ArrowRight, Loader2, MessageSquare, Eye, EyeOff, Globe } from 'lucide-react';
 import { useLanguage } from '@/lib/LanguageContext';
-import { getDeviceId } from '@/lib/fingerprint'; // Ensure you created this file as discussed
+import { getDeviceId } from '@/lib/fingerprint';
 
 export default function LoginPage() {
   const { t, lang, toggleLang } = useLanguage();
@@ -75,14 +75,11 @@ export default function LoginPage() {
         } 
         // CASE C: Security Breach / New Device
         else {
-          // If status is already pending or verified on another device
-          // We flag this specific request for your approval
           await supabase.from('students').update({ 
             device_status: 'pending',
             pending_device_id: currentDevice 
           }).eq('id', enteredId);
           
-          // Store ID in local storage temporarily to check status on the pending page
           localStorage.setItem('attemptedLoginId', enteredId);
           router.push('/verification-pending');
         }
@@ -106,11 +103,11 @@ export default function LoginPage() {
   };
 
   return (
-    // FIX 1: Added width: '100%', boxSizing: 'border-box', and changed to 100dvh
-    <div style={{ minHeight: '100dvh', width: '100%', boxSizing: 'border-box', background: 'var(--background)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', color: 'var(--text)', fontFamily: 'inherit', position: 'relative', overflow: 'hidden' }}>
+    // 🚨 NUCLEAR FIX: width: '100vw' forces it to physically span the entire screen width
+    <div style={{ minHeight: '100dvh', width: '100vw', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box', background: 'var(--background)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', color: 'var(--text)', fontFamily: 'inherit', position: 'relative', overflowX: 'hidden' }}>
 
       {/* Ambient orbs */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden', width: '100vw' }}>
         <div style={{ position: 'absolute', top: '-10%', left: '50%', transform: 'translateX(-50%)', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%)', filter: 'blur(50px)' }} />
         <div style={{ position: 'absolute', bottom: '-5%', left: '-10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', filter: 'blur(50px)' }} />
         <div style={{ position: 'absolute', bottom: '10%', right: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
@@ -130,7 +127,8 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+      {/* INNER WRAPPER: margin: '0 auto' guarantees this box sits dead center inside the 100vw screen */}
+      <div style={{ width: '100%', maxWidth: 360, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 1 }}>
 
         {/* ── Logo ── */}
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
@@ -141,7 +139,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* FIX 2: Used clamp() so the font shrinks on small screens instead of pushing the layout left, added whiteSpace: nowrap */}
           <h1 style={{ fontSize: 'clamp(36px, 12vw, 52px)', whiteSpace: 'nowrap', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.04em', lineHeight: 0.9, color: 'var(--text)', marginBottom: 4 }}>
             ALTUM
             <span style={{ color: '#3b82f6', textShadow: '0 0 30px rgba(59,130,246,0.4)', marginLeft: 6 }}>
@@ -159,7 +156,6 @@ export default function LoginPage() {
         </div>
 
         {/* ── Form ── */}
-        {/* FIX 3: Added boxSizing: border-box */}
         <form onSubmit={handleLogin} style={{ width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* Input */}

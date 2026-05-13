@@ -63,11 +63,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content={isDarkMode ? "#050508" : "#f4f7f6"} />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+        {/* FIX: Moved the Script tag into the head section */}
+        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
       </head>
 
       <body className="antialiased font-sans bg-background text-text overscroll-none touch-manipulation" suppressHydrationWarning>
         <NativeAppBehavior />
-        <Script src="https://cdn.tailwindcss.com" strategy="afterInteractive" />
         
         <LanguageContext.Provider value={{ lang, t, toggleLang }}>
           {!isLogin && !isGamePage && (
