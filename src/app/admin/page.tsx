@@ -4,8 +4,8 @@ import {
   ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon,
   Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee,
   Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight,
-  FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2, Trash2, X, ChevronDown,
-  Smartphone, UserX, CheckCircle, Search, RefreshCcw, ShieldAlert, MessagesSquare
+  FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2,
+  Search, RefreshCcw, ShieldAlert, MessagesSquare
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -76,7 +76,7 @@ function DeviceSecurityGate() {
 
   return (
     <div className="mb-8 animate-fade-up" style={{ animationDelay: '150ms' }}>
-      <div className="bg-card border border-border rounded-[2rem] p-5 shadow-sm">
+      <div className="bg-card border border-border rounded-[2rem] p-5 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20">
@@ -97,7 +97,7 @@ function DeviceSecurityGate() {
           <input 
             type="text" placeholder="Search student device..." value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border rounded-2xl py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase outline-none focus:border-orange-500/50 transition-all"
+            className="w-full bg-background border border-border rounded-2xl py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase outline-none focus:border-orange-500 transition-colors"
           />
         </div>
 
@@ -148,7 +148,7 @@ function SectionTitle({ icon, label }: { icon: React.ReactNode, label: string })
 
 function StatCard({ icon, label, value, color, iconColor, delay, pulse }: StatCardProps) {
   return (
-    <div className={`${color} p-4 rounded-[2rem] animate-scale-in ${pulse ? 'ring-2 ring-orange-500/50' : ''}`} style={{ animationDelay: `${100 + (delay ?? 0) * 50}ms` }}>
+    <div className={`${color} p-4 rounded-[2rem] animate-scale-in shadow-sm ${pulse ? 'ring-2 ring-orange-500/50' : ''}`} style={{ animationDelay: `${100 + (delay ?? 0) * 50}ms` }}>
       <div className={`${iconColor} mb-2 ${pulse ? 'animate-pulse' : ''}`}>{icon}</div>
       <p className="text-[8px] font-black uppercase tracking-wider text-zinc-500 mb-0.5">{label}</p>
       <p className="text-lg font-black italic tracking-tight text-text leading-none">{value}</p>
@@ -158,15 +158,25 @@ function StatCard({ icon, label, value, color, iconColor, delay, pulse }: StatCa
 
 function AdminCard({ onClick, icon, label, title, detail, borderAccent, iconBg, textAccent, featured, delay }: AdminCardProps) {
   return (
-    <button onClick={onClick} className={`group relative flex flex-col items-start p-5 rounded-[2rem] bg-card border border-border text-left transition-all duration-300 hover:shadow-xl active:scale-95 animate-fade-up overflow-hidden ${featured ? 'col-span-1 shadow-sm' : ''}`} style={{ animationDelay: `${300 + (delay ?? 0) * 50}ms` }}>
-      <div className={`absolute -right-4 -top-4 w-24 h-24 opacity-[0.03] ${textAccent} transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12`}>{icon}</div>
-      <div className={`w-12 h-12 rounded-2xl ${iconBg} ${textAccent} flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg`}>{icon}</div>
+    <button onClick={onClick} className={`group relative flex flex-col items-start p-5 rounded-[2rem] bg-card border border-border text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 animate-fade-up overflow-hidden ${featured ? 'col-span-1 shadow-sm' : 'shadow-sm'}`} style={{ animationDelay: `${300 + (delay ?? 0) * 50}ms` }}>
+      {/* Faint Background Icon */}
+      <div className={`absolute -right-4 -top-4 w-24 h-24 opacity-[0.04] dark:opacity-[0.02] ${textAccent} transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12`}>
+        {icon}
+      </div>
+      
+      <div className={`w-12 h-12 rounded-2xl ${iconBg} ${textAccent} flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 group-hover:shadow-md`}>
+        {icon}
+      </div>
+      
       <p className={`text-[8px] font-black uppercase tracking-[2px] ${textAccent} mb-1.5`}>{label}</p>
       <h3 className="text-sm font-black italic uppercase tracking-tight text-text leading-none mb-1.5">{title}</h3>
-      <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+      
+      <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
         <p className="text-[9px] font-bold text-zinc-500">{detail}</p>
         <ChevronRight size={10} className="text-zinc-500" />
       </div>
+      
+      {/* Bottom accent bar */}
       <div className={`absolute bottom-0 left-0 h-1 w-0 ${borderAccent.replace('border-', 'bg-')} transition-all duration-500 group-hover:w-full`} />
     </button>
   );
@@ -195,10 +205,25 @@ export default function AdminDashboard() {
   const [assignedClass, setAssignedClass] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const router = useRouter();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const sanitizeClass = (cls: string | null) => {
     if (!cls) return "";
     return cls.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const getGreetingIcon = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return <Sunrise size={14} className="text-amber-500" />;
+    if (hour < 17) return <Sunset size={14} className="text-orange-500" />;
+    return <Moon size={14} className="text-indigo-500" />;
   };
 
   const isMasterAdmin = (role: string | null, cls: string | null) =>
@@ -252,6 +277,13 @@ export default function AdminDashboard() {
     setTimeout(() => setSaved(false), 3000);
   };
 
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [notice]);
+
   if (loading) return <LoadingScreen />;
 
   return (
@@ -276,18 +308,21 @@ export default function AdminDashboard() {
         {/* Header */}
         <header className="flex items-start justify-between mb-8 animate-fade-up">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-lg ring-2 ring-white ring-offset-2 ring-offset-background uppercase">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-[0_4px_20px_rgba(59,130,246,0.3)] ring-2 ring-white ring-offset-2 ring-offset-background uppercase">
               {staffName ? staffName.slice(0,2) : 'PA'}
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[3px] text-zinc-500">Welcome Back</p>
+              <div className="flex items-center gap-1.5 mb-1">
+                {getGreetingIcon()}
+                <p className="text-[10px] font-black uppercase tracking-[3px] text-zinc-500">{getGreeting()}</p>
+              </div>
               <h1 className="text-2xl font-black text-text tracking-tight leading-none">{staffName ?? 'Principal'}</h1>
               <span className="mt-1.5 inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-500/20">
                 {isMasterAdmin(userRole, assignedClass) ? 'Master Admin' : `Class ${assignedClass}`}
               </span>
             </div>
           </div>
-          <button onClick={() => { localStorage.clear(); router.push('/login'); }} className="p-3 rounded-2xl bg-card border border-border text-zinc-500 hover:text-red-500 transition-colors"><LogOut size={18} /></button>
+          <button onClick={() => { localStorage.clear(); router.push('/login'); }} className="p-3 rounded-2xl bg-card border border-border text-zinc-500 hover:text-red-500 hover:bg-red-500/5 transition-colors shadow-sm"><LogOut size={18} /></button>
         </header>
 
         {/* Stats Grid */}
@@ -302,22 +337,42 @@ export default function AdminDashboard() {
 
         {/* Notice Board */}
         <div className="mb-8 animate-fade-up" style={{ animationDelay: '200ms' }}>
-          <div className="bg-card rounded-3xl p-5 border border-border">
+          <div className="bg-card rounded-[2rem] p-5 border border-border shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Bell className="text-blue-500" size={16} />
-                <h3 className="text-xs font-black uppercase tracking-[3px] text-text">Broadcast</h3>
+                <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                  <Bell className="text-blue-500" size={16} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-[3px] text-text">Global Broadcast</h3>
+                  <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Visible to all students</p>
+                </div>
               </div>
-              <span className="text-[9px] font-bold text-zinc-500">{notice.length}/300</span>
+              <span className="text-[9px] font-bold text-zinc-500 bg-background px-2 py-1 rounded-md border border-border">
+                {notice.length}/300
+              </span>
             </div>
-            <textarea value={notice} onChange={(e) => setNotice(e.target.value.slice(0, 300))} rows={3} className="w-full bg-background border border-border rounded-2xl p-4 text-sm font-semibold outline-none focus:border-blue-500 mb-4 resize-none" placeholder="Write notice..." />
-            <button onClick={handleUpdateNotice} disabled={saving} className={`w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[3px] transition-all ${saved ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white'}`}>
-              {saved ? 'Board Updated' : 'Update Board'}
+            
+            <textarea 
+              ref={textareaRef}
+              value={notice} 
+              onChange={(e) => setNotice(e.target.value.slice(0, 300))} 
+              rows={3} 
+              className="w-full bg-background border border-border rounded-2xl p-4 text-sm font-semibold outline-none focus:border-blue-500 transition-colors mb-4 resize-none" 
+              placeholder="Write notice..." 
+            />
+            
+            <button 
+              onClick={handleUpdateNotice} 
+              disabled={saving} 
+              className={`w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-[3px] transition-all active:scale-[0.98] ${saved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'}`}
+            >
+              {saved ? <><Sparkles size={14} /> Board Updated</> : saving ? <><Loader2 size={14} className="animate-spin" /> Syncing...</> : <><Save size={14} /> Update Board</>}
             </button>
           </div>
         </div>
 
-        {/* System Config (2 cards) */}
+        {/* System Config */}
         {isMasterAdmin(userRole, assignedClass) && (
           <section className="mb-8 animate-fade-up" style={{ animationDelay: '300ms' }}>
             <SectionTitle icon={<Settings2 size={13} />} label="System Config" />
@@ -328,18 +383,18 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* Finance & Staff (2 cards) */}
+        {/* Finance & Staff */}
         {isMasterAdmin(userRole, assignedClass) && (
           <section className="mb-8 animate-fade-up" style={{ animationDelay: '400ms' }}>
             <SectionTitle icon={<IndianRupee size={13} />} label="Finance & HR" />
             <div className="grid grid-cols-2 gap-3">
-              <AdminCard onClick={() => router.push('/admin/fees')} icon={<IndianRupee size={22} />} label="Finance" title="Fee Ledger" detail="Collect & Setup" borderAccent="border-emerald-500" iconBg="bg-emerald-500/10" textAccent="text-emerald-500" featured delay={0} />
-              <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users size={22} />} label="Management" title="Staff Hub" detail="Teachers" borderAccent="border-cyan-500" iconBg="bg-cyan-500/10" textAccent="text-cyan-500" featured delay={1} />
+              <AdminCard onClick={() => router.push('/admin/fees')} icon={<IndianRupee size={22} />} label="Finance" title="Fee Ledger" detail="Collect & Setup" borderAccent="border-emerald-500" iconBg="bg-emerald-500/10" textAccent="text-emerald-500" delay={0} />
+              <AdminCard onClick={() => router.push('/admin/staff')} icon={<Users size={22} />} label="Management" title="Staff Hub" detail="Teachers" borderAccent="border-cyan-500" iconBg="bg-cyan-500/10" textAccent="text-cyan-500" delay={1} />
             </div>
           </section>
         )}
 
-        {/* Core Modules (6 cards) */}
+        {/* Core Modules */}
         <section className="mb-8 animate-fade-up" style={{ animationDelay: '500ms' }}>
           <SectionTitle icon={<ListChecks size={13} />} label="Core Modules" />
           <div className="grid grid-cols-2 gap-3">
@@ -352,13 +407,25 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* Campus & Social (2 cards) */}
+        {/* Campus & Social */}
         {isMasterAdmin(userRole, assignedClass) && (
           <section className="animate-fade-up" style={{ animationDelay: '600ms' }}>
             <SectionTitle icon={<MessagesSquare size={13} />} label="Campus & Social" />
             <div className="grid grid-cols-2 gap-3">
               <AdminCard onClick={() => router.push('/admin/chat-mod')} icon={<ShieldAlert size={22} />} label="Moderation" title="Global Hub" detail="Manage Access" borderAccent="border-red-500" iconBg="bg-red-500/10" textAccent="text-red-500" delay={0} />
-              <AdminCard onClick={() => setShowArcade(true)} icon={<Trophy size={22} />} label="Entertainment" title="Arcade DB" detail="Leaderboards" borderAccent="border-orange-500" iconBg="bg-orange-500/10" textAccent="text-orange-500" delay={1} />
+              
+              {/* FIXED ARCADE DB BUTTON */}
+              <AdminCard 
+                onClick={() => router.push('/admin/arcade')} 
+                icon={<Trophy size={22} />} 
+                label="Entertainment" 
+                title="Arcade DB" 
+                detail="Leaderboards" 
+                borderAccent="border-orange-500" 
+                iconBg="bg-orange-500/10" 
+                textAccent="text-orange-500" 
+                delay={1} 
+              />
             </div>
           </section>
         )}
