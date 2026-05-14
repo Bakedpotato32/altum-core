@@ -4,8 +4,7 @@ import {
   ShieldCheck, Bell, Save, LogOut, Calendar as CalendarIcon,
   Trophy, UserPlus, UploadCloud, ListChecks, Users, IndianRupee,
   Sparkles, Settings2, BookMarked, Loader2, GraduationCap, ChevronRight,
-  FileBarChart, Sunrise, Sunset, Moon, Activity, Gamepad2,
-  Search, RefreshCcw, ShieldAlert, MessagesSquare
+  FileBarChart, Sunrise, Sunset, Moon, Activity, ShieldAlert, MessagesSquare
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -33,109 +32,6 @@ type StatCardProps = {
   pulse?: boolean;
 };
 
-// --- COMPONENT: PERMANENT DEVICE SECURITY GATE ---
-function DeviceSecurityGate() {
-  const [requests, setRequests] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState<string | null>(null);
-
-  const fetchRequests = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from('students')
-      .select('id, name, class, device_id, pending_device_id, device_status')
-      .order('device_status', { ascending: false }); 
-    
-    if (data) setRequests(data);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchRequests(); }, []);
-
-  const approveDevice = async (studentId: string, newDeviceId: string) => {
-    setActionId(studentId);
-    const { error } = await supabase.from('students').update({ 
-      device_id: newDeviceId, device_status: 'verified', pending_device_id: null 
-    }).eq('id', studentId);
-    if (!error) fetchRequests();
-    setActionId(null);
-  };
-
-  const blockStudent = async (studentId: string) => {
-    setActionId(studentId);
-    await supabase.from('students').update({ device_status: 'blocked' }).eq('id', studentId);
-    fetchRequests();
-    setActionId(null);
-  };
-
-  const filtered = requests.filter(r => 
-    (r.device_status !== 'verified' || searchQuery !== '') && 
-    r.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  return (
-    <div className="mb-8 animate-fade-up" style={{ animationDelay: '150ms' }}>
-      <div className="bg-card border border-border rounded-[2rem] p-5 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20">
-              <ShieldCheck className="text-orange-500" size={18} />
-            </div>
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-[2px] text-text">Security Gate</h3>
-              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Device Binding Control</p>
-            </div>
-          </div>
-          <button onClick={fetchRequests} className="p-2 hover:bg-zinc-500/10 rounded-xl transition-colors">
-            <RefreshCcw size={14} className={loading ? 'animate-spin text-orange-500' : 'text-zinc-400'} />
-          </button>
-        </div>
-
-        <div className="relative mb-4">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" size={12} />
-          <input 
-            type="text" placeholder="Search student device..." value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-background border border-border rounded-2xl py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase outline-none focus:border-orange-500 transition-colors"
-          />
-        </div>
-
-        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-          {loading ? (
-             <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-orange-500" /></div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed border-border rounded-[1.5rem]">
-              <p className="text-[10px] font-black text-zinc-400 uppercase italic">All Systems Secure</p>
-            </div>
-          ) : (
-            filtered.map((student) => (
-              <div key={student.id} className="p-4 rounded-[1.5rem] bg-background border border-border flex flex-col gap-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-[11px] font-black italic uppercase text-text">{student.name}</h4>
-                    <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">ID: {student.id} • {student.class}</p>
-                  </div>
-                  <span className={`text-[7px] font-black px-2 py-0.5 rounded-md uppercase ${
-                    student.device_status === 'blocked' ? 'bg-red-500 text-white' : 
-                    student.device_status === 'pending' ? 'bg-orange-500 text-white animate-pulse' : 'bg-emerald-500/10 text-emerald-500'
-                  }`}>
-                    {student.device_status}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => approveDevice(student.id, student.pending_device_id || student.device_id)} disabled={!!actionId || student.device_status === 'verified'} className="bg-emerald-500 text-white py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 disabled:opacity-30">Approve</button>
-                  <button onClick={() => blockStudent(student.id)} disabled={!!actionId || student.device_status === 'blocked'} className="bg-red-500 text-white py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 disabled:opacity-30">Block</button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // --- SHARED UI COMPONENTS ---
 function SectionTitle({ icon, label }: { icon: React.ReactNode, label: string }) {
   return (
@@ -159,24 +55,14 @@ function StatCard({ icon, label, value, color, iconColor, delay, pulse }: StatCa
 function AdminCard({ onClick, icon, label, title, detail, borderAccent, iconBg, textAccent, featured, delay }: AdminCardProps) {
   return (
     <button onClick={onClick} className={`group relative flex flex-col items-start p-5 rounded-[2rem] bg-card border border-border text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 animate-fade-up overflow-hidden ${featured ? 'col-span-1 shadow-sm' : 'shadow-sm'}`} style={{ animationDelay: `${300 + (delay ?? 0) * 50}ms` }}>
-      {/* Faint Background Icon */}
-      <div className={`absolute -right-4 -top-4 w-24 h-24 opacity-[0.04] dark:opacity-[0.02] ${textAccent} transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12`}>
-        {icon}
-      </div>
-      
-      <div className={`w-12 h-12 rounded-2xl ${iconBg} ${textAccent} flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 group-hover:shadow-md`}>
-        {icon}
-      </div>
-      
+      <div className={`absolute -right-4 -top-4 w-24 h-24 opacity-[0.04] dark:opacity-[0.02] ${textAccent} transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12`}>{icon}</div>
+      <div className={`w-12 h-12 rounded-2xl ${iconBg} ${textAccent} flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 group-hover:shadow-md`}>{icon}</div>
       <p className={`text-[8px] font-black uppercase tracking-[2px] ${textAccent} mb-1.5`}>{label}</p>
       <h3 className="text-sm font-black italic uppercase tracking-tight text-text leading-none mb-1.5">{title}</h3>
-      
       <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
         <p className="text-[9px] font-bold text-zinc-500">{detail}</p>
         <ChevronRight size={10} className="text-zinc-500" />
       </div>
-      
-      {/* Bottom accent bar */}
       <div className={`absolute bottom-0 left-0 h-1 w-0 ${borderAccent.replace('border-', 'bg-')} transition-all duration-500 group-hover:w-full`} />
     </button>
   );
@@ -308,7 +194,7 @@ export default function AdminDashboard() {
         {/* Header */}
         <header className="flex items-start justify-between mb-8 animate-fade-up">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-[0_4px_20px_rgba(59,130,246,0.3)] ring-2 ring-white ring-offset-2 ring-offset-background uppercase">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-lg ring-2 ring-white ring-offset-2 ring-offset-background uppercase">
               {staffName ? staffName.slice(0,2) : 'PA'}
             </div>
             <div>
@@ -331,9 +217,6 @@ export default function AdminDashboard() {
           <StatCard icon={<ShieldCheck size={18} />} label="Security" value={pendingSecurity > 0 ? `${pendingSecurity} Alert` : 'Secure'} color="bg-card border border-border" iconColor={pendingSecurity > 0 ? "text-orange-500" : "text-blue-500"} delay={1} pulse={pendingSecurity > 0} />
           <StatCard icon={<Activity size={18} />} label="Status" value="Live" color="bg-card border border-border" iconColor="text-emerald-500" delay={2} />
         </div>
-
-        {/* --- SECURITY GATE --- */}
-        {isMasterAdmin(userRole, assignedClass) && <DeviceSecurityGate />}
 
         {/* Notice Board */}
         <div className="mb-8 animate-fade-up" style={{ animationDelay: '200ms' }}>
@@ -371,6 +254,27 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+
+        {/* Security & Access */}
+        {isMasterAdmin(userRole, assignedClass) && (
+          <section className="mb-8 animate-fade-up" style={{ animationDelay: '250ms' }}>
+            <SectionTitle icon={<ShieldCheck size={13} />} label="Security & Access" />
+            <div className="grid grid-cols-1 gap-3">
+              <AdminCard 
+                onClick={() => router.push('/admin/security')} 
+                icon={<ShieldCheck size={22} />} 
+                label="Authentication" 
+                title="Security Gate" 
+                detail={pendingSecurity > 0 ? `${pendingSecurity} Devices Pending` : 'All Systems Secure'} 
+                borderAccent="border-orange-500" 
+                iconBg="bg-orange-500/10" 
+                textAccent="text-orange-500" 
+                featured
+                delay={0} 
+              />
+            </div>
+          </section>
+        )}
 
         {/* System Config */}
         {isMasterAdmin(userRole, assignedClass) && (
@@ -413,8 +317,6 @@ export default function AdminDashboard() {
             <SectionTitle icon={<MessagesSquare size={13} />} label="Campus & Social" />
             <div className="grid grid-cols-2 gap-3">
               <AdminCard onClick={() => router.push('/admin/chat-mod')} icon={<ShieldAlert size={22} />} label="Moderation" title="Global Hub" detail="Manage Access" borderAccent="border-red-500" iconBg="bg-red-500/10" textAccent="text-red-500" delay={0} />
-              
-              {/* FIXED ARCADE DB BUTTON */}
               <AdminCard 
                 onClick={() => router.push('/admin/arcade')} 
                 icon={<Trophy size={22} />} 
