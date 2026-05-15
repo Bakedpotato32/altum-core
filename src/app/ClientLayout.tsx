@@ -25,10 +25,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const isLogin = pathname === '/login' || pathname === '/';
   const isKidsGame = pathname.startsWith('/kids/') || pathname === '/kids/alphabet' || pathname === '/kids/colors' || pathname === '/kids/numbers' || pathname === '/kids/theater';
+  
+  // NEW: Detect if we are anywhere inside the Arcade (menu or playing a game)
+  const isArcade = pathname.startsWith('/arcade');
 
   if (!mounted) return null;
 
-  // 1. Fullscreen Mode for Login and Kids Games
+  // 1. Fullscreen Mode for Login and Kids Games (No Header, No Nav)
   if (isLogin || isKidsGame) {
     return (
       <LanguageContext.Provider value={{ lang, t: (k:any)=>dict[lang as 'EN']?.[k] || k, toggleLang }}>
@@ -39,16 +42,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     );
   }
 
-  // 2. ULTIMATE PWA LAYOUT
+  // 2. ULTIMATE PWA LAYOUT (With Header)
   return (
     <LanguageContext.Provider value={{ lang, t: (k:any)=>dict[lang as 'EN']?.[k] || k, toggleLang }}>
       
-      {/* FIXED INSET-0: This physically locks the app to the 4 corners of the screen.
-        It prevents the body from scrolling and fixes the top-bar cut-off issue.
-      */}
       <div className="fixed inset-0 bg-[#f8fafc] text-slate-900 font-sans flex flex-col overflow-hidden">
         
-        {/* FROSTED HEADER - Flex-none ensures it never shrinks or gets cut off */}
+        {/* FROSTED HEADER */}
         <header 
           className="flex-none z-[1000] w-full flex justify-between items-center px-5 bg-[#f8fafc]/85 backdrop-blur-xl border-b border-slate-200/60"
           style={{ 
@@ -77,25 +77,26 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* SCROLLABLE MAIN CONTENT
-          flex-1 lets it take up remaining space.
-          pb-[120px] gives massive padding at the bottom so the last card is NOT stuck behind the nav!
+          If we are in the Arcade, we remove the 130px bottom padding so the game uses the full screen.
         */}
-        <main className="flex-1 w-full overflow-y-auto overflow-x-hidden no-scrollbar pb-[130px] pt-2 relative scroll-smooth">
+        <main className={`flex-1 w-full overflow-y-auto overflow-x-hidden no-scrollbar pt-2 relative scroll-smooth ${isArcade ? 'pb-4' : 'pb-[130px]'}`}>
           {children}
         </main>
 
-        {/* FLOATING BOTTOM NAV - Anchored absolutely to the locked container */}
-        <nav 
-          className="absolute left-5 right-5 h-[72px] bg-white/95 backdrop-blur-lg rounded-[28px] flex justify-around items-center border border-slate-100 shadow-[0_15px_40px_rgba(0,0,0,0.08)] z-[1000] px-2"
-          style={{ 
-            bottom: 'calc(24px + env(safe-area-inset-bottom))' 
-          }}
-        >
-           <NavIcon active={pathname === '/dashboard'} onClick={() => router.replace('/dashboard')} icon={<Home size={24} strokeWidth={2.5} />} />
-           <NavIcon active={pathname.startsWith('/Materials')} onClick={() => router.replace('/Materials')} icon={<BookOpen size={24} strokeWidth={2.5} />} />
-           <NavIcon active={pathname === '/ai-chat'} onClick={() => router.replace('/ai-chat')} icon={<MessagesSquare size={24} strokeWidth={2.5} />} />
-           <NavIcon active={pathname.startsWith('/profile')} onClick={() => router.replace('/profile')} icon={<User size={24} strokeWidth={2.5} />} />
-        </nav>
+        {/* FLOATING BOTTOM NAV - Hidden when in Arcade */}
+        {!isArcade && (
+          <nav 
+            className="absolute left-5 right-5 h-[72px] bg-white/95 backdrop-blur-lg rounded-[28px] flex justify-around items-center border border-slate-100 shadow-[0_15px_40px_rgba(0,0,0,0.08)] z-[1000] px-2"
+            style={{ 
+              bottom: 'calc(24px + env(safe-area-inset-bottom))' 
+            }}
+          >
+             <NavIcon active={pathname === '/dashboard'} onClick={() => router.replace('/dashboard')} icon={<Home size={24} strokeWidth={2.5} />} />
+             <NavIcon active={pathname.startsWith('/Materials')} onClick={() => router.replace('/Materials')} icon={<BookOpen size={24} strokeWidth={2.5} />} />
+             <NavIcon active={pathname === '/ai-chat'} onClick={() => router.replace('/ai-chat')} icon={<MessagesSquare size={24} strokeWidth={2.5} />} />
+             <NavIcon active={pathname.startsWith('/profile')} onClick={() => router.replace('/profile')} icon={<User size={24} strokeWidth={2.5} />} />
+          </nav>
+        )}
 
       </div>
     </LanguageContext.Provider>
