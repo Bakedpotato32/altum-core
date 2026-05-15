@@ -2,7 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Sparkles, Video, Type, Hash, Palette, Star } from 'lucide-react';
+import { ChevronLeft, Sparkles, Video, Type, Hash, Palette, Star, Puzzle, Brain, PenTool, Music, Paintbrush } from 'lucide-react';
 import { useLanguage } from '@/lib/LanguageContext';
 
 export default function KidsHub() {
@@ -13,7 +13,7 @@ export default function KidsHub() {
     <div style={{ 
       minHeight: '100svh', 
       width: '100vw', 
-      background: '#f8fafc', // Light mode background
+      background: '#f8fafc', 
       color: '#0f172a', 
       position: 'relative', 
       overflowX: 'hidden',
@@ -51,7 +51,7 @@ export default function KidsHub() {
             cursor: 'pointer'
           }}
         >
-          <ChevronLeft size={18} strokeWidth={3} /> {t('exitZone')}
+          <ChevronLeft size={18} strokeWidth={3} /> {t('exitZone') || 'EXIT ZONE'}
         </motion.button>
 
         {/* --- HEADER --- */}
@@ -59,7 +59,7 @@ export default function KidsHub() {
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <h1 style={{ fontSize: '48px', fontWeight: 900, textTransform: 'uppercase', margin: 0, letterSpacing: '-2px', lineHeight: 1 }}>
               {lang === 'EN' ? (
-                <>LET'S <span style={{ background: 'linear-gradient(to right, #FF416C, #8E2DE2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>PLAY!</span></>
+                <>LET&apos;S <span style={{ background: 'linear-gradient(to right, #FF416C, #8E2DE2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>PLAY!</span></>
               ) : (
                 <span style={{ background: 'linear-gradient(to right, #FF416C, #8E2DE2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('letsPlay')}</span>
               )} 🎈
@@ -73,13 +73,35 @@ export default function KidsHub() {
             </motion.div>
           </div>
           <p style={{ margin: '10px 0 0 0', fontSize: '12px', fontWeight: 900, opacity: 0.4, letterSpacing: '2px', textTransform: 'uppercase' }}>
-            {t('pickAdventure')}
+            {t('pickAdventure') || 'PICK A LEARNING ADVENTURE'}
           </p>
         </div>
 
         {/* --- LIST OF ADVENTURES --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
+          {/* TRACE IT CARD (AT THE VERY TOP) */}
+          <KidsCard 
+            onClick={() => router.push('/kids/trace-it')}
+            gradient="linear-gradient(135deg, #0EA5E9, #2563EB)"
+            shadow="rgba(14, 165, 233, 0.4)"
+            icon={<PenTool size={32} color="#fff" strokeWidth={3} />}
+            emoji="✍️"
+            title="TRACE IT"
+            subtitle="FOLLOW THE LINE"
+          />
+
+          {/* DRAW ANYTHING CARD */}
+          <KidsCard 
+            onClick={() => router.push('/kids/draw-anything')}
+            gradient="linear-gradient(135deg, #F43F5E, #FB923C)"
+            shadow="rgba(244, 63, 94, 0.4)"
+            icon={<Paintbrush size={32} color="#fff" strokeWidth={3} />}
+            emoji="🖍️"
+            title="FREE DRAW"
+            subtitle="COLOR & CREATE"
+          />
+
           {/* A B C CARD */}
           <KidsCard 
             onClick={() => router.push('/kids/alphabet')}
@@ -88,7 +110,7 @@ export default function KidsHub() {
             icon={<Type size={32} color="#fff" strokeWidth={3} />}
             emoji="🍎"
             title="A B C"
-            subtitle={t('abcCards')}
+            subtitle={t('abcCards') || 'TALKING FLASHCARDS'}
           />
 
           {/* 1 2 3 CARD */}
@@ -99,7 +121,7 @@ export default function KidsHub() {
             icon={<Hash size={32} color="#fff" strokeWidth={3} />}
             emoji="🚀"
             title="1 2 3"
-            subtitle={t('countAnimals')}
+            subtitle={t('countAnimals') || 'COUNT THE ANIMALS'}
           />
 
           {/* THEATER CARD */}
@@ -110,7 +132,7 @@ export default function KidsHub() {
             icon={<Video size={32} color="#fff" strokeWidth={3} />}
             emoji="📺"
             title="THEATER"
-            subtitle={t('watchLearn')}
+            subtitle={t('watchLearn') || 'WATCH & LEARN'}
           />
 
           {/* COLORS CARD */}
@@ -120,8 +142,41 @@ export default function KidsHub() {
             shadow="rgba(142, 45, 226, 0.4)"
             icon={<Palette size={32} color="#fff" strokeWidth={3} />}
             emoji="🎨"
-            title={t('colors')}
+            title={t('colors') || 'COLORS'}
             subtitle="TAP & SPLASH"
+          />
+
+          {/* PUZZLE WORLD CARD */}
+          <KidsCard 
+            onClick={() => router.push('/kids/puzzle-world')}
+            gradient="linear-gradient(135deg, #11998E, #38EF7D)"
+            shadow="rgba(56, 239, 125, 0.4)"
+            icon={<Puzzle size={32} color="#fff" strokeWidth={3} />}
+            emoji="🧩"
+            title="PUZZLES"
+            subtitle="DRAG & MATCH"
+          />
+
+          {/* MEMORY MATCH CARD */}
+          <KidsCard 
+            onClick={() => router.push('/kids/memory-match')}
+            gradient="linear-gradient(135deg, #EC008C, #FC6767)"
+            shadow="rgba(236, 0, 140, 0.4)"
+            icon={<Brain size={32} color="#fff" strokeWidth={3} />}
+            emoji="🧠"
+            title="MEMORY"
+            subtitle="FIND THE PAIR"
+          />
+
+          {/* MUSIC BOX CARD */}
+          <KidsCard 
+            onClick={() => router.push('/kids/music-box')}
+            gradient="linear-gradient(135deg, #D946EF, #9333EA)"
+            shadow="rgba(217, 70, 239, 0.4)"
+            icon={<Music size={32} color="#fff" strokeWidth={3} />}
+            emoji="🎵"
+            title="MUSIC BOX"
+            subtitle="MAKE A BEAT"
           />
 
         </div>
@@ -130,8 +185,18 @@ export default function KidsHub() {
   );
 }
 
-// Reusable Vibrant Card Component
-function KidsCard({ onClick, gradient, shadow, icon, emoji, title, subtitle }: any) {
+// Fixed Types for the Card Component
+interface KidsCardProps {
+  onClick: () => void;
+  gradient: string;
+  shadow: string;
+  icon: React.ReactNode;
+  emoji: string;
+  title: string;
+  subtitle: string;
+}
+
+function KidsCard({ onClick, gradient, shadow, icon, emoji, title, subtitle }: KidsCardProps) {
   return (
     <motion.div 
       whileTap={{ scale: 0.95 }}
