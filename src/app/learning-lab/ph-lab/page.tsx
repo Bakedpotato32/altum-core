@@ -2,26 +2,63 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
-import PhColorLab from '@/components/PhColorLab';
+import { ChevronLeft, TestTube } from 'lucide-react';
+import PhColorLab from '@/components/PhColorLab'; // Adjust import path if needed
 
 export default function PhLabPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen p-5 pt-24 pb-32 bg-background">
+    <div style={{ 
+      padding: '40px 20px 120px', 
+      maxWidth: '500px', 
+      margin: '0 auto', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px', 
+      background: '#fff', 
+      minHeight: '100svh' 
+    }}>
       
-      {/* Back Button */}
-      <button 
-        onClick={() => router.push('/learning-lab')}
-        className="w-10 h-10 mb-6 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm active:scale-95 transition-transform"
-      >
-        <ChevronLeft className="w-6 h-6 text-text" />
-      </button>
+      {/* Header (Clean & Modern Dashboard Style) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button 
+          onClick={() => router.back()}
+          style={{
+            width: '48px', 
+            height: '48px', 
+            borderRadius: '16px', 
+            background: '#f8fafc',
+            border: '2px solid #f1f5f9', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            cursor: 'pointer', 
+            flexShrink: 0,
+            transition: 'all 0.2s ease'
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <ChevronLeft size={26} color="#334155" strokeWidth={2.5} />
+        </button>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+            <TestTube size={14} color="#8b5cf6" strokeWidth={3} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, color: '#8b5cf6', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              Chemistry Engine
+            </p>
+          </div>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#0f172a', lineHeight: 1 }}>
+            pH Color Lab
+          </h1>
+        </div>
+      </div>
 
-      {/* The Simulation Component */}
-      <PhColorLab />
-
+      {/* Solver Component Wrapper */}
+      <div>
+        <PhColorLab />
+      </div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Trophy, Play, RotateCcw, Target, Zap, Loader2, Sparkles, Shield, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Trophy, Play, RotateCcw, Loader2, Sparkles, Shield, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- CONSTANTS ---
 const CANVAS_WIDTH = 340;
@@ -418,91 +419,141 @@ export default function NeonBreakout() {
 
   return (
     // STRICT TOUCH LOCK
-    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden select-none touch-none overscroll-none transition-colors duration-200 ${flash ? 'bg-red-950/30' : ''}`}>
+    <div style={{
+      minHeight: '100dvh',
+      background: flash ? 'rgba(239, 68, 68, 0.1)' : '#fff',
+      padding: '40px 20px 120px',
+      maxWidth: '500px',
+      margin: '0 auto',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      transition: 'background 0.2s ease',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      overflow: 'hidden',
+      touchAction: 'none'
+    }}>
       
       {/* Background */}
-      <div className="fixed inset-0 -z-10 pointer-events-none transition-all duration-1000">
-        <div className={`absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full ${gameState === 'gameover' ? 'bg-red-500/10' : 'bg-rose-500/10'} blur-[80px]`} />
-        <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-pink-500/10 blur-[80px]" />
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: 'rgba(244, 63, 94, 0.1)', filter: 'blur(80px)' }} />
+        <div style={{ position: 'absolute', bottom: '20%', left: '-10%', width: '260px', height: '260px', borderRadius: '50%', background: 'rgba(225, 29, 72, 0.1)', filter: 'blur(80px)' }} />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col items-center h-full relative z-10">
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
         
         {/* Header */}
-        <div className="w-full flex justify-between items-center mb-6">
-          <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 z-50">
-            <ChevronLeft size={20} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+          <button 
+            onPointerDown={handleBack} 
+            style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <ChevronLeft size={24} strokeWidth={2.5} />
           </button>
-          <div className="text-right">
-            <h1 className="text-xl font-black italic uppercase tracking-tighter text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.4)]">Neon Breakout</h1>
-            <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Node {level}</p>
+          <div style={{ textAlign: 'right' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#f43f5e' }}>Neon Breakout</h1>
+            <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Node {level}</p>
           </div>
         </div>
 
         {/* Score */}
-        <div className="w-full flex gap-3 mb-6">
-          <div className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Score</span>
-            <span className="text-3xl font-black italic text-[var(--text)] leading-none">{score}</span>
+        <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '24px' }}>
+          <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Score</span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', lineHeight: 1 }}>{score}</span>
           </div>
-          <div className="flex-1 bg-rose-500/5 border border-rose-500/20 rounded-2xl p-3 flex flex-col items-center justify-center shadow-inner">
-            <span className="text-[10px] font-black text-rose-500/70 uppercase tracking-widest flex items-center gap-1 mb-1"><Trophy size={10}/> Best</span>
-            <span className="text-3xl font-black italic text-rose-500 leading-none">{highScore}</span>
+          <div style={{ flex: 1, background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(244, 63, 94, 0.1)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: 'rgba(244, 63, 94, 0.7)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Trophy size={12} /> Best
+            </span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#f43f5e', lineHeight: 1 }}>{highScore}</span>
           </div>
         </div>
 
-        {/* GAME CANVAS WRAPPER (Captures touch anywhere inside it) */}
+        {/* GAME CANVAS WRAPPER */}
         <div 
           onPointerMove={handleTouch}
-          className={`relative w-full aspect-[34/48] max-h-[460px] bg-[#020202] rounded-[32px] border-2 transition-all duration-300 overflow-hidden shadow-2xl touch-none ${flash ? 'border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.4)]' : 'border-[var(--border)]'}`}
+          style={{
+            position: 'relative', 
+            width: '100%', 
+            maxWidth: '340px', 
+            height: '460px', 
+            background: '#050505', 
+            borderRadius: '30px', 
+            border: flash ? '2px solid #ef4444' : '2px solid rgba(244, 63, 94, 0.3)', 
+            overflow: 'hidden', 
+            transition: 'border 0.2s ease, box-shadow 0.2s ease',
+            boxShadow: flash ? '0 0 50px rgba(239, 68, 68, 0.4)' : '0 10px 40px rgba(244, 63, 94, 0.15)',
+            touchAction: 'none'
+          }}
         >
-          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full block" />
+          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ width: '100%', height: '100%', display: 'block' }} />
 
           {/* Overlays */}
-          {gameState === 'idle' && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 pointer-events-none">
-              <button onPointerDown={startNewGame} className="px-10 py-4 bg-rose-500 text-white font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-[0_0_30px_rgba(244,63,94,0.4)] pointer-events-auto">
-                <Play size={18} fill="currentColor" /> Initialize
-              </button>
-              <p className="text-[8px] font-black text-rose-300/60 uppercase tracking-[0.2em] mt-4">Engages Fullscreen</p>
-            </div>
-          )}
+          <AnimatePresence>
+            {gameState === 'idle' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+                <button 
+                  onPointerDown={startNewGame} 
+                  style={{ padding: '16px 40px', background: '#f43f5e', color: '#fff', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(244, 63, 94, 0.4)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <Play size={18} fill="currentColor" /> Initialize
+                </button>
+                <p style={{ margin: '24px 0 0 0', fontSize: '10px', fontWeight: 900, color: 'rgba(244, 63, 94, 0.6)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Engages Fullscreen</p>
+              </motion.div>
+            )}
 
-          {gameState === 'leveling' && (
-            <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-md flex flex-col items-center justify-center z-20 pointer-events-none">
-              <Sparkles size={48} className="text-emerald-500 mb-4 animate-bounce" />
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white">Node Cleared</h2>
-              <button onPointerDown={startNextLevel} className="mt-6 px-10 py-4 bg-white text-emerald-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-xl pointer-events-auto">
-                Next Node <ChevronRight size={18} />
-              </button>
-            </div>
-          )}
+            {gameState === 'leveling' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(16, 185, 129, 0.1)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+                <Sparkles size={48} color="#10b981" style={{ marginBottom: '16px' }} className="animate-bounce" />
+                <h2 style={{ margin: '0 0 24px 0', fontSize: '28px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff' }}>Node Cleared</h2>
+                <button 
+                  onPointerDown={startNextLevel} 
+                  style={{ padding: '16px 40px', background: '#fff', color: '#10b981', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  Next Node <ChevronRight size={18} />
+                </button>
+              </motion.div>
+            )}
 
-          {gameState === 'gameover' && (
-            <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 p-6 text-center pointer-events-none">
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1">Core Fracture</h2>
-              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-8">System offline at Node {level}</p>
-              <button onPointerDown={startNewGame} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 active:scale-95 shadow-2xl pointer-events-auto">
-                <RotateCcw size={18} /> Reboot
-              </button>
-              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase tracking-widest animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing...</p>}
-            </div>
-          )}
+            {gameState === 'gameover' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(69, 10, 10, 0.9)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', zIndex: 20 }}>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '32px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff' }}>Core Fracture</h2>
+                <p style={{ margin: '0 0 32px 0', fontSize: '10px', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px' }}>System offline at Node {level}</p>
+                <button 
+                  onPointerDown={startNewGame} 
+                  style={{ padding: '16px 40px', background: '#fff', color: '#dc2626', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <RotateCcw size={18} /> Reboot
+                </button>
+                {isSyncing && <p style={{ margin: '16px 0 0 0', fontSize: '8px', fontWeight: 900, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '8px' }} className="animate-pulse"><Loader2 size={10} className="animate-spin" /> Syncing Data...</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
         {/* Legend */}
-        <div className="flex gap-4 mt-8 opacity-60">
-           <div className="flex items-center gap-2 bg-[var(--card)] px-3 py-1.5 rounded-full border border-[var(--border)] shadow-sm">
-             <div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_#a855f7]" />
-             <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest">Wide</span>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '32px', opacity: 0.8 }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '6px 12px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a855f7', boxShadow: '0 0 8px #a855f7' }} />
+             <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Wide</span>
            </div>
-           <div className="flex items-center gap-2 bg-[var(--card)] px-3 py-1.5 rounded-full border border-[var(--border)] shadow-sm">
-             <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-             <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest">Multi</span>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '6px 12px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22d3ee', boxShadow: '0 0 8px #22d3ee' }} />
+             <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Multi</span>
            </div>
-           <div className="flex items-center gap-2 bg-[var(--card)] px-3 py-1.5 rounded-full border border-[var(--border)] shadow-sm">
-             <Shield size={8} className="text-zinc-500" />
-             <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest">Wall</span>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '6px 12px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+             <Shield size={10} color="#94a3b8" />
+             <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Wall</span>
            </div>
         </div>
 

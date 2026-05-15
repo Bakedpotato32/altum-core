@@ -1,9 +1,10 @@
 'use client';
 import React, { useState, useRef, useCallback } from 'react';
 import { 
-    Droplet, TestTube, RotateCcw, Activity, 
-    Clock, Trash2, CheckCircle2, Info, BookOpen, Sparkles
+    Droplet, TestTube, RotateCcw, Clock, Trash2, 
+    CheckCircle2, Info, BookOpen, Sparkles, GripHorizontal
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Liquid {
     id: string; 
@@ -36,48 +37,48 @@ const MYSTERY_LIQUIDS: Liquid[] = [
     { 
         id: '4', name: 'Tomato Juice', ph: 4, colorHex: '#eab308', liquidColorHex: '#b91c1c', type: 'acid', strength: 'weak',
         description: 'Tomatoes contain a mix of malic acid and citric acid, making them mildly acidic.',
-        funFact: 'In the 1500s, wealthy Europeans thought tomatoes were poisonous. Why? The acid in the tomato juice would leach lead out of their fancy pewter plates, causing lead poisoning!' 
+        funFact: 'In the 1500s, wealthy Europeans thought tomatoes were poisonous. The acid in the tomato juice would leach lead out of their fancy pewter plates!' 
     },
     { 
         id: '5', name: 'Black Coffee', ph: 5, colorHex: '#fde047', liquidColorHex: '#451a03', type: 'acid', strength: 'weak',
         description: 'Coffee owes its slight acidity to chlorogenic acids released when the coffee beans are roasted.',
-        funFact: 'Counter-intuitively, dark roast coffee actually has LESS acid than light roast coffee, because the longer roasting process breaks the acids down.' 
+        funFact: 'Counter-intuitively, dark roast coffee actually has LESS acid than light roast coffee, because the longer roasting breaks the acids down.' 
     },
     { 
         id: '6', name: 'Pure Water', ph: 7, colorHex: '#22c55e', liquidColorHex: '#cffafe', type: 'neutral', strength: 'none',
         description: 'Perfectly neutral. The concentration of Hydrogen ions [H⁺] is exactly equal to Hydroxide ions [OH⁻].',
-        funFact: '100% pure water actually does NOT conduct electricity well! It is the dissolved minerals and salts in everyday tap water that make it dangerous near electronics.' 
+        funFact: '100% pure water actually does NOT conduct electricity well! It is the dissolved minerals and salts in tap water that make it dangerous.' 
     },
     { 
         id: '7', name: 'Baking Soda', ph: 9, colorHex: '#14b8a6', liquidColorHex: '#f1f5f9', type: 'base', strength: 'weak',
         description: 'Sodium bicarbonate (NaHCO₃) is a mild base widely used in baking and cleaning.',
-        funFact: 'When you mix baking soda (a base) with vinegar (an acid), they rapidly neutralize each other, releasing a massive explosion of Carbon Dioxide gas. This is the classic volcano science fair trick!' 
+        funFact: 'When you mix baking soda with vinegar, they rapidly neutralize each other, releasing a massive explosion of Carbon Dioxide gas.' 
     },
     { 
         id: '8', name: 'Soap Solution', ph: 10, colorHex: '#3b82f6', liquidColorHex: '#e2e8f0', type: 'base', strength: 'weak',
         description: 'Soap is created through "saponification"—mixing fats/oils with a strong alkaline base (like lye).',
-        funFact: 'Have you ever noticed bleach or strong soap feels "slippery" on your fingers? That is the strong base reacting with the natural oils in your skin to literally turn your fingers into soap!' 
+        funFact: 'Have you ever noticed bleach or strong soap feels "slippery"? That is the strong base reacting with the natural oils in your skin to turn your fingers into soap!' 
     },
     { 
         id: '9', name: 'Ammonia', ph: 12, colorHex: '#4338ca', liquidColorHex: '#f8fafc', type: 'base', strength: 'strong',
-        description: 'Ammonia (NH₃) is a strong alkaline compound used in commercial glass cleaners and agricultural fertilizers.',
-        funFact: 'Ammonia smells absolutely terrible to humans, but it is abundant in space! The atmospheres of gas giants like Jupiter and Saturn are packed with swirling clouds of ammonia crystals.' 
+        description: 'Ammonia (NH₃) is a strong alkaline compound used in commercial glass cleaners and fertilizers.',
+        funFact: 'Ammonia smells terrible to humans, but it is abundant in space! The atmospheres of gas giants like Jupiter are packed with ammonia crystals.' 
     },
     { 
         id: '10', name: 'Liquid Bleach', ph: 13, colorHex: '#6d28d9', liquidColorHex: '#ecfccb', type: 'base', strength: 'strong',
         description: 'Household bleach contains Sodium Hypochlorite (NaClO), a powerful oxidizer and strong base.',
-        funFact: 'Bleach doesn\'t actually "remove" dirt. It breaks the chemical bonds of "chromophores" (the parts of a molecule that absorb light). The stain is technically still there, but it becomes completely invisible to human eyes!' 
+        funFact: 'Bleach doesn\'t actually "remove" dirt. It breaks the chemical bonds that absorb light. The stain is still there, but it becomes completely invisible!' 
     },
     { 
         id: '11', name: 'Drain Cleaner', ph: 14, colorHex: '#4c1d95', liquidColorHex: '#cbd5e1', type: 'base', strength: 'strong',
-        description: 'The strongest base on the pH scale. Drain cleaners usually contain highly concentrated Sodium Hydroxide (NaOH).',
-        funFact: 'It clears clogged pipes by generating immense heat and literally liquefying solid clumps of hair and grease so they can wash down the drain.' 
+        description: 'The strongest base on the pH scale. Drain cleaners usually contain concentrated Sodium Hydroxide (NaOH).',
+        funFact: 'It clears clogged pipes by generating immense heat and literally liquefying solid clumps of hair and grease.' 
     },
 ];
 
 const SciNotation = ({ base, exp }: { base: string, exp: number }) => (
-    <span className="inline-flex items-baseline">
-        {base} × 10<sup className="text-[0.7em] ml-[1px]">{exp}</sup>
+    <span style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+        {base} × 10<sup style={{ fontSize: '0.7em', marginLeft: '2px' }}>{exp}</sup>
     </span>
 );
 
@@ -114,12 +115,12 @@ export default function PhColorLab() {
     };
 
     const checkCollision = useCallback((x: number, y: number) => {
-        // BUG FIXED: Removed the `soakStage === 'soaked'` return block here so it keeps tracking!
         if (!selectedLiquid) return;
 
-        const tubeSurfaceY = 160; 
-        const tubeCenterX = 150; 
+        const containerWidth = containerRef.current?.clientWidth || 300;
+        const tubeCenterX = containerWidth / 2; 
         const tubeWidth = 64; 
+        const tubeSurfaceY = 160; 
 
         const paperBottomY = INITIAL_Y + y + 140; 
         const paperCenterX = INITIAL_X + x + 16; 
@@ -140,9 +141,8 @@ export default function PhColorLab() {
                 if (soakTimerRef.current) clearTimeout(soakTimerRef.current);
                 setSoakStage('unsoaked');
             }
-            // Trigger results if they pull the soaked paper out of the liquid
             if (soakStage === 'soaked' && !showResults) {
-                if (paperBottomY < tubeSurfaceY + 20) { // Pulled up above the liquid surface
+                if (paperBottomY < tubeSurfaceY + 20) { 
                     setShowResults(true);
                 }
             }
@@ -164,8 +164,7 @@ export default function PhColorLab() {
         const newX = e.clientX - containerRect.left - INITIAL_X - dragOffset.x;
         const newY = e.clientY - containerRect.top - INITIAL_Y - dragOffset.y;
 
-        // Expanded Y boundary so it's easier to pull the paper high up
-        const constrainedX = Math.max(-50, Math.min(230, newX));
+        const constrainedX = Math.max(-50, Math.min(containerRect.width - 20, newX));
         const constrainedY = Math.max(-50, Math.min(130, newY)); 
 
         setPaperPos({ x: constrainedX, y: constrainedY });
@@ -179,47 +178,83 @@ export default function PhColorLab() {
     };
 
     return (
-        <div className="relative rounded-3xl bg-card border border-border p-4 overflow-hidden transition-all duration-300 group">
+        <div style={{
+            background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+            borderRadius: '32px',
+            padding: '24px',
+            color: '#fff',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: '0 15px 35px rgba(139, 92, 246, 0.3)',
+            maxWidth: '500px',
+            margin: '0 auto'
+        }}>
             
-            <Droplet className="absolute -right-4 -top-4 w-24 h-24 text-violet-500/5 group-hover:rotate-12 transition-transform duration-700 pointer-events-none" />
-            
-            <div className="flex items-center gap-2 mb-4 relative z-10">
-                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
-                <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-violet-500">Interactive Simulation</span>
-            </div>
+            {/* Background Watermark */}
+            <span style={{ position: 'absolute', right: '-10px', top: '20px', fontSize: '140px', opacity: 0.15, pointerEvents: 'none', zIndex: 0 }}>
+                🧪
+            </span>
 
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-none">
-                    pH Color <span className="text-violet-500">Lab</span>
-                </h3>
-                <button onClick={resetLab} className="w-8 h-8 rounded-xl bg-background border border-border flex items-center justify-center hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors active:scale-95 group/btn">
-                    <Trash2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform duration-500" />
-                </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                        <TestTube color="#fff" size={26} />
+                    </div>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1.1, textTransform: 'uppercase' }}>PH COLOR LAB</h2>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '10px', fontWeight: 800, opacity: 0.8, letterSpacing: '1px', textTransform: 'uppercase' }}>CHEMISTRY ENGINE</p>
+                    </div>
+                </div>
+                <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={resetLab} 
+                    style={{ background: '#fff', border: 'none', color: '#6d28d9', width: '45px', height: '45px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                >
+                    <Trash2 size={22} strokeWidth={2.5} />
+                </motion.button>
             </div>
 
             {/* --- VISUAL SIMULATION CANVAS --- */}
-            <div ref={containerRef} className="bg-[#0a0a0c] border-2 border-border rounded-3xl mb-4 relative overflow-hidden flex flex-col shadow-inner min-h-[300px] z-10 touch-none">
+            <div 
+                ref={containerRef} 
+                style={{ 
+                    background: 'rgba(0,0,0,0.2)', 
+                    border: '1px solid rgba(255,255,255,0.3)', 
+                    borderRadius: '24px', 
+                    overflow: 'hidden', 
+                    marginBottom: '20px', 
+                    position: 'relative', 
+                    zIndex: 1, 
+                    minHeight: '300px', 
+                    touchAction: 'none' // Prevent scrolling while dragging on mobile
+                }}
+            >
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '48px', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid rgba(255,255,255,0.1)', zIndex: 0 }} />
                 
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-zinc-900/50 border-t border-zinc-800 z-0" />
-                
-                <div className="absolute left-1/2 bottom-1 -translate-x-1/2 w-20 h-40 z-20 flex flex-col items-center justify-end">
-                    <div className="w-16 h-40 border border-white/10 rounded-b-3xl absolute inset-0 z-30 bg-gradient-to-r from-white/5 to-white/0 backdrop-blur-[1px]">
-                        <div className="w-16 h-3 rounded-[50%] border border-white/10 absolute -top-1.5 z-40 bg-zinc-950 shadow-inner" />
+                {/* FIXED: 64px exact width container centered perfectly on the table */}
+                <div style={{ position: 'absolute', left: '50%', bottom: '4px', transform: 'translateX(-50%)', width: '64px', height: '160px', zIndex: 20 }}>
+                    
+                    {/* Glass Body */}
+                    <div style={{ width: '100%', height: '100%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '0 0 32px 32px', position: 'absolute', top: 0, left: 0, zIndex: 30, background: 'linear-gradient(to right, rgba(255,255,255,0.1), transparent)', backdropFilter: 'blur(1px)' }}>
+                        {/* Glass Rim */}
+                        <div style={{ width: '64px', height: '12px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', position: 'absolute', top: '-6px', left: '-2px', zIndex: 40, background: 'rgba(0,0,0,0.5)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
                     </div>
                     
+                    {/* Liquid properly centered using left: 50% and transform */}
                     {selectedLiquid && (
                         <div 
-                            className="w-[58px] rounded-b-[21px] transition-all duration-1000 bottom-1 absolute z-10 overflow-hidden"
                             style={{ 
-                                height: '70%', 
+                                width: '56px', height: '70%', borderRadius: '0 0 28px 28px', position: 'absolute', bottom: '4px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, overflow: 'hidden', transition: 'all 1s ease',
                                 backgroundColor: selectedLiquid.liquidColorHex,
                                 opacity: selectedLiquid.id === '5' || selectedLiquid.id === '4' ? 0.95 : 0.6,
                                 boxShadow: `inset -5px -5px 20px rgba(0,0,0,0.4)`
                             }}
                         >
-                            <div className="w-full h-3 rounded-[50%] absolute -top-1.5 opacity-50" style={{ backgroundColor: selectedLiquid.liquidColorHex, filter: 'brightness(1.8)' }} />
+                            {/* Liquid Surface */}
+                            <div style={{ width: '100%', height: '12px', borderRadius: '50%', position: 'absolute', top: '-6px', left: 0, opacity: 0.8, backgroundColor: selectedLiquid.liquidColorHex, filter: 'brightness(1.5)' }} />
+                            
                             {soakStage === 'soaking' && (
-                                <div className="absolute inset-0 flex items-center justify-center text-white text-3xl font-black italic tracking-wider animate-pulse opacity-20">???</div>
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '30px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '2px', opacity: 0.3 }} className="animate-pulse">???</div>
                             )}
                         </div>
                     )}
@@ -230,122 +265,157 @@ export default function PhColorLab() {
                     onPointerDown={onPointerDown}
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
-                    className="absolute w-8 rounded-sm shadow-xl border-zinc-900/20 z-40 cursor-grab active:cursor-grabbing border-4 border-dashed"
                     style={{ 
+                        position: 'absolute',
+                        width: '32px',
                         height: '140px',
                         backgroundColor: paperColor,
                         left: `${INITIAL_X + paperPos.x}px`,
                         top: `${INITIAL_Y + paperPos.y}px`,
                         transition: isDragging ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: `inset 0 0 20px rgba(0,0,0,0.1), 0 0 ${showResults ? '30px' : '0'} ${paperColor}A0`,
-                        borderColor: showResults ? paperColor : (soakStage === 'soaking' ? 'rgba(255,255,255,0.4)' : 'rgba(139,92,246,0.1)'),
+                        borderColor: showResults ? paperColor : (soakStage === 'soaking' ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.2)'),
                         borderStyle: showResults ? 'solid' : 'dashed',
                         borderWidth: showResults ? '6px' : (soakStage === 'soaking' ? '2px' : '4px'),
+                        borderRadius: '4px',
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                        zIndex: 40
                     }}
                 >
-                    <div className="h-4 bg-zinc-900/50 rounded-t-sm flex items-center justify-center p-0.5">
-                        <MoveHorizontal className="w-3 h-3 text-zinc-500" />
+                    <div style={{ height: '24px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px 4px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <GripHorizontal size={14} color="rgba(255,255,255,0.5)" />
                     </div>
-                    <div className="absolute inset-0 top-4 opacity-10" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
+                    <div style={{ position: 'absolute', inset: '24px 0 0 0', opacity: 0.1, backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
                 </div>
                 
                 {!selectedLiquid && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-700 p-10 text-center text-xs font-bold uppercase tracking-wider leading-relaxed z-0">
-                        <TestTube className="w-8 h-8 mb-3"/> Select a liquid below to fill the test tube, then drag the paper strip to dip it.
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.6)', padding: '40px', textAlign: 'center', zIndex: 0 }}>
+                        <TestTube size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                        <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.5 }}>
+                            Select a liquid below to fill the tube,<br/>then drag the strip to dip it.
+                        </span>
                     </div>
                 )}
             </div>
 
             {/* --- LIQUID SELECTION MENU --- */}
-            <div className="mb-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-text/40 mb-2 px-1">Select Liquid to Fill Test Tube</h4>
-                <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 px-1 snap-x">
+            <div style={{ marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+                <h4 style={{ margin: '0 0 8px 4px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Select Liquid to Fill</h4>
+                
+                {/* Horizontal Scroll Menu */}
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', scrollSnapType: 'x mandatory' }} className="scrollbar-hide">
                     {MYSTERY_LIQUIDS.map((liquid) => (
-                        <button key={liquid.id} onClick={() => fillTube(liquid)} className={`shrink-0 snap-center flex flex-col items-center gap-2 p-2 rounded-xl border-2 transition-all w-20 ${selectedLiquid?.id === liquid.id ? 'bg-card border-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.2)] scale-105' : 'bg-background border-border hover:border-zinc-500 disabled:opacity-50'}`}>
-                            <div className="w-10 h-10 rounded-full border border-border/50 flex items-center justify-center shadow-inner" style={{ backgroundColor: liquid.liquidColorHex + '20' }}>
-                                <Droplet className="w-5 h-5" style={{ color: liquid.liquidColorHex }} />
+                        <button 
+                            key={liquid.id} 
+                            onClick={() => fillTube(liquid)} 
+                            style={{ 
+                                flexShrink: 0, scrollSnapAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '16px', width: '80px', cursor: 'pointer', transition: 'all 0.2s ease',
+                                background: selectedLiquid?.id === liquid.id ? '#fff' : 'rgba(255,255,255,0.15)',
+                                border: '1px solid',
+                                borderColor: selectedLiquid?.id === liquid.id ? '#fff' : 'rgba(255,255,255,0.2)',
+                                boxShadow: selectedLiquid?.id === liquid.id ? '0 8px 20px rgba(0,0,0,0.2)' : 'none',
+                                transform: selectedLiquid?.id === liquid.id ? 'scale(1.05)' : 'scale(1)'
+                            }}
+                        >
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: liquid.liquidColorHex + '30', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.1)' }}>
+                                <Droplet size={20} color={liquid.liquidColorHex} fill={liquid.liquidColorHex} />
                             </div>
-                            <span className="text-[8px] font-black uppercase text-center tracking-wider leading-tight h-6 flex items-center">{liquid.name}</span>
+                            <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.1, color: selectedLiquid?.id === liquid.id ? '#6d28d9' : '#fff' }}>
+                                {liquid.name}
+                            </span>
                         </button>
                     ))}
                 </div>
             </div>
 
+            {/* Instruction Footer (Visible before result) */}
+            <AnimatePresence>
+                {!showResults && selectedLiquid && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} style={{ background: 'rgba(255,255,255,0.15)', padding: '12px 16px', borderRadius: '16px', display: 'flex', gap: '12px', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
+                        <Info size={20} color="#fde047" style={{ flexShrink: 0 }} />
+                        <p style={{ margin: 0, fontSize: '10px', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.4 }}>
+                            Grab the top handle of the strip and physically <strong style={{ color: '#fde047' }}>drag it into the test tube</strong>. Hold it inside to soak, then pull it out to trigger analysis.
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* --- CHEMISTRY ENGINE OUTPUT & NOTES --- */}
-            <div className={`transition-all duration-700 ${showResults ? 'opacity-100 max-h-[1000px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-                <div className="space-y-3 relative z-10 bg-background border border-border rounded-3xl p-5 shadow-sm mt-4">
-                    
-                    {selectedLiquid && showResults && (
-                        <>
-                            {/* Analysis Header */}
-                            <div className="flex items-center justify-center gap-2 text-sm font-black italic uppercase tracking-widest text-white animate-pulse" style={{ color: selectedLiquid.colorHex, textShadow: `0 0 10px ${selectedLiquid.colorHex}` }}>
-                                <Clock size={16}/> Analysis Complete
+            <AnimatePresence>
+                {selectedLiquid && showResults && (
+                    <motion.div 
+                        initial={{ opacity: 0, height: 0 }} 
+                        animate={{ opacity: 1, height: 'auto' }} 
+                        style={{ background: '#fff', borderRadius: '24px', padding: '20px', marginTop: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative', zIndex: 1, overflow: 'hidden' }}
+                    >
+                        {/* Analysis Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: selectedLiquid.colorHex, textShadow: `0 0 10px ${selectedLiquid.colorHex}50` }} className="animate-pulse">
+                            <Clock size={16}/> 
+                            <span style={{ fontSize: '14px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '1px' }}>Analysis Complete</span>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
+                            <span style={{ 
+                                padding: '6px 12px', borderRadius: '12px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', border: '1px solid',
+                                background: selectedLiquid.type === 'acid' ? 'rgba(239, 68, 68, 0.1)' : selectedLiquid.type === 'base' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                                color: selectedLiquid.type === 'acid' ? '#ef4444' : selectedLiquid.type === 'base' ? '#3b82f6' : '#22c55e',
+                                borderColor: selectedLiquid.type === 'acid' ? 'rgba(239, 68, 68, 0.3)' : selectedLiquid.type === 'base' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+                            }}>
+                                {selectedLiquid.strength !== 'none' ? `${selectedLiquid.strength} ` : ''}{selectedLiquid.type}
+                            </span>
+                        </div>
+
+                        {/* Math Breakdown */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Recorded pH Value</span>
+                                <span style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', color: selectedLiquid.colorHex }}>{selectedLiquid.ph}</span>
                             </div>
 
-                            <div className="flex items-center gap-2 my-4">
-                                <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${selectedLiquid.type === 'acid' ? 'bg-red-500/10 text-red-500 border-red-500/30' : selectedLiquid.type === 'base' ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' : 'bg-green-500/10 text-green-500 border-green-500/30'}`}>
-                                    {selectedLiquid.strength !== 'none' ? `${selectedLiquid.strength} ` : ''}{selectedLiquid.type}
-                                </span>
-                            </div>
-
-                            {/* Math Breakdown */}
-                            <div className="space-y-2">
-                                <div className="text-[11px] font-bold text-zinc-400 bg-card p-3 rounded-xl border border-border flex items-center justify-between shadow-sm">
-                                    <span className="uppercase tracking-widest text-text">Recorded pH Value</span>
-                                    <span className="font-black italic text-xl" style={{ color: selectedLiquid.colorHex }}>{selectedLiquid.ph}</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                                <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '12px', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                    <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 900, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '1px' }}>[H⁺] Concentration</p>
+                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#dc2626' }}><SciNotation base="1.0" exp={-selectedLiquid.ph} /> M</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <div className="bg-red-500/5 border border-red-500/20 p-3 rounded-xl flex flex-col justify-center"><p className="text-[9px] font-bold text-red-500/70 uppercase tracking-widest mb-1 flex items-center gap-1">[H⁺] Concentration</p><p className="text-sm font-black italic text-red-500"><SciNotation base="1.0" exp={-selectedLiquid.ph} /> M</p></div>
-                                    <div className="bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl flex flex-col justify-center"><p className="text-[9px] font-bold text-blue-500/70 uppercase tracking-widest mb-1 flex items-center gap-1">[OH⁻] Concentration</p><p className="text-sm font-black italic text-blue-500"><SciNotation base="1.0" exp={-(14 - selectedLiquid.ph)} /> M</p></div>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">NCERT Chemical Log:</span>
-                                    <div className="flex flex-col gap-2 text-violet-500 text-xs font-black italic bg-violet-500/5 p-3 rounded-xl border border-violet-500/20 shadow-inner">
-                                        <span className="flex items-center gap-2"><CheckCircle2 size={12}/> Dissociation Constraint: [H⁺] × [OH⁻] = 10⁻¹⁴</span>
-                                        <span className="flex items-center gap-2"><CheckCircle2 size={12}/> Inverse Logarithmic: [H⁺] = 10⁻<sup className="text-[0.7em]">pH</sup></span>
-                                    </div>
+                                <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '12px', borderRadius: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                    <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '1px' }}>[OH⁻] Concentration</p>
+                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#2563eb' }}><SciNotation base="1.0" exp={-(14 - selectedLiquid.ph)} /> M</p>
                                 </div>
                             </div>
 
-                            {/* --- LAB NOTES & FUN FACTS --- */}
-                            <div className="mt-4 border-t border-border pt-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-text/40 mb-3 flex items-center gap-1.5">
-                                    <BookOpen size={12} className="text-violet-500" /> Lab Notes
-                                </h4>
-                                
-                                <div className="bg-background border border-border rounded-2xl p-4 shadow-sm mb-3">
-                                    <p className="text-sm text-text/80 leading-relaxed font-medium">
-                                        {selectedLiquid.description}
-                                    </p>
-                                </div>
-
-                                <div className="bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border border-violet-500/30 rounded-2xl p-4 shadow-sm">
-                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-violet-500 mb-2 flex items-center gap-1">
-                                        <Sparkles size={12} /> Did You Know?
-                                    </h5>
-                                    <p className="text-xs text-text/90 italic font-bold leading-relaxed">
-                                        "{selectedLiquid.funFact}"
-                                    </p>
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: '#64748b' }}>NCERT Chemical Log:</span>
+                                <div style={{ background: 'rgba(139, 92, 246, 0.05)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '8px', color: '#6d28d9', fontSize: '12px', fontWeight: 900, fontStyle: 'italic' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><CheckCircle2 size={14}/> Dissociation: [H⁺] × [OH⁻] = 10⁻¹⁴</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><CheckCircle2 size={14}/> Inverse Logarithmic: [H⁺] = 10⁻<sup style={{ fontSize: '0.7em' }}>pH</sup></span>
                                 </div>
                             </div>
-                        </>
-                    )}
-                </div>
-            </div>
+                        </div>
 
-            {/* Instruction Footer */}
-            {!showResults && selectedLiquid && (
-                <div className="mt-4 p-3 rounded-xl bg-violet-500/5 border border-violet-500/20 relative z-10 flex gap-3 items-center">
-                    <Info className="text-violet-500 shrink-0" size={14} />
-                    <p className="text-[10px] font-bold text-zinc-500 leading-relaxed uppercase tracking-wide">
-                        <span className="text-violet-400">Grab the top handle of the strip</span> and physically drag it into the test tube. <span className="text-violet-400">Hold it inside for 1 full second</span> to soak, then pull it out to trigger analysis.
-                    </p>
-                </div>
-            )}
+                        {/* --- LAB NOTES & FUN FACTS --- */}
+                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <BookOpen size={14} /> Lab Notes
+                            </h4>
+                            
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', marginBottom: '12px' }}>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#334155', lineHeight: 1.6, fontWeight: 700 }}>
+                                    {selectedLiquid.description}
+                                </p>
+                            </div>
+
+                            <div style={{ background: 'linear-gradient(to bottom right, rgba(139, 92, 246, 0.1), rgba(217, 70, 239, 0.1))', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '16px', padding: '16px' }}>
+                                <h5 style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Sparkles size={14} /> Did You Know?
+                                </h5>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#4c1d95', fontStyle: 'italic', fontWeight: 900, lineHeight: 1.5 }}>
+                                    "{selectedLiquid.funFact}"
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
-}
-
-function MoveHorizontal({ className }: { className?: string }) {
-    return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 8 4 4-4 4"></path><path d="M2 12h20"></path><path d="m6 8-4 4 4 4"></path></svg>;
 }

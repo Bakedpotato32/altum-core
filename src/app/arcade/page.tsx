@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Trophy, Zap, Gamepad2 } from 'lucide-react';
+import { ChevronLeft, Trophy, Zap, Gamepad2, ChevronRight, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   SnakeLogo, FlappyLogo, TetrisLogo, DashLogo, BreakoutLogo, SpaceLogo,
   TowerLogo, CrossyLogo, DefenderLogo, CombatLogo, RunnerLogo, SlicerLogo 
@@ -12,69 +13,144 @@ export default function ArcadeLobby() {
 
   const GAMES = [
     // Phase 1 Games
-    { id: 'snake', name: 'Neon Snake', sub: 'Classic Retro Action', color: 'text-emerald-500', Icon: SnakeLogo },
-    { id: 'flappy', name: 'Flappy Altu', sub: 'Gravity Protocol', color: 'text-violet-500', Icon: FlappyLogo },
-    { id: 'tetris', name: 'Tetris Core', sub: 'Geometric Alignment', color: 'text-blue-500', Icon: TetrisLogo },
-    { id: 'dino', name: 'Altu Dash', sub: 'Infinite Runner', color: 'text-amber-500', Icon: DashLogo },
-    { id: 'breakout', name: 'Neon Breakout', sub: 'Reflex Protocol', color: 'text-rose-500', Icon: BreakoutLogo },
-    { id: 'space', name: 'Starship Altu', sub: 'Bullet Hell Protocol', color: 'text-cyan-400', Icon: SpaceLogo },
+    { id: 'snake', name: 'Neon Snake', sub: 'Classic Retro Action', gradient: 'linear-gradient(135deg, #10b981, #047857)', watermark: '🐍', Icon: SnakeLogo },
+    { id: 'flappy', name: 'Flappy Altu', sub: 'Gravity Protocol', gradient: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', watermark: '🦅', Icon: FlappyLogo },
+    { id: 'tetris', name: 'Tetris Core', sub: 'Geometric Alignment', gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', watermark: '🧱', Icon: TetrisLogo },
+    { id: 'dino', name: 'Altu Dash', sub: 'Infinite Runner', gradient: 'linear-gradient(135deg, #f59e0b, #b45309)', watermark: '🦖', Icon: DashLogo },
+    { id: 'breakout', name: 'Neon Breakout', sub: 'Reflex Protocol', gradient: 'linear-gradient(135deg, #f43f5e, #be123c)', watermark: '💥', Icon: BreakoutLogo },
+    { id: 'space', name: 'Starship Altu', sub: 'Bullet Hell Protocol', gradient: 'linear-gradient(135deg, #06b6d4, #0369a1)', watermark: '🚀', Icon: SpaceLogo },
     
     // Phase 2 Games
-    { id: 'tower', name: 'Neon Tower', sub: 'Precision Stacking', color: 'text-yellow-400', Icon: TowerLogo },
-    { id: 'crossy', name: 'Crossy Altu', sub: 'Isometric Survival', color: 'text-teal-400', Icon: CrossyLogo },
-    { id: 'defender', name: 'Core Defender', sub: 'Tactical Defense', color: 'text-indigo-400', Icon: DefenderLogo },
-    { id: 'combat', name: 'Vector Combat', sub: 'Top-Down Shooter', color: 'text-red-500', Icon: CombatLogo },
-    { id: 'runner', name: 'Synth Runner', sub: '3D Speed Protocol', color: 'text-fuchsia-400', Icon: RunnerLogo },
-    { id: 'slicer', name: 'Fruit Slicer', sub: 'Kinetic Slashing', color: 'text-orange-500', Icon: SlicerLogo },
+    { id: 'tower', name: 'Neon Tower', sub: 'Precision Stacking', gradient: 'linear-gradient(135deg, #eab308, #a16207)', watermark: '🏢', Icon: TowerLogo },
+    { id: 'crossy', name: 'Crossy Altu', sub: 'Isometric Survival', gradient: 'linear-gradient(135deg, #14b8a6, #0f766e)', watermark: '🛣️', Icon: CrossyLogo },
+    { id: 'defender', name: 'Core Defender', sub: 'Tactical Defense', gradient: 'linear-gradient(135deg, #6366f1, #4338ca)', watermark: '🛡️', Icon: DefenderLogo },
+    { id: 'combat', name: 'Vector Combat', sub: 'Top-Down Shooter', gradient: 'linear-gradient(135deg, #ef4444, #b91c1c)', watermark: '⚔️', Icon: CombatLogo },
+    { id: 'runner', name: 'Synth Runner', sub: '3D Speed Protocol', gradient: 'linear-gradient(135deg, #d946ef, #a21caf)', watermark: '🏃', Icon: RunnerLogo },
+    { id: 'slicer', name: 'Fruit Slicer', sub: 'Kinetic Slashing', gradient: 'linear-gradient(135deg, #f97316, #c2410c)', watermark: '🍉', Icon: SlicerLogo },
   ];
 
   return (
-    <div className="min-h-screen pb-32 font-sans bg-[var(--background)] text-[var(--text)] px-5 pt-24 relative overflow-hidden">
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full bg-violet-500/10 blur-[80px]" />
-        <div className="absolute bottom-[10%] left-[-10%] w-[260px] h-[260px] rounded-full bg-fuchsia-500/10 blur-[80px]" />
-      </div>
-
-      <button onClick={() => router.push('/dashboard')} className="flex items-center gap-1.5 mb-8 active:scale-95 transition-transform text-[10px] font-black tracking-[0.18em] uppercase text-zinc-500 hover:text-[var(--text)]">
-        <ChevronLeft size={16} strokeWidth={3} /> Back to Dashboard
-      </button>
-
-      <div className="mb-10">
-        <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-5 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
-          <Gamepad2 size={28} className="text-violet-500" />
+    <div style={{ 
+      minHeight: '100svh', 
+      background: '#fff', 
+      padding: '40px 20px 120px', 
+      maxWidth: '500px', 
+      margin: '0 auto',
+      overflowX: 'hidden'
+    }}>
+      
+      {/* Header matching Dashboard style */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' }}>
+        <button 
+          onClick={() => router.push('/dashboard')}
+          style={{ 
+            width: '45px', height: '45px', borderRadius: '15px', 
+            background: '#f8fafc', border: '2px solid #f1f5f9', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            cursor: 'pointer',
+            flexShrink: 0
+          }}
+        >
+          <ChevronLeft size={24} color="#334155" strokeWidth={2.5} />
+        </button>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Gamepad2 size={14} color="#8b5cf6" strokeWidth={3} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, color: '#8b5cf6', letterSpacing: '1px', textTransform: 'uppercase' }}>MINI GAMES</p>
+          </div>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', textTransform: 'uppercase', lineHeight: 1 }}>
+            Altum Arcade
+          </h1>
         </div>
-        <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none mb-2">
-          Altum <span className="text-violet-500 drop-shadow-[0_0_20px_rgba(139,92,246,0.4)]">Arcade</span>
-        </h1>
       </div>
 
-      <div className="space-y-4">
-        <div onClick={() => router.push('/arcade/leaderboard')} className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-[28px] p-5 flex items-center justify-between cursor-pointer active:scale-95 transition-all group mb-2">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center border border-yellow-500/40">
-              <Trophy size={24} className="text-yellow-500" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Hall of Fame Banner */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => router.push('/arcade/leaderboard')}
+          style={{ 
+            background: 'linear-gradient(135deg, #f09819, #edde5d)', 
+            borderRadius: '28px', padding: '18px 20px', 
+            position: 'relative', overflow: 'hidden', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: '0 10px 25px rgba(240, 152, 25, 0.3)',
+            marginBottom: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
+            <div style={{ 
+              width: '50px', height: '50px', background: 'rgba(255,255,255,0.3)', 
+              borderRadius: '16px', display: 'flex', alignItems: 'center', 
+              justifyContent: 'center', backdropFilter: 'blur(5px)', flexShrink: 0
+            }}>
+              <Trophy color="#fff" size={26} fill="rgba(255,255,255,0.4)" />
             </div>
             <div>
-              <h3 className="text-lg font-black italic uppercase tracking-tight text-yellow-600 dark:text-yellow-500">Hall of Fame</h3>
-              <p className="text-[9px] font-bold text-yellow-600/60 dark:text-yellow-500/60 uppercase tracking-widest mt-1">Global Rankings</p>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1, textTransform: 'uppercase' }}>Hall of Fame</h3>
+              <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.9)', fontSize: '10px', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>Global Rankings</p>
             </div>
           </div>
-        </div>
+          <ChevronRight color="white" size={24} style={{ opacity: 0.8, flexShrink: 0 }} />
+          
+          <span style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '80px', opacity: 0.15, pointerEvents: 'none' }}>
+            👑
+          </span>
+        </motion.div>
 
-        {GAMES.map((game) => (
-          <div key={game.id} onClick={() => router.push(`/arcade/${game.id}`)} className="bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)] border-l-4 rounded-[28px] p-5 flex items-center justify-between cursor-pointer active:scale-95 transition-all group" style={{ borderLeftColor: `currentColor` }}>
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-xl bg-zinc-500/5 flex items-center justify-center border border-[var(--border)] group-hover:scale-110 transition-transform ${game.color}`}>
-                <game.Icon className="w-7 h-7" />
+        {/* Dynamic Game List with Staggered Entrance */}
+        <AnimatePresence>
+          {GAMES.map((game, index) => (
+            <motion.div 
+              key={game.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => router.push(`/arcade/${game.id}`)}
+              style={{ 
+                background: game.gradient, 
+                borderRadius: '24px', 
+                padding: '16px 20px', 
+                position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.1)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
+                {/* Frosted Icon Box */}
+                <div style={{ 
+                  width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', 
+                  borderRadius: '16px', display: 'flex', alignItems: 'center', 
+                  justifyContent: 'center', backdropFilter: 'blur(5px)', flexShrink: 0,
+                  color: '#fff' // Ensures inner SVGs using 'currentColor' turn white
+                }}>
+                  <game.Icon className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, color: '#fff', fontSize: '18px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{game.name}</h3>
+                  <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.8)', fontSize: '9px', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>{game.sub}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-black italic uppercase tracking-tight text-[var(--text)]">{game.name}</h3>
-                <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-1">{game.sub}</p>
-              </div>
-            </div>
-            <Zap size={14} className={`${game.color} opacity-30`} />
-          </div>
-        ))}
+              <ChevronRight color="white" size={20} style={{ opacity: 0.6, flexShrink: 0 }} />
+              
+              {/* Background Watermark Illustration */}
+              <span style={{ 
+                position: 'absolute', right: '15px', top: '50%', 
+                transform: 'translateY(-50%)', fontSize: '80px', 
+                opacity: 0.12, pointerEvents: 'none' 
+              }}>
+                {game.watermark}
+              </span>
+              
+              {/* Detail Star Decoration */}
+              <Star size={14} color="rgba(255,255,255,0.2)" fill="rgba(255,255,255,0.2)" style={{ position: 'absolute', right: '12px', bottom: '12px' }} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );

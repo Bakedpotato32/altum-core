@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { ChevronLeft, CheckCircle2, Circle, Loader2, ListChecks } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/LanguageContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function StudentSyllabus() {
   const router = useRouter();
@@ -69,18 +70,18 @@ export default function StudentSyllabus() {
   const completedCount = chapters.filter(c => c.is_completed).length;
   const progressPercent = chapters.length > 0 ? Math.round((completedCount / chapters.length) * 100) : 0;
 
-  // 🎨 DYNAMIC COLOR ENGINE 
+  // 🎨 SOLID GRADIENT COLOR ENGINE (Matched to Dashboard UI)
   const getSubjectAccent = (subjectName: string) => {
-    if (!subjectName) return { color: '#3b82f6', glow: 'rgba(59,130,246,0.3)', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)' };
+    const fallback = { color: '#3a7bd5', gradient: 'linear-gradient(135deg, #00d2ff, #3a7bd5)' };
+    if (!subjectName) return fallback;
     
     const palettes = [
-      { color: '#3b82f6', glow: 'rgba(59,130,246,0.3)',  bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.2)' }, // Blue
-      { color: '#10b981', glow: 'rgba(16,185,129,0.3)',  bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.2)' }, // Emerald
-      { color: '#a855f7', glow: 'rgba(168,85,247,0.3)',  bg: 'rgba(168,85,247,0.08)',  border: 'rgba(168,85,247,0.2)' }, // Purple
-      { color: '#f97316', glow: 'rgba(249,115,22,0.3)',  bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.2)' }, // Orange
-      { color: '#ec4899', glow: 'rgba(236,72,153,0.3)',  bg: 'rgba(236,72,153,0.08)',  border: 'rgba(236,72,153,0.2)' }, // Pink
-      { color: '#06b6d4', glow: 'rgba(6,182,212,0.3)',   bg: 'rgba(6,182,212,0.08)',   border: 'rgba(6,182,212,0.2)' }, // Cyan
-      { color: '#eab308', glow: 'rgba(234,179,8,0.3)',   bg: 'rgba(234,179,8,0.08)',   border: 'rgba(234,179,8,0.2)' }, // Yellow
+      { color: '#ff0844', gradient: 'linear-gradient(135deg, #ff0844, #ffb199)' }, // Pink/Red
+      { color: '#3a7bd5', gradient: 'linear-gradient(135deg, #00d2ff, #3a7bd5)' }, // Blue
+      { color: '#f09819', gradient: 'linear-gradient(135deg, #f09819, #edde5d)' }, // Orange/Yellow
+      { color: '#8e2de2', gradient: 'linear-gradient(135deg, #8e2de2, #4a00e0)' }, // Purple
+      { color: '#10b981', gradient: 'linear-gradient(135deg, #22c55e, #059669)' }, // Green
+      { color: '#06b6d4', gradient: 'linear-gradient(135deg, #22d3ee, #0284c7)' }, // Cyan
     ];
 
     let hash = 0;
@@ -93,174 +94,188 @@ export default function StudentSyllabus() {
   const accent = getSubjectAccent(activeSubject);
 
   return (
-    <div className="min-h-screen pb-32 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
-
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-8%', right: '-12%', width: 320, height: 320, borderRadius: '50%', background: `radial-gradient(circle, ${accent.glow.replace('0.3','0.1')} 0%, transparent 70%)`, filter: 'blur(50px)', transition: 'background 0.5s' }} />
-        <div style={{ position: 'absolute', bottom: '10%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)', filter: 'blur(50px)' }} />
-      </div>
-
-      <div className="px-5 pt-24">
-
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform"
-          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}
-        >
-          <ChevronLeft size={15} strokeWidth={3} /> {t('backToDashboard')}
-        </button>
-
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-            <div>
-              <h1 style={{ fontSize: 44, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
-                {t('syllabus')}{' '}
-                <span style={{ color: accent.color, textShadow: `0 0 30px ${accent.glow}`, transition: 'color 0.4s, text-shadow 0.4s' }}>
-                  {t('pulse')}
-                </span>
-              </h1>
-              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 8 }}>
-                {t('classWord')} {userClass} · {t('progress')}
-              </p>
-            </div>
-            <div style={{ width: 48, height: 48, borderRadius: 16, background: accent.bg, border: `1px solid ${accent.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.4s, border 0.4s', flexShrink: 0 }}>
-              <ListChecks size={22} style={{ color: accent.color, transition: 'color 0.4s' }} />
-            </div>
-          </div>
-
-          <div style={{ borderRadius: 24, background: 'var(--card)', border: '1px solid var(--border)', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ flex: 1, height: 6, background: 'rgba(128,128,128,0.1)', borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progressPercent}%`, borderRadius: 6, background: `linear-gradient(90deg, ${accent.color}, ${accent.color}cc)`, boxShadow: `0 0 12px ${accent.glow}`, transition: 'width 1s cubic-bezier(0.22,1,0.36,1), background 0.4s' }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexShrink: 0 }}>
-              <span style={{ fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.04em', color: accent.color, transition: 'color 0.4s' }}>
-                {progressPercent}%
-              </span>
-            </div>
-          </div>
-
-          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.25, marginTop: 10, textAlign: 'center' }}>
-            {completedCount} of {chapters.length} chapters done
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 20 }} className="no-scrollbar">
-          {subjects.length === 0 && !loading && (
-            <p style={{ fontSize: 10, fontWeight: 800, color: 'var(--text)', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              No subjects configured
-            </p>
-          )}
-          {subjects.map(s => {
-            const isActive = activeSubject === s;
-            const sa = getSubjectAccent(s);
-            return (
-              <button
-                key={s}
-                onClick={() => setActiveSubject(s)}
-                className="active:scale-95 transition-transform"
-                style={{
-                  flexShrink: 0,
-                  padding: '10px 20px',
-                  borderRadius: 14,
-                  fontSize: 9,
-                  fontWeight: 900,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  whiteSpace: 'nowrap',
-                  border: isActive ? `1px solid ${sa.border}` : '1px solid var(--border)',
-                  background: isActive ? sa.bg : 'var(--card)',
-                  color: isActive ? sa.color : 'var(--text)',
-                  opacity: isActive ? 1 : 0.45,
-                  boxShadow: isActive ? `0 4px 16px ${sa.glow}` : 'none',
-                  transition: 'all 0.25s',
-                }}
-              >
-                {/* Fallback to translation dict if exists, otherwise raw name */}
-                {t(s.replace('-', '')) !== s.replace('-', '') ? t(s.replace('-', '')) : s}
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 8 }}>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 16 }}>
-              <div style={{ position: 'relative' }}>
-                <div className="absolute inset-0 rounded-full animate-ping" style={{ border: `2px solid ${accent.glow}` }} />
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: accent.bg, border: `1px solid ${accent.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Loader2 size={22} className="animate-spin" style={{ color: accent.color }} />
-                </div>
-              </div>
-              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.28em', textTransform: 'uppercase', color: accent.color, opacity: 0.6 }}>
-                {t('readingCloudData')}
-              </p>
-            </div>
-
-          ) : !activeSubject ? (
-            <div style={{ padding: '64px 24px', textAlign: 'center', borderRadius: 28, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
-               <ListChecks size={36} style={{ color: 'var(--text)', opacity: 0.2, margin: '0 auto 12px' }} />
-               <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
-                 No Subjects Available
-               </p>
-            </div>
-          ) : chapters.length === 0 ? (
-            <div style={{ padding: '64px 24px', textAlign: 'center', borderRadius: 28, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
-              <ListChecks size={36} style={{ color: 'var(--text)', opacity: 0.2, margin: '0 auto 12px' }} />
-              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}>
-                {t('noChaptersAdded')} {t(activeSubject.replace('-', '')) !== activeSubject.replace('-', '') ? t(activeSubject.replace('-', '')) : activeSubject}.
-              </p>
-            </div>
-
-          ) : (
-            chapters.map((ch, index) => (
-              <div
-                key={ch.id}
-                style={{
-                  borderRadius: 22,
-                  background: ch.is_completed ? accent.bg : 'var(--card)',
-                  border: ch.is_completed ? `1px solid ${accent.border}` : '1px solid var(--border)',
-                  padding: '15px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 14,
-                  transition: 'background 0.3s, border 0.3s',
-                  animation: `fadeSlideIn 0.35s ease both`,
-                  animationDelay: `${index * 0.04}s`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 10, fontWeight: 900, fontStyle: 'italic', color: 'var(--text)', opacity: 0.2, width: 20, textAlign: 'right', flexShrink: 0 }}>
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-
-                  <div style={{ width: 28, height: 28, borderRadius: 10, background: ch.is_completed ? accent.color : 'rgba(128,128,128,0.08)', border: ch.is_completed ? 'none' : '1px solid rgba(128,128,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: ch.is_completed ? `0 4px 12px ${accent.glow}` : 'none', transition: 'all 0.3s' }}>
-                    {ch.is_completed
-                      ? <CheckCircle2 size={16} style={{ color: '#fff' }} />
-                      : <Circle size={16} style={{ color: 'var(--text)', opacity: 0.25 }} />
-                    }
-                  </div>
-
-                  <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: ch.is_completed ? accent.color : 'var(--text)', textDecoration: ch.is_completed ? 'line-through' : 'none', opacity: ch.is_completed ? 0.6 : 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.3s, opacity 0.3s' }}>
-                    {ch.chapter_name}
-                  </span>
-                </div>
-
-                {ch.is_completed && (
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent.color, boxShadow: `0 0 10px ${accent.glow}`, flexShrink: 0 }} />
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+    <div style={{ minHeight: '100svh', background: 'var(--background)', color: 'var(--text)', padding: '40px 20px 120px', maxWidth: '500px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
 
       <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px' }}>
+        <button 
+          onClick={() => router.push('/dashboard')}
+          style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', flexShrink: 0, transition: 'transform 0.2s' }}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <ChevronLeft size={26} strokeWidth={2.5} />
+        </button>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+            <ListChecks size={14} color={accent.color} strokeWidth={3} style={{ transition: 'color 0.3s ease' }} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, color: accent.color, letterSpacing: '1px', textTransform: 'uppercase', transition: 'color 0.3s ease' }}>
+              {t('classWord') || 'CLASS'} {userClass}
+            </p>
+          </div>
+          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1 }}>
+            {t('syllabus') || 'SYLLABUS'}
+          </h1>
+        </div>
+      </div>
+
+      {/* PROGRESS CARD */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        style={{ borderRadius: '28px', background: 'var(--card)', border: '1px solid var(--border)', padding: '24px', position: 'relative', overflow: 'hidden', marginBottom: '24px', boxShadow: '0 8px 20px rgba(0,0,0,0.03)' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
+          <div>
+            <p style={{ margin: '0 0 4px 0', fontSize: '10px', fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', color: '#94a3b8' }}>
+              PROGRESS
+            </p>
+            <h2 style={{ margin: 0, fontSize: '36px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.5px', color: accent.color, lineHeight: 1, transition: 'color 0.3s ease' }}>
+              {progressPercent}%
+            </h2>
+          </div>
+          <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            {completedCount} / {chapters.length} DONE
+          </p>
+        </div>
+        <div style={{ width: '100%', height: '12px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 1, ease: 'easeOut' }}
+            style={{ height: '100%', background: accent.gradient, borderRadius: '6px', transition: 'background 0.3s ease' }}
+          />
+        </div>
+      </motion.div>
+
+      {/* SUBJECT TABS (Clean Solid Selection Bar) */}
+      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '8px', width: '100%' }} className="hide-scrollbar">
+        {subjects.length === 0 && !loading && (
+          <p style={{ margin: '0 auto', fontSize: '10px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            No subjects configured
+          </p>
+        )}
+        {subjects.map(s => {
+          const isActive = activeSubject === s;
+          const sa = getSubjectAccent(s);
+          return (
+            <button
+              key={s}
+              onClick={() => setActiveSubject(s)}
+              style={{
+                flexShrink: 0,
+                padding: '12px 24px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: 900,
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+                border: isActive ? '1px solid transparent' : '1px solid var(--border)',
+                background: isActive ? sa.gradient : 'var(--card)',
+                color: isActive ? '#ffffff' : '#64748b',
+                boxShadow: isActive ? '0 8px 15px rgba(0,0,0,0.1)' : '0 2px 5px rgba(0,0,0,0.02)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                transform: isActive ? 'scale(1.02)' : 'scale(1)'
+              }}
+              onMouseDown={e => { if(!isActive) e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onMouseUp={e => { if(!isActive) e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              {t(s.replace('-', '')) !== s.replace('-', '') ? t(s.replace('-', '')) : s}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* CHAPTER LIST */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '16px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#f8fafc', border: `1px solid var(--border)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Loader2 size={24} className="animate-spin" color={accent.color} />
+            </div>
+            <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', color: '#94a3b8' }}>
+              {t('readingCloudData') || 'LOADING DATA...'}
+            </p>
+          </div>
+
+        ) : !activeSubject ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '64px 24px', textAlign: 'center', borderRadius: '28px', background: 'var(--card)', border: '2px dashed var(--border)' }}>
+             <ListChecks size={42} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
+             <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#94a3b8' }}>
+               No Subjects Available
+             </p>
+          </motion.div>
+        ) : chapters.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '64px 24px', textAlign: 'center', borderRadius: '28px', background: 'var(--card)', border: '2px dashed var(--border)' }}>
+            <ListChecks size={42} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#94a3b8', lineHeight: 1.6 }}>
+              {t('noChaptersAdded') || 'NO CHAPTERS ADDED FOR'} {t(activeSubject.replace('-', '')) !== activeSubject.replace('-', '') ? t(activeSubject.replace('-', '')) : activeSubject}
+            </p>
+          </motion.div>
+
+        ) : (
+          <AnimatePresence>
+            {chapters.map((ch, index) => (
+              <motion.div
+                key={ch.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                style={{
+                  borderRadius: '20px',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Chapter Index */}
+                <span style={{ fontSize: '13px', fontWeight: 900, fontStyle: 'italic', color: ch.is_completed ? '#e2e8f0' : '#cbd5e1', width: '22px', textAlign: 'right', flexShrink: 0 }}>
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+
+                {/* Details */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h4 style={{ 
+                    margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', 
+                    color: ch.is_completed ? '#94a3b8' : 'var(--text)', 
+                    textDecoration: ch.is_completed ? 'line-through' : 'none',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'color 0.3s ease' 
+                  }}>
+                    {ch.chapter_name}
+                  </h4>
+                </div>
+
+                {/* Solid Gradient Checkmark */}
+                <div style={{ 
+                  width: '32px', height: '32px', borderRadius: '10px', 
+                  background: ch.is_completed ? accent.gradient : '#f1f5f9', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, 
+                  transition: 'all 0.3s ease',
+                  boxShadow: ch.is_completed ? '0 4px 10px rgba(0,0,0,0.1)' : 'none'
+                }}>
+                  {ch.is_completed
+                    ? <CheckCircle2 size={18} color="#fff" strokeWidth={3} />
+                    : <Circle size={18} color="#cbd5e1" strokeWidth={2.5} />
+                  }
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+
     </div>
   );
 }

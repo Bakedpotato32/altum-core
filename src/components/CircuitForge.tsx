@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { 
     Zap, Trash2, Battery, Activity, Lightbulb, 
-    Fan, ToggleLeft, ToggleRight, Plus, AlertTriangle, ArrowRight
+    Fan, ToggleLeft, ToggleRight, Plus, AlertTriangle 
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type CompType = 'resistor' | 'bulb' | 'motor';
 
@@ -14,9 +15,9 @@ interface CircuitComponent {
 }
 
 const Frac = ({ n, d }: { n: React.ReactNode, d: React.ReactNode }) => (
-    <span className="inline-flex flex-col items-center justify-center align-middle mx-1 font-black italic relative -top-[0.1em]">
-        <span className="border-b-[2px] border-current px-1 pb-[1px] leading-none">{n}</span>
-        <span className="pt-[1px] px-1 leading-none">{d}</span>
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', margin: '0 4px', position: 'relative', top: '-0.1em' }}>
+        <span style={{ borderBottom: '2.5px solid currentColor', padding: '0 4px', paddingBottom: '2px', lineHeight: 1 }}>{n}</span>
+        <span style={{ paddingTop: '2px', padding: '0 4px', lineHeight: 1 }}>{d}</span>
     </span>
 );
 
@@ -81,7 +82,17 @@ export default function CircuitForgeSandbox() {
     let totalCurrent = (!isClosed || grid.every(s => s.length === 0)) ? 0 : (isShortCircuit ? 999 : vNum / totalReq);
 
     return (
-        <div className="relative rounded-3xl bg-card border border-border p-4 overflow-hidden transition-all duration-300 group">
+        <div style={{
+            background: 'linear-gradient(135deg, #f97316, #ea580c)', // Vibrant Orange gradient
+            borderRadius: '32px',
+            padding: '24px',
+            color: '#fff',
+            position: 'relative',
+            overflow: 'hidden',
+            boxShadow: '0 15px 35px rgba(249, 115, 22, 0.3)',
+            maxWidth: '500px',
+            margin: '0 auto'
+        }}>
             
             <style>{`
                 @keyframes spin-fast { 100% { transform: rotate(360deg); } }
@@ -89,73 +100,90 @@ export default function CircuitForgeSandbox() {
                 .wire-flow { stroke-dasharray: 6 6; animation: dash-flow 0.4s linear infinite; }
                 .wire-flow-fast { stroke-dasharray: 6 6; animation: dash-flow 0.15s linear infinite; }
                 .custom-scroll::-webkit-scrollbar { height: 4px; }
-                .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
-                .custom-scroll::-webkit-scrollbar-thumb { background: rgba(249,115,22,0.3); border-radius: 10px; }
+                .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 10px; }
+                .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.5); border-radius: 10px; }
             `}</style>
 
-            <Zap className="absolute -right-4 -top-4 w-24 h-24 text-orange-500/5 group-hover:rotate-12 transition-transform duration-700 pointer-events-none" />
-            
-            <div className="flex items-center gap-2 mb-4 relative z-10">
-                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-                <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-orange-500">Live Sandbox</span>
-            </div>
+            {/* Background Watermark */}
+            <span style={{ position: 'absolute', right: '-10px', top: '20px', fontSize: '140px', opacity: 0.15, pointerEvents: 'none', zIndex: 0 }}>
+                💡
+            </span>
 
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-none">
-                    Circuit <span className="text-orange-500">Forge</span>
-                </h3>
-                <button onClick={clearBoard} className="w-8 h-8 rounded-xl bg-background border border-border flex items-center justify-center hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors active:scale-95 group/btn">
-                    <Trash2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                </button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+                        <Zap color="#fff" size={26} />
+                    </div>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1.1, textTransform: 'uppercase' }}>CIRCUIT FORGE</h2>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '10px', fontWeight: 800, opacity: 0.8, letterSpacing: '1px', textTransform: 'uppercase' }}>LIVE SANDBOX</p>
+                    </div>
+                </div>
+                <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={clearBoard} 
+                    style={{ background: '#fff', border: 'none', color: '#ea580c', width: '45px', height: '45px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                >
+                    <Trash2 size={22} strokeWidth={2.5} />
+                </motion.button>
             </div>
 
             {/* --- VISUAL SANDBOX AREA --- */}
-            <div className="bg-[#0a0a0c] border-2 border-border rounded-3xl mb-4 relative overflow-hidden flex flex-col shadow-inner">
+            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '24px', overflow: 'hidden', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
                 
                 {/* Header Control Panel */}
-                <div className="flex justify-between items-center bg-background/80 backdrop-blur-md p-2 border-b border-border z-20 relative">
-                    <div className="flex items-center gap-2 px-2">
-                        <Battery className="text-orange-500" size={16} />
-                        <input type="number" value={voltage} onChange={e => setVoltage(e.target.value)} className="w-12 bg-transparent text-white font-black text-sm outline-none border-b-2 border-orange-500/30 focus:border-orange-500 text-center transition-colors" placeholder="0" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">V</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.1)', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Battery color="#fbbf24" size={18} />
+                        <input 
+                            type="number" value={voltage} onChange={e => setVoltage(e.target.value)} 
+                            style={{ width: '50px', background: 'transparent', color: '#fff', fontSize: '16px', fontWeight: 900, border: 'none', borderBottom: '2px solid rgba(255,255,255,0.5)', textAlign: 'center', outline: 'none' }} 
+                            placeholder="0" 
+                        />
+                        <span style={{ fontSize: '10px', fontWeight: 900, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>Volts</span>
                     </div>
-                    <button onClick={() => setIsClosed(!isClosed)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 ${isClosed ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] border-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-500'}`}>
-                        {isClosed ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                        {isClosed ? 'ON' : 'OFF'}
+                    <button 
+                        onClick={() => setIsClosed(!isClosed)} 
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '10px', border: `1px solid ${isClosed ? '#10b981' : 'rgba(255,255,255,0.3)'}`, background: isClosed ? '#10b981' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: isClosed ? '0 0 15px rgba(16,185,129,0.5)' : 'none' }}
+                    >
+                        {isClosed ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                        {isClosed ? 'POWER ON' : 'POWER OFF'}
                     </button>
                 </div>
 
-                {/* Circuit Grid Canvas (Compact Edition) */}
-                <div className="relative py-8 px-4 min-h-[220px] overflow-x-auto custom-scroll flex items-center z-10">
+                {/* Circuit Grid Canvas */}
+                <div style={{ position: 'relative', padding: '32px 16px', minHeight: '220px', overflowX: 'auto', display: 'flex', alignItems: 'center' }} className="custom-scroll">
                     
                     {/* Background Series Wire */}
-                    <div className="absolute top-1/2 left-0 right-0 h-[3px] bg-zinc-800 -translate-y-1/2 z-0" />
+                    <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '4px', background: 'rgba(255,255,255,0.2)', transform: 'translateY(-50%)', zIndex: 0 }} />
                     
                     {/* Animated Flowing Electrons (Series) */}
                     {totalCurrent > 0 && !isShortCircuit && (
-                        <div className="absolute top-1/2 left-0 right-0 h-[3px] -translate-y-1/2 z-0 overflow-hidden">
-                            <svg width="100%" height="4" className="absolute top-0">
-                                <line x1="0" y1="1.5" x2="2000" y2="1.5" stroke="#f97316" strokeWidth="3" className={totalCurrent > 5 ? "wire-flow-fast" : "wire-flow"} />
+                        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '4px', transform: 'translateY(-50%)', zIndex: 0, overflow: 'hidden' }}>
+                            <svg width="100%" height="4" style={{ position: 'absolute', top: 0 }}>
+                                <line x1="0" y1="2" x2="2000" y2="2" stroke="#fbbf24" strokeWidth="4" className={totalCurrent > 5 ? "wire-flow-fast" : "wire-flow"} />
                             </svg>
                         </div>
                     )}
 
                     {/* Short Circuit Warning */}
-                    {isShortCircuit && isClosed && (
-                        <div className="absolute inset-0 flex items-center justify-center z-50 bg-red-500/10 backdrop-blur-sm">
-                            <div className="bg-red-950 px-6 py-4 rounded-3xl flex flex-col items-center border-2 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.6)] animate-pulse">
-                                <AlertTriangle className="text-red-500 w-10 h-10 mb-2 animate-bounce" />
-                                <h4 className="text-red-500 font-black italic uppercase tracking-widest text-lg">Short Circuit</h4>
-                                <p className="text-[9px] text-red-400 font-bold uppercase mt-1">Zero Resistance Route.</p>
-                            </div>
-                        </div>
-                    )}
+                    <AnimatePresence>
+                        {isShortCircuit && isClosed && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.4)', backdropFilter: 'blur(4px)', zIndex: 50 }}>
+                                <div style={{ background: '#7f1d1d', padding: '24px', borderRadius: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '2px solid #ef4444', boxShadow: '0 0 50px rgba(239,68,68,0.8)' }}>
+                                    <AlertTriangle color="#ef4444" size={40} style={{ marginBottom: '8px' }} />
+                                    <h4 style={{ margin: 0, color: '#ef4444', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', fontSize: '18px' }}>Short Circuit</h4>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: '#fca5a5', fontWeight: 900, textTransform: 'uppercase' }}>Zero Resistance Route Detected.</p>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Dynamic Stages Mapping */}
-                    <div className="flex gap-4 items-center w-max min-w-full px-4 relative z-10">
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', width: 'max-content', minWidth: '100%', position: 'relative', zIndex: 10 }}>
                         {grid.length === 0 && !isShortCircuit && (
-                            <div className="w-full text-center text-zinc-600 font-bold text-[10px] uppercase tracking-widest italic py-8">
-                                Add a node to forge circuit.
+                            <div style={{ width: '100%', textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontWeight: 900, fontSize: '12px', textTransform: 'uppercase', fontStyle: 'italic', padding: '32px 0' }}>
+                                Build a node to forge circuit.
                             </div>
                         )}
 
@@ -164,11 +192,11 @@ export default function CircuitForgeSandbox() {
                             const stageV = isShortCircuit ? 0 : totalCurrent * stageData.req;
 
                             return (
-                                <div key={sIdx} className="relative flex flex-col items-center gap-2 min-w-[70px]">
+                                <div key={sIdx} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minWidth: '80px' }}>
                                     
                                     {/* Parallel Vertical Bus Wire */}
                                     {stage.length > 1 && (
-                                        <div className={`absolute top-[10%] bottom-[10%] left-1/2 w-[3px] -translate-x-1/2 z-0 rounded-full transition-colors ${totalCurrent > 0 && !isShortCircuit ? 'bg-orange-500/50 shadow-[0_0_8px_rgba(249,115,22,0.3)]' : 'bg-zinc-800'}`} />
+                                        <div style={{ position: 'absolute', top: '10%', bottom: '10%', left: '50%', width: '4px', transform: 'translateX(-50%)', background: totalCurrent > 0 && !isShortCircuit ? 'rgba(251, 191, 36, 0.6)' : 'rgba(255,255,255,0.2)', boxShadow: totalCurrent > 0 && !isShortCircuit ? '0 0 10px rgba(251, 191, 36, 0.5)' : 'none', zIndex: 0, borderRadius: '4px', transition: 'all 0.3s ease' }} />
                                     )}
 
                                     {/* Parallel Components */}
@@ -179,28 +207,32 @@ export default function CircuitForgeSandbox() {
                                         const spinSpeed = Math.max(0.1, 2 - (compI * 0.3));
 
                                         return (
-                                            <div key={comp.id} className="relative group/comp bg-[#16181d] border-2 border-zinc-700 rounded-xl p-2 flex flex-col items-center justify-center shadow-lg transition-all hover:border-orange-500 w-[72px] z-10">
+                                            <div key={comp.id} className="group" style={{ position: 'relative', background: 'rgba(0,0,0,0.6)', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '16px', padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '80px', zIndex: 10, backdropFilter: 'blur(5px)', transition: 'border 0.2s ease' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = '#fbbf24'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}>
                                                 
-                                                <button onClick={() => removeComponent(sIdx, comp.id)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover/comp:opacity-100 transition-all z-20 hover:scale-110 shadow-lg">
-                                                    <Trash2 size={10} />
+                                                <button onClick={() => removeComponent(sIdx, comp.id)} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: '#fff', border: 'none', padding: '4px', borderRadius: '50%', cursor: 'pointer', zIndex: 20, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Trash2 size={12} />
                                                 </button>
 
                                                 {/* Physics Icon */}
-                                                <div className="mb-2 h-6 flex items-center justify-center relative">
-                                                    {comp.type === 'bulb' && <Lightbulb size={22} color={compI > 0 ? '#fbbf24' : '#52525b'} style={{ opacity: compI > 0 ? brightness : 1, filter: compI > 0 ? `drop-shadow(0 0 ${brightness * 15}px #fbbf24)` : 'none' }} className="transition-all duration-300" />}
-                                                    {comp.type === 'motor' && <Fan size={22} color={compI > 0 ? '#38bdf8' : '#52525b'} style={{ animation: compI > 0 ? `spin-fast ${spinSpeed}s linear infinite` : 'none' }} className={compI > 0 ? "drop-shadow-[0_0_10px_rgba(56,189,248,0.5)]" : ""} />}
-                                                    {comp.type === 'resistor' && <Activity size={22} className="text-zinc-500" />}
+                                                <div style={{ marginBottom: '8px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {comp.type === 'bulb' && <Lightbulb size={24} color={compI > 0 ? '#fde047' : 'rgba(255,255,255,0.3)'} style={{ opacity: compI > 0 ? brightness : 1, filter: compI > 0 ? `drop-shadow(0 0 ${brightness * 15}px #fef08a)` : 'none', transition: 'all 0.3s' }} />}
+                                                    {comp.type === 'motor' && <Fan size={24} color={compI > 0 ? '#38bdf8' : 'rgba(255,255,255,0.3)'} style={{ animation: compI > 0 ? `spin-fast ${spinSpeed}s linear infinite` : 'none', filter: compI > 0 ? 'drop-shadow(0 0 10px rgba(56,189,248,0.5))' : 'none' }} />}
+                                                    {comp.type === 'resistor' && <Activity size={24} color="rgba(255,255,255,0.5)" />}
                                                 </div>
 
-                                                {/* Resistance Input (Compact) */}
-                                                <div className="flex items-center justify-center gap-0.5 bg-black/80 px-1 py-1 rounded-md border border-zinc-800 w-full">
-                                                    <input type="text" value={comp.resistance} onChange={e => updateResistance(sIdx, comp.id, e.target.value)} className="w-full bg-transparent text-white text-[10px] font-black text-center outline-none" placeholder="0" />
-                                                    <span className="text-[8px] font-bold text-zinc-500 pr-0.5">Ω</span>
+                                                {/* Resistance Input (Fixed Alignment) */}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px', background: 'rgba(255,255,255,0.1)', padding: '4px 6px', borderRadius: '8px', width: '100%' }}>
+                                                    <input 
+                                                        type="text" value={comp.resistance} onChange={e => updateResistance(sIdx, comp.id, e.target.value)} 
+                                                        style={{ boxSizing: 'border-box', width: '100%', background: 'transparent', color: '#fff', fontSize: '12px', fontWeight: 900, textAlign: 'center', border: 'none', outline: 'none' }} 
+                                                        placeholder="0" 
+                                                    />
+                                                    <span style={{ fontSize: '10px', fontWeight: 900, color: 'rgba(255,255,255,0.5)' }}>Ω</span>
                                                 </div>
                                                 
-                                                {/* Live Component Telemetry (Hidden till hover for cleaner UI) */}
+                                                {/* Live Component Telemetry */}
                                                 {isClosed && !isShortCircuit && (
-                                                    <div className="absolute -bottom-5 text-[8px] font-black tracking-widest text-emerald-400 bg-black px-2 py-0.5 rounded border border-emerald-500/30 z-30 whitespace-nowrap shadow-lg opacity-0 group-hover/comp:opacity-100 transition-opacity">
+                                                    <div style={{ position: 'absolute', bottom: '-20px', fontSize: '9px', fontWeight: 900, letterSpacing: '0.5px', color: '#10b981', background: 'rgba(0,0,0,0.8)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(16,185,129,0.5)', whiteSpace: 'nowrap', zIndex: 30 }} className="opacity-0 group-hover:opacity-100 transition-opacity">
                                                         {Number(compI.toFixed(1))}A · {Number(stageV.toFixed(1))}V
                                                     </div>
                                                 )}
@@ -210,10 +242,10 @@ export default function CircuitForgeSandbox() {
 
                                     {/* Inline Add Parallel Branch Menu */}
                                     {stage.length < 4 && (
-                                        <div className="flex items-center gap-1 mt-1 bg-zinc-900/80 backdrop-blur-sm p-1 rounded-lg border border-zinc-800 z-10">
-                                            <button onClick={() => addParallelBranch(sIdx, 'resistor')} className="p-1 hover:bg-zinc-700 rounded text-zinc-400 hover:text-white transition-colors" title="Add Resistor"><Activity size={12} /></button>
-                                            <button onClick={() => addParallelBranch(sIdx, 'bulb')} className="p-1 hover:bg-zinc-700 rounded text-zinc-400 hover:text-yellow-400 transition-colors" title="Add Bulb"><Lightbulb size={12} /></button>
-                                            <button onClick={() => addParallelBranch(sIdx, 'motor')} className="p-1 hover:bg-zinc-700 rounded text-zinc-400 hover:text-cyan-400 transition-colors" title="Add Motor"><Fan size={12} /></button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', background: 'rgba(0,0,0,0.4)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', zIndex: 10 }}>
+                                            <button onClick={() => addParallelBranch(sIdx, 'resistor')} style={{ padding: '4px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', borderRadius: '8px' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="Add Resistor"><Activity size={14} /></button>
+                                            <button onClick={() => addParallelBranch(sIdx, 'bulb')} style={{ padding: '4px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', borderRadius: '8px' }} onMouseEnter={e => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fde047'}} onMouseLeave={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}} title="Add Bulb"><Lightbulb size={14} /></button>
+                                            <button onClick={() => addParallelBranch(sIdx, 'motor')} style={{ padding: '4px', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', borderRadius: '8px' }} onMouseEnter={e => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#38bdf8'}} onMouseLeave={e => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}} title="Add Motor"><Fan size={14} /></button>
                                         </div>
                                     )}
                                 </div>
@@ -221,52 +253,56 @@ export default function CircuitForgeSandbox() {
                         })}
 
                         {/* Add Series Node Button */}
-                        <button onClick={addSeriesNode} className="shrink-0 flex flex-col items-center justify-center gap-1 w-16 h-20 rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-800/20 text-zinc-500 hover:border-orange-500 hover:text-orange-500 hover:bg-orange-500/5 transition-all active:scale-95 z-10 bg-[#0a0a0c]">
-                            <Plus size={16} />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-center px-1">Node</span>
+                        <button 
+                            onClick={addSeriesNode} 
+                            style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', width: '70px', height: '90px', borderRadius: '16px', border: '2px dashed rgba(255,255,255,0.3)', background: 'rgba(0,0,0,0.2)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', transition: 'all 0.2s ease', zIndex: 10 }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#fff'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+                        >
+                            <Plus size={20} />
+                            <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Node</span>
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* --- LIVE TELEMETRY DASHBOARD --- */}
-            <div className="grid grid-cols-2 gap-2 mb-4 relative z-10">
-                <div className="bg-orange-500/10 border border-orange-500/30 p-3 rounded-2xl flex justify-between items-center shadow-inner">
-                    <p className="text-[9px] font-bold text-orange-500 uppercase tracking-widest">Total Load</p>
-                    <p className="text-sm font-black italic text-text">{Number(totalReq.toFixed(2))} Ω</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+                <div style={{ background: 'rgba(255,255,255,0.15)', padding: '16px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(5px)' }}>
+                    <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Total Load</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 900, fontStyle: 'italic' }}>{Number(totalReq.toFixed(2))} Ω</p>
                 </div>
-                <div className={`p-3 rounded-2xl flex justify-between items-center shadow-inner border transition-colors ${!isClosed ? 'bg-zinc-500/10 border-zinc-500/30 text-zinc-500' : isShortCircuit ? 'bg-red-500/10 border-red-500/50 text-red-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'}`}>
-                    <p className="text-[9px] font-bold uppercase tracking-widest">Current</p>
-                    <p className="text-sm font-black italic">{!isClosed ? '0' : isShortCircuit ? 'MAX' : Number(totalCurrent.toFixed(2))} A</p>
+                <div style={{ background: !isClosed ? 'rgba(0,0,0,0.2)' : isShortCircuit ? 'rgba(239, 68, 68, 0.2)' : '#fff', padding: '16px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backdropFilter: 'blur(5px)', transition: 'all 0.3s ease' }}>
+                    <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: !isClosed ? 'rgba(255,255,255,0.5)' : isShortCircuit ? '#ef4444' : '#ea580c' }}>Current</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 900, fontStyle: 'italic', color: !isClosed ? 'rgba(255,255,255,0.5)' : isShortCircuit ? '#ef4444' : '#ea580c' }}>{!isClosed ? '0' : isShortCircuit ? 'MAX' : Number(totalCurrent.toFixed(2))} A</p>
                 </div>
             </div>
 
             {/* --- REAL-TIME MATH ENGINE LOG --- */}
-            <div className="space-y-2 relative z-10 bg-background border border-border rounded-2xl p-4 shadow-sm">
-                <h4 className="text-[9px] font-black uppercase tracking-widest text-text/40 mb-3 flex items-center gap-1.5">
-                    <Zap size={10} className="text-orange-500" /> Ohm's Law Log
+            <div style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '24px', padding: '20px', backdropFilter: 'blur(5px)', position: 'relative', zIndex: 1 }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Zap size={14} color="#fde047" /> Ohm's Law Log
                 </h4>
                 
                 {grid.length === 0 ? (
-                    <p className="text-[10px] font-bold text-zinc-500 italic text-center py-1">Build a circuit to analyze.</p>
+                    <p style={{ fontSize: '12px', fontWeight: 900, fontStyle: 'italic', opacity: 0.5, textAlign: 'center', margin: '10px 0' }}>Build a circuit to analyze.</p>
                 ) : isShortCircuit ? (
-                    <p className="text-[10px] font-bold text-red-500 italic text-center py-1">Resistance is near zero.</p>
+                    <p style={{ fontSize: '12px', fontWeight: 900, fontStyle: 'italic', color: '#fca5a5', textAlign: 'center', margin: '10px 0' }}>Resistance is near zero.</p>
                 ) : (
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {stageResults.map((sData, i) => (
-                            <div key={i} className="text-[10px] font-bold text-zinc-400 bg-card p-2 rounded-lg border border-border flex items-center justify-between shadow-sm">
-                                <span className="uppercase tracking-widest text-text">Node {i + 1} {sData.components.length > 1 ? '(Parallel)' : '(Series)'}</span>
-                                <span className="font-black italic text-orange-400">{Number(sData.req.toFixed(2))} Ω</span>
+                            <div key={i} style={{ fontSize: '11px', fontWeight: 900, background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Node {i + 1} {sData.components.length > 1 ? '(Parallel)' : '(Series)'}</span>
+                                <span style={{ fontStyle: 'italic', color: '#fbbf24' }}>{Number(sData.req.toFixed(2))} Ω</span>
                             </div>
                         ))}
                         
-                        <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
-                            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-emerald-500 text-xs font-black italic bg-emerald-500/5 p-2 rounded-xl border border-emerald-500/20 shadow-inner">
-                                <div className="flex items-center gap-2">
+                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '12px 16px', borderRadius: '16px', color: '#ea580c', fontWeight: 900, fontStyle: 'italic' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
                                     <span>I = <Frac n={vNum} d={Number(totalReq.toFixed(2))} /></span>
-                                    <span>➔</span>
                                 </div>
-                                <span className="text-sm">I = {Number(totalCurrent.toFixed(2))} A</span>
+                                <span style={{ fontSize: '16px' }}>I = {Number(totalCurrent.toFixed(2))} A</span>
                             </div>
                         </div>
                     </div>

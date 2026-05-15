@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  ChevronLeft, Loader2, Target, Shield, Crosshair, Volume2, VolumeX,
-  Zap, Trophy, Heart, RotateCcw, Play
+  ChevronLeft, Trophy, Play, Pause, RotateCcw, Target, Shield,
+  Crosshair, Heart, Zap, Loader2, Volume2, VolumeX, Sparkles
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { CombatLogo } from '@/components/ArcadeIcons';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- ENGINE CONSTANTS ---
 const CANVAS_WIDTH = 360;
@@ -136,8 +137,8 @@ export default function VectorCombat() {
     } catch (err) { /* ignore */ }
   };
 
-  const handleBack = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
+  const handleBack = (e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
     exitFullscreen();
     isUnmounted.current = true;
     cancelAnimationFrame(requestRef.current);
@@ -168,11 +169,6 @@ export default function VectorCombat() {
   };
 
   // --- SUPABASE ---
-  const syncGameState = useCallback((state: 'idle' | 'playing' | 'gameover') => {
-    gameStateRef.current = state; 
-    setGameState(state);
-  }, []);
-
   const handleGameOver = useCallback(async () => {
     if (gameStateRef.current === 'gameover') return;
     
@@ -978,10 +974,10 @@ export default function VectorCombat() {
     initAudio();
     
     player.current = { 
-      id: 0, x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT - 60,
+      id: 0, x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 + 100, 
       radius: 14, angle: -Math.PI/2, turretAngle: -Math.PI/2,
-      hp: 3, maxHp: 3, type: 'player', color: '#06b6d4',
-      speed: 2.8, cooldown: 0, hitTimer: 0, muzzleFlash: 0
+      hp: 3, maxHp: 3, type: 'player', color: '#06b6d4', 
+      speed: 2.5, cooldown: 0, hitTimer: 0, muzzleFlash: 0 
     };
     enemies.current = [];
     bullets.current = [];
@@ -1009,10 +1005,11 @@ export default function VectorCombat() {
     buildMap();
     spawnWave(); 
 
-    syncGameState('playing');
-    isPausedRef.current = false;
+    gameStateRef.current = 'playing'; 
+    setGameState('playing'); 
+    isPausedRef.current = false; 
     setIsPaused(false);
-  }, [syncGameState, buildMap, spawnWave]);
+  }, [buildMap, spawnWave]);
 
   const togglePause = useCallback(() => {
     if (gameStateRef.current !== 'playing') return;
@@ -1061,7 +1058,10 @@ export default function VectorCombat() {
   // Start loop securely
   useEffect(() => {
     requestRef.current = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(requestRef.current);
+    return () => {
+      isUnmounted.current = true;
+      cancelAnimationFrame(requestRef.current);
+    };
   }, [update]);
 
   return (

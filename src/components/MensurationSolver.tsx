@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { Box, Cylinder, Cone, Globe, Square, RectangleHorizontal, Circle, Triangle, Sparkles, Zap, RotateCcw } from 'lucide-react';
+import { Box, Cylinder, Cone, Globe, Square, RectangleHorizontal, Circle, Triangle, Sparkles, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type Shape3D = 'cube' | 'cylinder' | 'cone' | 'sphere';
 type Shape2D = 'square' | 'rectangle' | 'circle' | 'triangle';
@@ -14,20 +15,19 @@ export default function MensurationSolver() {
   const [selectedUnit, setSelectedUnit] = useState<UnitType>('cm');
   const [inputs, setInputs] = useState({ r: '', h: '', l: '', w: '', a: '', b: '', c: '' });
   const [steps, setSteps] = useState<{ title: string, math: string }[]>([]);
-  const [isFinal, setIsFinal] = useState(false);
+  const [isCalculated, setIsCalculated] = useState(false);
 
   const is3D = ['cube', 'cylinder', 'cone', 'sphere'].includes(shape);
 
   const reset = () => {
     setSteps([]);
-    setIsFinal(false);
+    setIsCalculated(false);
   };
 
   const handleShapeChange = (s: Shape) => {
     setShape(s);
     setInputs({ r: '', h: '', l: '', w: '', a: '', b: '', c: '' });
     
-    // Auto-switch calc types when crossing dimensions
     if (['cube', 'cylinder', 'cone', 'sphere'].includes(s)) {
       setCalcType('vol');
     } else {
@@ -45,7 +45,6 @@ export default function MensurationSolver() {
     let a = parseFloat(inputs.a) || 0;
     let b = parseFloat(inputs.b) || 0;
     let c = parseFloat(inputs.c) || 0;
-    const pi = 3.14;
 
     let newSteps: { title: string, math: string }[] = [];
     let ans = 0;
@@ -171,97 +170,117 @@ export default function MensurationSolver() {
       }
     }
 
-    newSteps.push({ title: "Final Calculation", math: `Ans ≈ ${ans.toFixed(2)} ${unitStr}` });
+    newSteps.push({ title: "Final Result", math: `Ans ≈ ${ans.toFixed(2)} ${unitStr}` });
     
-    setSteps([]);
-    newSteps.forEach((step, index) => {
-      setTimeout(() => {
-        setSteps(prev => [...prev, step]);
-        if (index === newSteps.length - 1) setIsFinal(true);
-      }, (index + 1) * 600);
-    });
+    setSteps(newSteps);
+    setIsCalculated(true);
   };
 
   return (
-    <div className="relative rounded-3xl bg-card border border-border p-5 overflow-hidden transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.1)] group">
-      <Box className="absolute -right-4 -top-4 w-24 h-24 text-emerald-500/5 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" />
-      
-      <div className="flex items-center gap-2 mb-4 relative z-10">
-        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-        <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-emerald-500">Geometry Engine</span>
+    <div style={{
+      background: 'linear-gradient(135deg, #10b981, #047857)',
+      borderRadius: '32px',
+      padding: '24px',
+      color: '#fff',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 15px 35px rgba(16, 185, 129, 0.3)',
+      maxWidth: '500px',
+      margin: '0 auto'
+    }}>
+      <span style={{ position: 'absolute', right: '-10px', top: '20px', fontSize: '140px', opacity: 0.15, pointerEvents: 'none', zIndex: 0 }}>
+        🧊
+      </span>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+        <div style={{ width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+          <Box color="#fff" size={26} />
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1.1, textTransform: 'uppercase' }}>SHAPE MENSURATION</h2>
+          <p style={{ margin: '4px 0 0 0', fontSize: '10px', fontWeight: 800, opacity: 0.8, letterSpacing: '1px', textTransform: 'uppercase' }}>GEOMETRY ENGINE</p>
+        </div>
       </div>
-      <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text mb-6">
-        Shape <span className="text-emerald-500">Mensuration</span>
-      </h3>
 
       {/* --- SHAPE SELECTORS --- */}
-      <div className="space-y-2 mb-4 relative z-10">
-        <p className="text-[9px] font-bold tracking-widest uppercase text-text/40 pl-1">3D Shapes (Vol, SA)</p>
-        <div className="flex gap-2 bg-background/50 p-1.5 rounded-2xl border border-border">
+      <div style={{ marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+        <p style={{ margin: '0 0 8px 4px', fontSize: '10px', fontWeight: 900, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>3D Shapes (Volume, SA)</p>
+        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '20px', marginBottom: '16px', backdropFilter: 'blur(5px)' }}>
           {(['cube', 'cylinder', 'cone', 'sphere'] as const).map(s => (
             <button 
               key={s} onClick={() => handleShapeChange(s)}
-              className={`flex-1 flex flex-col items-center justify-center py-2 rounded-xl transition-all ${shape === s ? 'bg-emerald-500 text-white shadow-md' : 'text-text/50 hover:bg-emerald-500/10 hover:text-emerald-500'}`}
+              style={{
+                flex: 1, padding: '10px 0', border: 'none', borderRadius: '14px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                background: shape === s ? '#fff' : 'transparent',
+                color: shape === s ? '#047857' : '#fff',
+                opacity: shape === s ? 1 : 0.7,
+                boxShadow: shape === s ? '0 4px 10px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
             >
-              {s === 'cube' && <Box className="w-4 h-4 mb-1" />}
-              {s === 'cylinder' && <Cylinder className="w-4 h-4 mb-1" />}
-              {s === 'cone' && <Cone className="w-4 h-4 mb-1" />}
-              {s === 'sphere' && <Globe className="w-4 h-4 mb-1" />}
-              <span className="text-[8px] font-black uppercase tracking-wider">{s}</span>
+              {s === 'cube' && <Box size={18} />}
+              {s === 'cylinder' && <Cylinder size={18} />}
+              {s === 'cone' && <Cone size={18} />}
+              {s === 'sphere' && <Globe size={18} />}
+              <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' }}>{s}</span>
             </button>
           ))}
         </div>
 
-        <p className="text-[9px] font-bold tracking-widest uppercase text-text/40 pl-1 mt-2">2D Shapes (Area, Perim)</p>
-        <div className="flex gap-2 bg-background/50 p-1.5 rounded-2xl border border-border">
+        <p style={{ margin: '0 0 8px 4px', fontSize: '10px', fontWeight: 900, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>2D Shapes (Area, Perim)</p>
+        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.15)', padding: '6px', borderRadius: '20px', backdropFilter: 'blur(5px)' }}>
           {(['square', 'rectangle', 'circle', 'triangle'] as const).map(s => (
             <button 
               key={s} onClick={() => handleShapeChange(s)}
-              className={`flex-1 flex flex-col items-center justify-center py-2 rounded-xl transition-all ${shape === s ? 'bg-emerald-500 text-white shadow-md' : 'text-text/50 hover:bg-emerald-500/10 hover:text-emerald-500'}`}
+              style={{
+                flex: 1, padding: '10px 0', border: 'none', borderRadius: '14px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                background: shape === s ? '#fff' : 'transparent',
+                color: shape === s ? '#047857' : '#fff',
+                opacity: shape === s ? 1 : 0.7,
+                boxShadow: shape === s ? '0 4px 10px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
             >
-              {s === 'square' && <Square className="w-4 h-4 mb-1" />}
-              {s === 'rectangle' && <RectangleHorizontal className="w-4 h-4 mb-1" />}
-              {s === 'circle' && <Circle className="w-4 h-4 mb-1" />}
-              {s === 'triangle' && <Triangle className="w-4 h-4 mb-1" />}
-              <span className="text-[8px] font-black uppercase tracking-wider">{s}</span>
+              {s === 'square' && <Square size={18} />}
+              {s === 'rectangle' && <RectangleHorizontal size={18} />}
+              {s === 'circle' && <Circle size={18} />}
+              {s === 'triangle' && <Triangle size={18} />}
+              <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' }}>{s.slice(0, 4)}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* --- CALC TYPE SELECTOR --- */}
-      <div className="flex gap-2 mb-4 relative z-10">
-        {is3D ? (
-          (['vol', 'csa', 'tsa'] as const).map(c => (
-            <button 
-              key={c} onClick={() => { setCalcType(c); reset(); }}
-              disabled={shape === 'cube' && c === 'csa' ? false : false} // Kept enabled, labeled as LSA
-              className={`flex-1 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all 
-                ${calcType === c ? 'bg-card border-emerald-500 text-emerald-500' : 'bg-background border-border text-text/40'}`}
-            >
-              {c === 'vol' ? 'Volume' : c === 'csa' ? (shape === 'cube' ? 'LSA' : 'Curved SA') : 'Total SA'}
-            </button>
-          ))
-        ) : (
-          (['area', 'perimeter'] as const).map(c => (
-            <button 
-              key={c} onClick={() => { setCalcType(c); reset(); }}
-              className={`flex-1 py-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all 
-                ${calcType === c ? 'bg-card border-emerald-500 text-emerald-500' : 'bg-background border-border text-text/40'}`}
-            >
-              {c === 'area' ? 'Area' : (shape === 'circle' ? 'Circumference' : 'Perimeter')}
-            </button>
-          ))
-        )}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', position: 'relative', zIndex: 1 }}>
+        {(is3D ? ['vol', 'csa', 'tsa'] : ['area', 'perimeter']).map(c => (
+          <button 
+            key={c} onClick={() => { setCalcType(c as CalcType); reset(); }}
+            style={{
+              flex: 1, padding: '12px 0', border: 'none', borderRadius: '16px', cursor: 'pointer',
+              background: calcType === c ? '#fff' : 'rgba(255,255,255,0.15)',
+              color: calcType === c ? '#047857' : '#fff',
+              fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px',
+              transition: 'all 0.2s ease', backdropFilter: 'blur(5px)'
+            }}
+          >
+            {c === 'vol' ? 'Volume' : c === 'csa' ? (shape === 'cube' ? 'LSA' : 'Curved SA') : c === 'tsa' ? 'Total SA' : c === 'area' ? 'Area' : (shape === 'circle' ? 'Circumference' : 'Perimeter')}
+          </button>
+        ))}
       </div>
 
       {/* --- UNIT SELECTOR --- */}
-      <div className="flex gap-2 mb-6 relative z-10 overflow-x-auto pb-2 scrollbar-hide">
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', position: 'relative', zIndex: 1, overflowX: 'auto', paddingBottom: '4px' }} className="scrollbar-hide">
         {(['mm', 'cm', 'm', 'km', 'in', 'ft'] as const).map(u => (
           <button 
             key={u} onClick={() => { setSelectedUnit(u); reset(); }}
-            className={`shrink-0 px-4 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all 
-              ${selectedUnit === u ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500' : 'bg-background border-border text-text/40 hover:bg-emerald-500/5 hover:text-emerald-500'}`}
+            style={{
+              flexShrink: 0, padding: '8px 16px', border: '1px solid', borderRadius: '14px', cursor: 'pointer',
+              background: selectedUnit === u ? 'rgba(255,255,255,0.25)' : 'transparent',
+              borderColor: selectedUnit === u ? '#fff' : 'rgba(255,255,255,0.3)',
+              color: '#fff', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase',
+              transition: 'all 0.2s ease'
+            }}
           >
             {u}
           </button>
@@ -269,111 +288,111 @@ export default function MensurationSolver() {
       </div>
 
       {/* --- DYNAMIC INPUTS --- */}
-      <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
-        
-        {/* Single Side (Square, Cube) */}
-        {(shape === 'cube' || shape === 'square') && (
-          <div className="col-span-2 relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Side (a)</span>
-            <input type="number" placeholder="0" value={inputs.a} onChange={e => setInputs({...inputs, a: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-20 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-          </div>
-        )}
-
-        {/* Radius (Cylinder, Cone, Sphere, Circle) */}
-        {['cylinder', 'cone', 'sphere', 'circle'].includes(shape) && (
-          <div className="col-span-2 relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Radius (r)</span>
-            <input type="number" placeholder="0" value={inputs.r} onChange={e => setInputs({...inputs, r: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-24 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-          </div>
-        )}
-
-        {/* Height (Cylinder, Cone, Triangle Area) */}
-        {(shape === 'cylinder' || shape === 'cone' || (shape === 'triangle' && calcType === 'area')) && (
-          <div className="col-span-2 relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Height (h)</span>
-            <input type="number" placeholder="0" value={inputs.h} onChange={e => setInputs({...inputs, h: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-24 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-          </div>
-        )}
-
-        {/* Length & Width (Rectangle) */}
-        {shape === 'rectangle' && (
-          <>
-            <div className="col-span-2 relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Length (l)</span>
-              <input type="number" placeholder="0" value={inputs.l} onChange={e => setInputs({...inputs, l: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-24 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-            </div>
-            <div className="col-span-2 relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Width (w)</span>
-              <input type="number" placeholder="0" value={inputs.w} onChange={e => setInputs({...inputs, w: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-24 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-            </div>
-          </>
-        )}
-
-        {/* Triangle Base & Perimeter Sides */}
-        {shape === 'triangle' && (
-          <>
-            <div className="col-span-2 relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Base (b)</span>
-              <input type="number" placeholder="0" value={inputs.b} onChange={e => setInputs({...inputs, b: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-20 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-            </div>
-            {calcType === 'perimeter' && (
-              <>
-                <div className="col-span-2 relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Side 1 (a)</span>
-                  <input type="number" placeholder="0" value={inputs.a} onChange={e => setInputs({...inputs, a: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-24 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-                </div>
-                <div className="col-span-2 relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500">Side 3 (c)</span>
-                  <input type="number" placeholder="0" value={inputs.c} onChange={e => setInputs({...inputs, c: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-24 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-                </div>
-              </>
-            )}
-          </>
-        )}
-
-        {/* Cone Slant Height */}
-        {shape === 'cone' && (
-          <div className="col-span-2 relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black italic text-emerald-500/50">Slant (l) opt.</span>
-            <input type="number" placeholder="Auto-calc" value={inputs.l} onChange={e => setInputs({...inputs, l: e.target.value})} className="w-full bg-background border-2 border-border rounded-xl pl-32 pr-12 py-3 text-lg font-black italic text-right outline-none focus:border-emerald-500 text-text" />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-text/30">{selectedUnit}</span>
-          </div>
-        )}
-      </div>
-
-      <button onClick={generateSteps} className="w-full mb-6 group/btn relative rounded-2xl bg-emerald-500 py-4 flex items-center justify-center gap-2 overflow-hidden transition-all active:scale-[0.98] shadow-[0_4px_0_rgb(4,120,87)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]">
-        <span className="text-sm font-black italic uppercase tracking-wider text-white relative z-10 flex items-center gap-2">Unravel Formula <Zap className="w-4 h-4 fill-current" /></span>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]" />
-      </button>
-
-      {/* --- STEP-BY-STEP DISPLAY --- */}
-      <div className="space-y-3 relative z-10">
-        {steps.map((step, index) => {
-          const isCurrent = index === steps.length - 1;
-          return (
-            <div key={index} className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-500 animate-in fade-in slide-in-from-top-4
-                ${isCurrent && isFinal ? 'bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-background border-border'}`}
-            >
-              <span className={`text-[10px] font-bold uppercase tracking-wider mb-2 text-center ${isCurrent && isFinal ? 'text-emerald-500' : 'text-text/40'}`}>
-                {step.title}
-              </span>
-              <div className="flex items-center">
-                <span className={`text-xl font-black italic tracking-tight ${isCurrent && isFinal ? 'text-emerald-500 text-2xl' : 'text-text'}`}>
-                  {step.math}
-                </span>
-                {isCurrent && isFinal && <Sparkles className="w-6 h-6 text-emerald-500 ml-2 animate-bounce" />}
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
+        {(() => {
+          const makeInput = (label: string, key: keyof typeof inputs, placeholder: string = "0", spanAll: boolean = false) => (
+            <div style={{ position: 'relative', gridColumn: spanAll ? '1 / -1' : 'span 1' }} key={key}>
+              <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: 900, fontStyle: 'italic', color: 'rgba(255,255,255,0.9)', zIndex: 2 }}>{label}</span>
+              <input 
+                type="number" placeholder={placeholder} value={inputs[key]} onChange={e => { setInputs({...inputs, [key]: e.target.value}); reset(); }}
+                style={{ 
+                  boxSizing: 'border-box', // <-- FIXED OVERFLOW HERE
+                  width: '100%', 
+                  background: 'rgba(255,255,255,0.15)', 
+                  border: '2px solid rgba(255,255,255,0.3)', 
+                  borderRadius: '18px', 
+                  padding: '14px 45px 14px 90px', 
+                  color: '#fff', 
+                  fontSize: '18px', 
+                  fontWeight: 900, 
+                  fontStyle: 'italic', 
+                  textAlign: 'left', 
+                  outline: 'none', 
+                  backdropFilter: 'blur(5px)' 
+                }}
+              />
+              <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: 900, opacity: 0.6, zIndex: 2 }}>{selectedUnit}</span>
             </div>
           );
-        })}
+
+          return (
+            <>
+              {(shape === 'cube' || shape === 'square') && makeInput('Side (a)', 'a', '0', true)}
+              {['cylinder', 'cone', 'sphere', 'circle'].includes(shape) && makeInput('Rad (r)', 'r', '0', true)}
+              {(shape === 'cylinder' || shape === 'cone' || (shape === 'triangle' && calcType === 'area')) && makeInput('Height (h)', 'h', '0', true)}
+              
+              {shape === 'rectangle' && (
+                <>
+                  {makeInput('Len (l)', 'l')}
+                  {makeInput('Wid (w)', 'w')}
+                </>
+              )}
+
+              {shape === 'triangle' && (
+                <>
+                  {makeInput('Base (b)', 'b', '0', calcType !== 'perimeter')}
+                  {calcType === 'perimeter' && (
+                    <>
+                      {makeInput('Side (a)', 'a')}
+                      {makeInput('Side (c)', 'c')}
+                    </>
+                  )}
+                </>
+              )}
+
+              {shape === 'cone' && makeInput('Slant (l)', 'l', 'Auto', true)}
+            </>
+          );
+        })()}
+      </div>
+
+      <motion.button 
+        whileTap={{ scale: 0.96 }}
+        onClick={generateSteps} 
+        style={{
+          width: '100%', background: '#fff', color: '#047857', border: 'none', borderRadius: '20px', padding: '18px', fontSize: '16px', fontWeight: 900, fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px', position: 'relative', zIndex: 1, boxShadow: '0 10px 20px rgba(0,0,0,0.15)', marginBottom: '20px'
+        }}
+      >
+        UNRAVEL FORMULA <Zap size={20} fill="#047857" />
+      </motion.button>
+
+      {/* --- STEP-BY-STEP DISPLAY --- */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', zIndex: 1 }}>
+        <AnimatePresence>
+          {isCalculated && steps.map((step, index) => {
+            const isLast = index === steps.length - 1;
+            return (
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.3 }}
+                style={{ 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', borderRadius: '20px', 
+                  background: isLast ? '#fff' : 'rgba(255,255,255,0.15)',
+                  color: isLast ? '#047857' : '#fff',
+                  boxShadow: isLast ? '0 8px 20px rgba(0,0,0,0.1)' : 'none',
+                  border: isLast ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', opacity: isLast ? 0.6 : 0.8 }}>
+                  {step.title}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: isLast ? '24px' : '20px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '1px' }}>
+                    {step.math}
+                  </span>
+                  {isLast && (
+                    <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: (index * 0.3) + 0.2, type: "spring" }}>
+                      <Sparkles size={24} color="#f09819" fill="#f09819" />
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
     </div>
   );

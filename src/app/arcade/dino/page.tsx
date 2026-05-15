@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Trophy, Play, RotateCcw, Footprints, Zap, Loader2, FastForward, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, Trophy, Play, RotateCcw, Footprints, Zap, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- CALIBRATED ENGINE CONSTANTS ---
 const CANVAS_WIDTH = 340;
@@ -23,6 +24,7 @@ export default function AltuDash() {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [flash, setFlash] = useState(false);
 
   // --- HARDCORE ENGINE REFS (Bypasses React for 60fps smoothness) ---
   const isRunning = useRef(false);
@@ -100,6 +102,8 @@ export default function AltuDash() {
     isRunning.current = false;
     gameStateRef.current = 'gameover';
     setGameState('gameover');
+    setFlash(true);
+    setTimeout(() => setFlash(false), 200);
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
     
     playSound(100, 'sawtooth', 0.2, 0.5);
@@ -339,6 +343,7 @@ export default function AltuDash() {
     scoreRef.current = 0;
     canvasFlashAlpha.current = 0;
     setScore(0);
+    setFlash(false);
     
     gameStateRef.current = 'playing';
     setGameState('playing');
@@ -383,95 +388,145 @@ export default function AltuDash() {
   }, [handleJump, handleDuckStart, handleDuckEnd]);
 
   return (
-    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden select-none touch-none overscroll-none transition-colors duration-200 ${gameState === 'gameover' ? 'bg-red-950/20' : ''}`}>
+    <div style={{
+      minHeight: '100dvh',
+      background: flash ? 'rgba(239, 68, 68, 0.1)' : '#fff',
+      padding: '40px 20px 120px',
+      maxWidth: '500px',
+      margin: '0 auto',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      transition: 'background 0.2s ease',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      overflow: 'hidden',
+      touchAction: 'none'
+    }}>
       
-      {/* Dynamic Ambient Background */}
-      <div className="fixed inset-0 -z-10 pointer-events-none transition-colors duration-1000">
-        <div className={`absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full transition-colors ${gameState === 'gameover' ? 'bg-red-500/10' : 'bg-amber-500/10'} blur-[80px]`} />
-        <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-orange-500/10 blur-[80px]" />
+      {/* Background Ambience */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.1)', filter: 'blur(80px)' }} />
+        <div style={{ position: 'absolute', bottom: '20%', left: '-10%', width: '260px', height: '260px', borderRadius: '50%', background: 'rgba(249, 115, 22, 0.1)', filter: 'blur(80px)' }} />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col h-full relative z-10">
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
         
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 z-50 shadow-sm cursor-pointer hover:text-amber-500">
-            <ChevronLeft size={20} />
+        {/* Header Area */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+          <button 
+            onPointerDown={handleBack} 
+            style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <ChevronLeft size={24} strokeWidth={2.5} />
           </button>
-          <div className="text-right">
-            <h1 className="text-xl font-black italic uppercase tracking-tighter text-amber-500 drop-shadow-[0_0_10px_rgba(245,158,11,0.4)]">Altu Dash</h1>
-            <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mt-0.5">Velocity Node</p>
+          <div style={{ textAlign: 'right' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#f59e0b' }}>Altu Dash</h1>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="flex gap-3 mb-6">
-          <div className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm relative">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Distance</span>
-            <span className="text-3xl font-black italic text-[var(--text)] leading-none flex items-center">
-              {score}<span className="text-sm ml-1 text-zinc-500 font-bold">m</span>
+        {/* Score Board */}
+        <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '24px' }}>
+          <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Distance</span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', lineHeight: 1, display: 'flex', alignItems: 'flex-end' }}>
+              {score} <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: 700, marginLeft: '4px', fontStyle: 'normal' }}>m</span>
             </span>
           </div>
-          <div className="flex-1 bg-amber-500/5 border border-amber-500/20 rounded-2xl p-3 flex flex-col items-center justify-center shadow-inner">
-            <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest flex items-center gap-1 mb-1">
-              <Trophy size={10}/> Personal Best
+
+          <div style={{ flex: 1, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(245, 158, 11, 0.1)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: 'rgba(245, 158, 11, 0.7)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Trophy size={12} /> Best
             </span>
-            <span className="text-3xl font-black italic text-amber-500 leading-none">{highScore}</span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#f59e0b', lineHeight: 1 }}>{highScore}</span>
           </div>
         </div>
 
-        {/* --- THE GAME CANVAS --- */}
-        <div className={`relative w-full aspect-[4/5] max-h-[380px] bg-[#020202] rounded-[32px] border-2 transition-all duration-300 overflow-hidden shadow-2xl ${gameState === 'gameover' ? 'border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.3)]' : 'border-[var(--border)]'}`}>
+        {/* The Game Box */}
+        <div 
+          style={{
+            position: 'relative', 
+            width: '100%', 
+            maxWidth: '340px', 
+            height: '400px', 
+            background: '#050505', 
+            borderRadius: '30px', 
+            border: flash ? '2px solid #ef4444' : '2px solid rgba(245, 158, 11, 0.3)', 
+            overflow: 'hidden', 
+            transition: 'border 0.2s ease, box-shadow 0.2s ease',
+            boxShadow: flash ? '0 0 50px rgba(239, 68, 68, 0.4)' : '0 10px 40px rgba(245, 158, 11, 0.15)'
+          }}
+        >
           
-          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full block" />
+          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ width: '100%', height: '100%', display: 'block' }} />
 
           {/* Overlays */}
-          {gameState === 'idle' && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 pointer-events-none">
-              <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center mb-4 border border-amber-500/40 animate-pulse">
-                <Footprints size={40} className="text-amber-500" />
-              </div>
-              <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-6">Altu Dash Protocol</p>
-              <button onPointerDown={initiateGame} className="px-10 py-4 bg-amber-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-3 shadow-[0_0_30px_rgba(245,158,11,0.5)] pointer-events-auto active:scale-95 transition-all">
-                <Play size={18} fill="currentColor" /> Initiate Dash
-              </button>
-            </div>
-          )}
+          <AnimatePresence>
+            {gameState === 'idle' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }} className="animate-pulse">
+                  <Footprints size={40} color="#f59e0b" />
+                </div>
+                <p style={{ margin: '0 0 24px 0', fontSize: '10px', fontWeight: 900, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.3em' }}>Altu Dash Protocol</p>
+                <button 
+                  onPointerDown={initiateGame} 
+                  style={{ padding: '16px 40px', background: '#f59e0b', color: '#000', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(245, 158, 11, 0.4)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <Play size={18} fill="currentColor" /> Initiate Dash
+                </button>
+              </motion.div>
+            )}
 
-          {gameState === 'gameover' && (
-            <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 pointer-events-none">
-              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4 border border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.4)]">
-                <Zap size={32} className="text-red-500" />
-              </div>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">Core Impact</h2>
-              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-8">System offline at {score}m</p>
-              
-              <button onPointerDown={initiateGame} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-3 shadow-2xl pointer-events-auto active:scale-95 transition-all">
-                <RotateCcw size={18} /> Reboot
-              </button>
-              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase tracking-widest animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing Data...</p>}
-            </div>
-          )}
+            {gameState === 'gameover' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(69, 10, 10, 0.9)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', boxShadow: '0 0 20px rgba(239,68,68,0.4)' }}>
+                  <Zap size={32} color="#ef4444" />
+                </div>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '32px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff', textShadow: '0 0 10px rgba(239,68,68,0.8)' }}>Core Impact</h2>
+                <p style={{ margin: '0 0 32px 0', fontSize: '10px', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px' }}>System offline at {score}m</p>
+                
+                <button 
+                  onPointerDown={initiateGame} 
+                  style={{ padding: '16px 40px', background: '#fff', color: '#dc2626', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <RotateCcw size={18} /> Reboot
+                </button>
+                {isSyncing && <p style={{ margin: '16px 0 0 0', fontSize: '8px', fontWeight: 900, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '8px' }} className="animate-pulse"><Loader2 size={10} className="animate-spin" /> Syncing Data...</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
         {/* --- HIGH-POLISH ERGONOMIC CONTROLS --- */}
-        <div className="mt-6 mb-auto flex justify-center gap-6 w-full touch-none select-none">
-             <button 
-                onPointerDown={handleJump}
-                className="w-[130px] h-[100px] bg-[var(--card)] border-2 border-[var(--border)] rounded-[32px] flex flex-col items-center justify-center active:scale-95 active:bg-amber-500/20 active:border-amber-500/50 transition-all shadow-lg group cursor-pointer"
-             >
-                <ArrowUp size={44} className="text-zinc-500 group-active:text-amber-500 mb-1 drop-shadow-sm" />
-                <span className="text-[10px] font-black text-zinc-500 group-active:text-amber-500 uppercase tracking-widest">Jump</span>
-             </button>
-             <button 
-                onPointerDown={handleDuckStart}
-                onPointerUp={handleDuckEnd}
-                onPointerLeave={handleDuckEnd}
-                className="w-[130px] h-[100px] bg-[var(--card)] border-2 border-[var(--border)] rounded-[32px] flex flex-col items-center justify-center active:scale-95 active:bg-cyan-500/20 active:border-cyan-500/50 transition-all shadow-lg group cursor-pointer"
-             >
-                <ArrowDown size={44} className="text-zinc-500 group-active:text-cyan-500 mb-1 drop-shadow-sm" />
-                <span className="text-[10px] font-black text-zinc-500 group-active:text-cyan-500 uppercase tracking-widest">Duck</span>
-             </button>
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '24px', width: '100%', touchAction: 'none', userSelect: 'none' }}>
+           <button 
+              onPointerDown={handleJump}
+              style={{ width: '130px', height: '100px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+              onMouseDown={e => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.2)'; e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.5)'; e.currentTarget.style.color = '#f59e0b'; e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+           >
+              <ArrowUp size={44} strokeWidth={2.5} style={{ marginBottom: '4px' }} />
+              <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Jump</span>
+           </button>
+           
+           <button 
+              onPointerDown={handleDuckStart}
+              onPointerUp={handleDuckEnd}
+              onPointerLeave={handleDuckEnd}
+              style={{ width: '130px', height: '100px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+              onMouseDown={e => { e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)'; e.currentTarget.style.color = '#06b6d4'; e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+           >
+              <ArrowDown size={44} strokeWidth={2.5} style={{ marginBottom: '4px' }} />
+              <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>Duck</span>
+           </button>
         </div>
 
       </div>

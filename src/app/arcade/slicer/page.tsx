@@ -1,9 +1,12 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Play, RotateCcw, Loader2, Target, Heart, Zap } from 'lucide-react';
+import { 
+  ChevronLeft, Play, RotateCcw, Loader2, Target, Heart, Zap, Trophy 
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { SlicerLogo } from '@/components/ArcadeIcons';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- ENGINE CONSTANTS ---
 const CANVAS_WIDTH = 340;
@@ -31,7 +34,7 @@ function distToSegment(p: Point, v: Point, w: Point) {
     return Math.sqrt((p.x - (v.x + t * (w.x - v.x)))**2 + (p.y - (v.y + t * (w.y - v.y)))**2);
 }
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#facc15'];
+const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#facc15', '#06b6d4'];
 
 export default function FruitSlicer() {
   const router = useRouter();
@@ -40,9 +43,11 @@ export default function FruitSlicer() {
   // React UI State
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [combo, setCombo] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [flash, setFlash] = useState(false);
 
   // Engine Refs (Bypass React for 60fps)
   const isRunning = useRef(false);
@@ -64,14 +69,19 @@ export default function FruitSlicer() {
   const isPointerDown = useRef(false);
   const lastPointer = useRef<Point | null>(null);
 
-  const syncGameState = (state: 'idle' | 'playing' | 'gameover') => {
+  useEffect(() => {
+    const saved = localStorage.getItem('slicerHS');
+    if (saved) setHighScore(parseInt(saved, 10));
+  }, []);
+
+  const syncGameState = useCallback((state: 'idle' | 'playing' | 'gameover') => {
       gameStateRef.current = state; 
       setGameState(state);
-  };
+  }, []);
 
   const initAudio = () => {
     if (!audioCtxRef.current) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (AudioContextClass) audioCtxRef.current = new AudioContextClass();
     }
     if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
@@ -90,9 +100,29 @@ export default function FruitSlicer() {
     osc.start(); osc.stop(ctx.currentTime + duration);
   };
 
-  const handleBack = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-    if (document.fullscreenElement) document.exitFullscreen();
+  const requestFullscreen = async () => {
+    const elem = document.documentElement;
+    try {
+      if (elem.requestFullscreen) await elem.requestFullscreen();
+      else if ((elem as any).webkitRequestFullscreen) await (elem as any).webkitRequestFullscreen();
+      else if ((elem as any).msRequestFullscreen) await (elem as any).msRequestFullscreen();
+    } catch (err) { /* ignore */ }
+  };
+
+  const exitFullscreen = async () => {
+    try {
+      const doc = document as any;
+      if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+      else if (doc.webkitFullscreenElement && doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+      else if (doc.msFullscreenElement && doc.msExitFullscreen) await doc.msExitFullscreen();
+    } catch (err) { /* ignore */ }
+  };
+
+  const handleBack = (e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
+    exitFullscreen();
+    isRunning.current = false;
+    if (requestRef.current) cancelAnimationFrame(requestRef.current);
     router.back();
   };
 
@@ -132,6 +162,29 @@ export default function FruitSlicer() {
           });
       }
       playSound(300, 'sine', 0.05, 0.2); 
+  };
+
+  const handleGameOver = async () => {
+    syncGameState('gameover');
+    
+    if (scoreRef.current > highScore) {
+      setHighScore(scoreRef.current);
+      localStorage.setItem('slicerHS', scoreRef.current.toString());
+    }
+
+    const studentId = localStorage.getItem('studentId');
+    if (studentId && scoreRef.current > 0) {
+      setIsSyncing(true);
+      try {
+        const { data: existing } = await supabase.from('arcade_scores').select('*').eq('student_id', studentId).eq('game_name', 'slicer').maybeSingle();
+        if (!existing) {
+          await supabase.from('arcade_scores').insert([{ student_id: studentId, game_name: 'slicer', score: scoreRef.current }]);
+        } else if (scoreRef.current > existing.score) {
+          await supabase.from('arcade_scores').update({ score: scoreRef.current }).eq('id', existing.id);
+        }
+      } catch (e) { /* ignore */ }
+      setIsSyncing(false);
+    }
   };
 
   // --- THE INDESTRUCTIBLE ENGINE LOOP ---
@@ -180,18 +233,14 @@ export default function FruitSlicer() {
                 if (!e.isHalf && e.type === 'fruit') {
                     livesRef.current -= 1;
                     playSound(150, 'sawtooth', 0.1, 0.3);
-                    shakeRef.current = 5;
+                    shakeRef.current = 8;
                     comboRef.current = 0;
+                    setFlash(true);
+                    setTimeout(() => setFlash(false), 150);
                     if (window.navigator.vibrate) window.navigator.vibrate(50);
                     
                     if (livesRef.current <= 0) {
-                        syncGameState('gameover');
-                        const studentId = localStorage.getItem('studentId');
-                        if (studentId && scoreRef.current > 0) {
-                            setIsSyncing(true);
-                            supabase.from('arcade_scores').insert([{ student_id: studentId, game_name: 'slicer', score: scoreRef.current }])
-                            .then(() => setIsSyncing(false)).catch(() => setIsSyncing(false));
-                        }
+                        handleGameOver();
                     }
                 }
                 entities.current.splice(i, 1);
@@ -233,7 +282,7 @@ export default function FruitSlicer() {
         if (e.type === 'bomb') {
             for (let i = 0; i < 8; i++) {
                 const a = e.rotation + (i * Math.PI) / 4;
-                const r = i % 2 === 0 ? e.radius : e.radius * 0.5;
+                const r = i % 2 === 0 ? e.radius : e.radius * 0.8;
                 ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
             }
         } else {
@@ -293,8 +342,8 @@ export default function FruitSlicer() {
         
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.lineWidth = 6;
-        ctx.strokeStyle = '#06b6d4'; 
-        ctx.shadowBlur = 15; ctx.shadowColor = '#22d3ee';
+        ctx.strokeStyle = '#2dd4bf'; 
+        ctx.shadowBlur = 15; ctx.shadowColor = '#2dd4bf';
         ctx.stroke();
         
         ctx.lineWidth = 2;
@@ -325,19 +374,12 @@ export default function FruitSlicer() {
           
           if (dist < e.radius) {
               if (e.type === 'bomb') {
-                  syncGameState('gameover');
                   shakeRef.current = 30;
                   playSound(100, 'sawtooth', 0.5, 0.8);
                   if (window.navigator.vibrate) window.navigator.vibrate([300, 100, 400]);
                   spawnParticles(e.x, e.y, '#ef4444', 60, 12);
                   entities.current.splice(i, 1);
-
-                  const studentId = localStorage.getItem('studentId');
-                  if (studentId && scoreRef.current > 0) {
-                      setIsSyncing(true);
-                      supabase.from('arcade_scores').insert([{ student_id: studentId, game_name: 'slicer', score: scoreRef.current }])
-                      .then(() => setIsSyncing(false)).catch(() => setIsSyncing(false));
-                  }
+                  handleGameOver();
               } else {
                   comboRef.current += 1;
                   comboTimer.current = 60; 
@@ -388,9 +430,7 @@ export default function FruitSlicer() {
 
   const startNew = (e?: React.SyntheticEvent) => {
     if (e) { e.stopPropagation(); e.preventDefault(); }
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
-    else if ((elem as any).webkitRequestFullscreen) (elem as any).webkitRequestFullscreen();
+    requestFullscreen();
     initAudio(); 
     
     entities.current = []; particles.current = []; trail.current = [];
@@ -398,6 +438,7 @@ export default function FruitSlicer() {
     livesRef.current = 3; setLives(3); 
     comboRef.current = 0; setCombo(0);
     shakeRef.current = 0; frameCount.current = 0;
+    setFlash(false);
     
     syncGameState('playing');
     isRunning.current = true; 
@@ -407,62 +448,130 @@ export default function FruitSlicer() {
   };
 
   return (
-    <div className="h-[100dvh] w-screen bg-[#050508] text-white flex flex-col items-center pt-6 overflow-hidden select-none touch-none overscroll-none">
-      <div className="w-full max-w-md px-4 h-full flex flex-col relative z-10">
+    <div style={{
+      minHeight: '100dvh',
+      background: flash ? 'rgba(239, 68, 68, 0.1)' : '#fff',
+      padding: '40px 20px 120px',
+      maxWidth: '500px',
+      margin: '0 auto',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      transition: 'background 0.2s ease',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      overflow: 'hidden',
+      touchAction: 'none'
+    }}>
+      
+      {/* Background Ambience */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: 'rgba(236, 72, 153, 0.1)', filter: 'blur(80px)' }} />
+        <div style={{ position: 'absolute', bottom: '20%', left: '-10%', width: '260px', height: '260px', borderRadius: '50%', background: 'rgba(14, 165, 233, 0.1)', filter: 'blur(80px)' }} />
+      </div>
+
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
         
-        {/* TOP HUD */}
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={handleBack} className="p-2 bg-zinc-900 rounded-xl border border-white/10 active:scale-90 shadow-sm transition-transform z-50"><ChevronLeft size={20} /></button>
-          <div className="flex gap-2">
-            <div className="bg-zinc-900 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-sm">
-              <Target size={12} className="text-zinc-400" />
-              <span className="text-sm font-black italic text-zinc-300">{score}</span>
-            </div>
-            {combo > 1 && (
-                <div className="bg-cyan-900 border border-cyan-500/50 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse">
-                  <Zap size={12} className="text-cyan-400" />
-                  <span className="text-sm font-black italic text-cyan-400">x{combo}</span>
-                </div>
-            )}
-            <div className="bg-zinc-900 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-sm">
-              <Heart size={12} className={lives <= 1 ? 'text-red-500 animate-pulse fill-red-500' : 'text-pink-500 fill-pink-500'} />
-              <span className={`text-sm font-black italic ${lives <= 1 ? 'text-red-500' : 'text-pink-500'}`}>{lives}</span>
-            </div>
+        {/* Header Area */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+          <button 
+            onPointerDown={handleBack} 
+            style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <ChevronLeft size={24} strokeWidth={2.5} />
+          </button>
+          <div style={{ textAlign: 'right' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#ec4899' }}>Fruit Slicer</h1>
           </div>
         </div>
 
-        {/* CANVAS */}
+        {/* Score Board */}
+        <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '24px' }}>
+          <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Score</span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', lineHeight: 1 }}>{score}</span>
+          </div>
+
+          <div style={{ flex: 1, background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.2)', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(236, 72, 153, 0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Heart size={14} color="#f43f5e" fill={lives > 0 ? '#f43f5e' : 'transparent'} className={lives === 1 ? 'animate-pulse' : ''} />
+                <span style={{ fontSize: '14px', fontWeight: 900, color: '#f43f5e' }}>{lives}</span>
+              </div>
+              <div style={{ width: '1px', height: '14px', background: 'rgba(236, 72, 153, 0.3)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Trophy size={14} color="#f59e0b" />
+                <span style={{ fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#f59e0b' }}>{highScore}</span>
+              </div>
+            </div>
+            {combo > 1 ? (
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#ec4899', textTransform: 'uppercase', letterSpacing: '1px' }} className="animate-pulse">Combo x{combo}</span>
+            ) : (
+              <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(236, 72, 153, 0.6)', textTransform: 'uppercase', letterSpacing: '1px' }}>Kinetic Slashing</span>
+            )}
+          </div>
+        </div>
+
+        {/* Game Canvas Box */}
         <div 
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onPointerLeave={handlePointerUp}
-          className={`relative w-full aspect-[34/46] bg-[#020205] rounded-3xl border-2 transition-colors duration-300 overflow-hidden shadow-2xl touch-none ${gameState === 'gameover' ? 'border-red-500' : 'border-cyan-500/30'}`}
+          style={{
+            position: 'relative', width: '100%', maxWidth: '340px', height: '460px', background: '#050505', borderRadius: '30px', 
+            border: gameState === 'gameover' || flash ? '2px solid #ef4444' : '2px solid rgba(236, 72, 153, 0.3)', 
+            overflow: 'hidden', transition: 'border 0.2s ease, box-shadow 0.2s ease',
+            boxShadow: gameState === 'gameover' || flash ? '0 0 50px rgba(239, 68, 68, 0.4)' : '0 10px 40px rgba(236, 72, 153, 0.15)',
+            touchAction: 'none'
+          }}
         >
-          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full block" />
+          <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ width: '100%', height: '100%', display: 'block' }} />
           
-          {gameState === 'idle' && (
-            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20 pointer-events-none backdrop-blur-sm">
-              <SlicerLogo className="w-20 h-20 text-cyan-400 mb-6 animate-pulse drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-              <button onPointerDown={startNew} className="px-10 py-4 bg-cyan-600 text-white font-black uppercase tracking-widest rounded-full shadow-[0_0_30px_rgba(6,182,212,0.4)] active:scale-95 transition-all pointer-events-auto">Unsheathe</button>
-            </div>
-          )}
-          
-          {gameState === 'gameover' && (
-            <div className="absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center z-20 p-6 text-center pointer-events-none backdrop-blur-md">
-              <h2 className="text-3xl font-black italic uppercase tracking-tight text-white mb-1 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">Critical Failure</h2>
-              <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-8">Score: {score}</p>
-              <button onPointerDown={startNew} className="px-10 py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-full shadow-xl active:scale-95 transition-all pointer-events-auto">Retry</button>
-              {isSyncing && <p className="mt-4 text-[8px] font-black text-white/30 uppercase animate-pulse flex items-center gap-2"><Loader2 size={10} className="animate-spin" /> Syncing...</p>}
-            </div>
-          )}
+          <AnimatePresence>
+            {gameState === 'idle' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, pointerEvents: 'none' }}>
+                <SlicerLogo className="w-20 h-20 text-pink-400 mb-6 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)]" className="animate-pulse" />
+                <button 
+                  onPointerDown={startNew} 
+                  style={{ padding: '16px 40px', background: '#ec4899', color: '#fff', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(236, 72, 153, 0.4)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <Play size={18} fill="currentColor" /> Unsheathe
+                </button>
+                <p style={{ margin: '16px 0 0 0', fontSize: '8px', fontWeight: 900, color: 'rgba(236, 72, 153, 0.6)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Engages Fullscreen</p>
+              </motion.div>
+            )}
+            
+            {gameState === 'gameover' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(69, 10, 10, 0.9)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, padding: '24px', textAlign: 'center', pointerEvents: 'none' }}>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '30px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff', textShadow: '0 0 20px rgba(239,68,68,1)' }}>Critical Failure</h2>
+                <p style={{ margin: '0 0 32px 0', fontSize: '12px', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px' }}>Final Score: {score}</p>
+                
+                <button 
+                  onPointerDown={startNew} 
+                  style={{ padding: '16px 40px', background: '#fff', color: '#dc2626', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 10px 15px rgba(0,0,0,0.3)', pointerEvents: 'auto' }}
+                  onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                  <RotateCcw size={18} /> Retry
+                </button>
+                {isSyncing && <p style={{ margin: '16px 0 0 0', fontSize: '8px', fontWeight: 900, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '8px' }} className="animate-pulse"><Loader2 size={10} className="animate-spin" /> Syncing...</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* BOTTOM HELPER */}
-        <div className="mt-8 mb-auto w-full flex flex-col items-center justify-center opacity-40 pointer-events-none">
+        <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5, pointerEvents: 'none' }}>
             <SlicerLogo className="w-8 h-8 text-zinc-500 mb-2" />
-            <span className="text-[9px] font-black text-center text-zinc-500 uppercase tracking-widest leading-tight">Swipe to slice<br/>Avoid red bombs</span>
+            <span style={{ fontSize: '10px', fontWeight: 900, textAlign: 'center', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.4 }}>
+              Swipe to slice<br/>Avoid red bombs
+            </span>
         </div>
 
       </div>

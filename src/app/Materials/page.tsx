@@ -12,7 +12,7 @@ export default function MaterialsRedirect() {
     
     async function performRedirect() {
       if (!activeId) {
-        router.push('/login');
+        router.replace('/login');
         return;
       }
 
@@ -24,9 +24,10 @@ export default function MaterialsRedirect() {
         .single();
 
       if (data?.class) {
-        router.push(`/Materials/${data.class}`);
+        // USING REPLACE INSTEAD OF PUSH KEEPS THE HISTORY STACK CLEAN
+        router.replace(`/Materials/${data.class}`);
       } else {
-        router.push('/dashboard');
+        router.replace('/dashboard');
       }
     }
 
@@ -34,11 +35,10 @@ export default function MaterialsRedirect() {
   }, [router]);
 
   return (
-    <div className="h-svh flex items-center justify-center" style={{ background: '#FFFFFF' }}>
+    <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--background)' }}>
       <div style={{ position: 'relative' }}>
-        {/* Subtle light pulse effect */}
-        <div className="absolute inset-0 rounded-full animate-ping" style={{ border: '2px solid rgba(59,130,246,0.1)' }} />
-        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(59,130,246,0.15)' }} className="animate-ping" />
+        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
           <Loader2 className="animate-spin" size={24} style={{ color: '#3b82f6' }} />
         </div>
       </div>

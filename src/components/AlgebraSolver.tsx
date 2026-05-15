@@ -1,12 +1,13 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Calculator, Sparkles, RotateCcw, Target, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Custom Vertical Fraction Component
 const Frac = ({ n, d }: { n: React.ReactNode, d: React.ReactNode }) => (
-  <span className="inline-flex flex-col items-center justify-center align-middle mx-1 font-black italic relative -top-[0.1em]">
-    <span className="border-b-[2.5px] border-current px-1 pb-[2px] leading-none">{n}</span>
-    <span className="pt-[2px] px-1 leading-none">{d}</span>
+  <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', margin: '0 4px', position: 'relative', top: '-0.1em' }}>
+    <span style={{ borderBottom: '2.5px solid currentColor', padding: '0 4px', paddingBottom: '2px', lineHeight: 1 }}>{n}</span>
+    <span style={{ paddingTop: '2px', padding: '0 4px', lineHeight: 1 }}>{d}</span>
   </span>
 );
 
@@ -15,48 +16,51 @@ export default function AlgebraSolver() {
   const [steps, setSteps] = useState<{ eq: React.ReactNode, exp: string }[]>([]);
   const [engine, setEngine] = useState<any>(null);
   const [isFinal, setIsFinal] = useState(false);
+  const [error, setError] = useState(false);
   const [nextTarget, setNextTarget] = useState<string | null>(null);
 
-  // --- MATH ENGINE: PARSER & FORMATTER ---
+  // --- MATH ENGINE: PARSER & FORMATTER (Hardened) ---
   const parseSide = (str: string) => {
     let terms = { x2: 0, x: 0, c: 0 };
-    let s = str.replace(/\s+/g, '').replace(/-/g, '+-').replace(/x\^2/gi, 'x²').replace(/X/g, 'x');
+    // Clean string: remove spaces, asterisks, make lowercase, replace x^2
+    let s = str.replace(/\s+/g, '').replace(/\*/g, '').toLowerCase().replace(/x\^2/g, 'x²');
+    
+    // Safely handle subtraction by converting to addition of negative terms
+    s = s.replace(/-/g, '+-');
     if (s.startsWith('+-')) s = s.substring(1);
     
     let parts = s.split('+');
     parts.forEach(p => {
       if (!p) return;
-      if (p.includes('x²')) {
-        let val = p.replace('x²', '');
+      let isX2 = p.includes('x²');
+      let isX = !isX2 && p.includes('x');
+
+      if (isX2 || isX) {
+        let val = p.replace(isX2 ? 'x²' : 'x', '');
         if (val === '' || val === '+') val = '1';
         if (val === '-') val = '-1';
         if (val.startsWith('/')) val = '1' + val;
+        if (val.startsWith('-/')) val = '-1/' + val.substring(2);
         
+        let numValue = 0;
         if (val.includes('/')) {
             let [num, den] = val.split('/');
-            terms.x2 += parseFloat(num) / parseFloat(den);
+            numValue = parseFloat(num) / parseFloat(den);
         } else {
-            terms.x2 += parseFloat(val);
+            numValue = parseFloat(val);
         }
-      } else if (p.includes('x')) {
-        let val = p.replace('x', '');
-        if (val === '' || val === '+') val = '1';
-        if (val === '-') val = '-1';
-        if (val.startsWith('/')) val = '1' + val; // Handles x/5 -> 1/5
-        
-        if (val.includes('/')) {
-            let [num, den] = val.split('/');
-            terms.x += parseFloat(num) / parseFloat(den);
-        } else {
-            terms.x += parseFloat(val);
-        }
+
+        if (isX2) terms.x2 += numValue;
+        else terms.x += numValue;
       } else {
+        let numValue = 0;
         if (p.includes('/')) {
             let [num, den] = p.split('/');
-            terms.c += parseFloat(num) / parseFloat(den);
+            numValue = parseFloat(num) / parseFloat(den);
         } else {
-            terms.c += parseFloat(p);
+            numValue = parseFloat(p);
         }
+        terms.c += numValue;
       }
     });
     return terms;
@@ -65,8 +69,7 @@ export default function AlgebraSolver() {
   const formatTerm = (coeff: number, v: string) => {
     if (coeff === 0) return '';
     let c: string | number = Math.abs(coeff);
-    // If it's a messy decimal from a fraction like 1/5 = 0.2, show it nicely
-    if (c % 1 !== 0) c = Number(c.toFixed(2));
+    if (c % 1 !== 0) c = Number(c.toFixed(2)); // Clean decimals
     let s = coeff < 0 ? '-' : '+';
     if (v !== '' && c === 1) c = ''; 
     return `${s} ${c}${v}`;
@@ -92,41 +95,54 @@ export default function AlgebraSolver() {
   };
 
   const initTower = () => {
+    setError(false);
     let parts = input.split('=');
-    if (parts.length !== 2) {
-      alert("Please enter a valid equation with an '=' sign!");
+    
+    // Safety check for valid formatting
+    if (parts.length !== 2 || parts[0].trim() === '' || parts[1].trim() === '') {
+      setError(true);
+      setIsFinal(true);
+      setSteps([{ eq: "INVALID EQUATION", exp: "MISSING '=' OR TERMS" }]);
+      setNextTarget(null);
       return;
     }
 
-    let lhs = parseSide(parts[0]);
-    let rhs = parseSide(parts[1]);
+    try {
+      let lhs = parseSide(parts[0]);
+      let rhs = parseSide(parts[1]);
 
-    let initialSteps = [{ eq: printEq(lhs, rhs), exp: "Equation scanned and terms parsed." }];
+      let initialSteps = [{ eq: printEq(lhs, rhs), exp: "EQUATION SCANNED" }];
 
-    let q = [];
-    if (rhs.x2 !== 0) q.push('move_x2');
-    if (rhs.x !== 0) q.push('move_x');
+      let q = [];
+      if (rhs.x2 !== 0) q.push('move_x2');
+      if (rhs.x !== 0) q.push('move_x');
 
-    let isQuad = (lhs.x2 - rhs.x2) !== 0;
+      let isQuad = (lhs.x2 - rhs.x2) !== 0;
 
-    if (isQuad) {
-      if (rhs.c !== 0) q.push('move_c_to_lhs');
-      q.push('solve_quad');
-    } else {
-      if (lhs.c !== 0) q.push('move_c_to_rhs');
-      q.push('solve_linear');
+      if (isQuad) {
+        if (rhs.c !== 0) q.push('move_c_to_lhs');
+        q.push('solve_quad');
+      } else {
+        if (lhs.c !== 0) q.push('move_c_to_rhs');
+        q.push('solve_linear');
+      }
+
+      setEngine({ lhs, rhs, queue: q });
+      setSteps(initialSteps);
+      setIsFinal(false);
+      setNextTarget(getTargetText(q[0], rhs, lhs));
+    } catch (err) {
+      setError(true);
+      setIsFinal(true);
+      setSteps([{ eq: "PARSE ERROR", exp: "CHECK YOUR MATH" }]);
+      setNextTarget(null);
     }
-
-    setEngine({ lhs, rhs, queue: q });
-    setSteps(initialSteps);
-    setIsFinal(false);
-    setNextTarget(getTargetText(q[0], rhs, lhs));
   };
 
   useEffect(() => { initTower(); }, []);
 
   const solveNextStep = () => {
-    if (!engine || engine.queue.length === 0) return;
+    if (!engine || engine.queue.length === 0 || error) return;
 
     let { lhs, rhs, queue } = engine;
     let task = queue.shift();
@@ -139,33 +155,33 @@ export default function AlgebraSolver() {
 
     if (task === 'move_x2') {
       let val = nR.x2; nL.x2 -= val; nR.x2 = 0;
-      exp = `${val > 0 ? 'Subtract' : 'Add'} ${Math.abs(Number(val.toFixed(2)))}x² ${val > 0 ? 'from' : 'to'} both sides.`;
+      exp = `${val > 0 ? 'SUBTRACT' : 'ADD'} ${Math.abs(Number(val.toFixed(2)))}x² BOTH SIDES`;
       resultEq = printEq(nL, nR);
     } 
     else if (task === 'move_x') {
       let val = nR.x; nL.x -= val; nR.x = 0;
-      exp = `${val > 0 ? 'Subtract' : 'Add'} ${Math.abs(Number(val.toFixed(2)))}x ${val > 0 ? 'from' : 'to'} both sides.`;
+      exp = `${val > 0 ? 'SUBTRACT' : 'ADD'} ${Math.abs(Number(val.toFixed(2)))}x BOTH SIDES`;
       resultEq = printEq(nL, nR);
     } 
     else if (task === 'move_c_to_lhs') {
       let val = nR.c; nL.c -= val; nR.c = 0;
-      exp = `${val > 0 ? 'Subtract' : 'Add'} ${Math.abs(Number(val.toFixed(2)))} to set equation to zero.`;
+      exp = `${val > 0 ? 'SUBTRACT' : 'ADD'} ${Math.abs(Number(val.toFixed(2)))} TO SET TO ZERO`;
       resultEq = printEq(nL, nR);
     } 
     else if (task === 'move_c_to_rhs') {
       let val = nL.c; nR.c -= val; nL.c = 0;
-      exp = `${val > 0 ? 'Subtract' : 'Add'} ${Math.abs(Number(val.toFixed(2)))} to isolate x.`;
+      exp = `${val > 0 ? 'SUBTRACT' : 'ADD'} ${Math.abs(Number(val.toFixed(2)))} TO ISOLATE X`;
       resultEq = printEq(nL, nR);
     } 
     else if (task === 'solve_linear') {
       finalStep = true;
       if (nL.x === 0) {
-        resultEq = <>{nR.c === 0 ? "Infinite Solutions" : "No Solution"}</>;
-        exp = "Checked for impossible logic states.";
+        resultEq = <>{nR.c === 0 ? "INFINITE SOLUTIONS" : "NO SOLUTION"}</>;
+        exp = "CHECKED LOGIC STATES";
       } else {
         let ans = nR.c / nL.x;
         resultEq = <>x = <Frac n={Number(nR.c.toFixed(2))} d={Number(nL.x.toFixed(2))} /> = {Number(ans.toFixed(2))}</>;
-        exp = `Divide both sides by ${Number(nL.x.toFixed(2))} to solve for x.`;
+        exp = `DIVIDE BOTH SIDES BY ${Number(nL.x.toFixed(2))}`;
       }
     } 
     else if (task === 'solve_quad') {
@@ -173,17 +189,17 @@ export default function AlgebraSolver() {
       let a = nL.x2, b = nL.x, c = nL.c;
       let d = (b * b) - (4 * a * c);
       if (d < 0) {
-        exp = `Discriminant is negative. No real roots.`;
-        resultEq = <>No Real Solutions</>;
+        exp = `DISCRIMINANT NEGATIVE`;
+        resultEq = <>NO REAL SOLUTIONS</>;
       } else if (d === 0) {
         let root = -b / (2 * a);
-        exp = `Discriminant is 0. One real root.`;
+        exp = `ONE REAL ROOT`;
         resultEq = <>x = <Frac n={Number(-b.toFixed(2))} d={Number((2*a).toFixed(2))} /> = {Number(root.toFixed(2))}</>;
       } else {
         let r1 = (-b + Math.sqrt(d)) / (2 * a);
         let r2 = (-b - Math.sqrt(d)) / (2 * a);
-        exp = `Applied Quadratic Formula.`;
-        resultEq = <>x &approx; {Number(r1.toFixed(2))} <span className="text-text/40 mx-2">OR</span> x &approx; {Number(r2.toFixed(2))}</>;
+        exp = `APPLIED QUADRATIC FORMULA`;
+        resultEq = <>x &approx; {Number(r1.toFixed(2))} <span style={{ opacity: 0.5, margin: '0 10px' }}>OR</span> x &approx; {Number(r2.toFixed(2))}</>;
       }
     }
 
@@ -199,73 +215,169 @@ export default function AlgebraSolver() {
   };
 
   return (
-    <div className="relative rounded-3xl bg-card border border-border p-5 overflow-hidden transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.1)] group">
-      <Calculator className="absolute -right-4 -top-4 w-24 h-24 text-emerald-500/5 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" />
-      
-      <div className="flex items-center gap-2 mb-4 relative z-10">
-        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-        <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-emerald-500">Smart Solver Engine</span>
-      </div>
+    <div style={{
+      background: 'linear-gradient(135deg, #10b981, #047857)', // Vibrant Emerald gradient
+      borderRadius: '32px',
+      padding: '24px',
+      color: '#fff',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 15px 35px rgba(16, 185, 129, 0.3)',
+      maxWidth: '500px',
+      margin: '0 auto'
+    }}>
+      {/* Background Watermark */}
+      <span style={{ position: 'absolute', right: '-10px', top: '20px', fontSize: '140px', opacity: 0.15, pointerEvents: 'none', zIndex: 0 }}>
+        ⚖️
+      </span>
 
-      <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text mb-4">
-        Algebra <span className="text-emerald-500">Solver</span>
-      </h3>
-
-      <div className="flex gap-2 mb-6 relative z-10">
-        <div className="flex-1 relative group/input">
-          <input 
-            type="text" value={input} onChange={(e) => setInput(e.target.value)}
-            className="w-full bg-background/50 border-2 border-border rounded-xl px-4 py-3 text-sm font-bold italic tracking-wider outline-none focus:border-emerald-500 transition-colors text-text"
-            placeholder="e.g. x/5 + 3 = 11"
-          />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+        <div style={{ width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+          <Calculator color="#fff" size={26} />
         </div>
-        <button onClick={initTower} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-xl transition-all active:scale-90 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
-          <RotateCcw className="w-5 h-5 active:-rotate-180 transition-transform duration-300" />
-        </button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1.1, textTransform: 'uppercase' }}>ALGEBRA SOLVER</h2>
+          <p style={{ margin: '4px 0 0 0', fontSize: '10px', fontWeight: 800, opacity: 0.8, letterSpacing: '1px', textTransform: 'uppercase' }}>ISOLATE & SOLVE</p>
+        </div>
       </div>
 
-      <div className="space-y-3 relative z-10 mb-2">
-        {steps.map((step, index) => {
-          const isCurrent = index === steps.length - 1;
-          const depth = steps.length - 1 - index;
-          const scale = isCurrent ? 1 : Math.max(0.85, 1 - depth * 0.05);
-          const opacity = isCurrent ? 1 : Math.max(0.2, 0.6 - depth * 0.15);
+      {/* Input Section */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
+        <input 
+          type="text" 
+          value={input} 
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && initTower()}
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.15)',
+            border: '2px solid rgba(255,255,255,0.3)',
+            borderRadius: '18px',
+            padding: '14px 16px',
+            color: '#fff',
+            fontSize: '16px',
+            fontWeight: 900,
+            fontStyle: 'italic',
+            outline: 'none',
+            letterSpacing: '1px',
+            backdropFilter: 'blur(10px)'
+          }}
+          placeholder="E.g. x/5 + 3 = 11"
+        />
+        
+        {/* White Reset Button */}
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={initTower} 
+          style={{
+            background: '#fff', 
+            border: 'none',
+            color: '#10b981', // Matching theme color
+            padding: '0 18px',
+            borderRadius: '18px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+          }}
+        >
+          <RotateCcw size={22} strokeWidth={3} />
+        </motion.button>
+      </div>
 
-          return (
-            <div key={index} style={{ transform: `scale(${scale})`, opacity: opacity }}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-500 origin-top
-                ${isCurrent ? (isFinal ? 'bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-emerald-500/10 border-emerald-500/30') : 'bg-background border-border grayscale'}`}
-            >
-              <span className={`text-[10px] font-bold uppercase tracking-wider mb-2 text-center ${isCurrent ? 'text-emerald-500' : 'text-text/40'}`}>
-                {step.exp}
-              </span>
-              <div className="flex items-center text-center">
-                <div className={`text-xl font-black italic tracking-tight flex items-center ${isCurrent && isFinal ? 'text-emerald-500 text-2xl' : (isCurrent ? 'text-text' : 'text-text/50')}`}>
-                  {step.eq}
+      {/* Dynamic Target Locked Banner */}
+      <AnimatePresence>
+        {nextTarget && !isFinal && !error && steps.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px', background: 'rgba(255,255,255,0.15)', padding: '10px', borderRadius: '14px', backdropFilter: 'blur(5px)' }}
+          >
+            <Target size={16} color="#fbbf24" strokeWidth={3} />
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#fbbf24', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+              TARGET: <span style={{ color: '#fff' }}>{nextTarget}</span>
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tower Layers */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
+        <AnimatePresence>
+          {steps.map((step, index) => {
+            const isCurrent = index === steps.length - 1;
+            
+            return (
+              <motion.div 
+                key={`${index}-${step.exp}`}
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                style={{ 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  padding: '16px', 
+                  borderRadius: '20px', 
+                  background: isCurrent && isFinal && !error ? '#fff' : (isCurrent ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'),
+                  color: isCurrent && isFinal && !error ? '#047857' : '#fff',
+                  boxShadow: isCurrent ? '0 8px 20px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.3s ease',
+                  border: isCurrent && isFinal ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px', opacity: isCurrent && isFinal && !error ? 0.6 : 0.8 }}>
+                  {step.exp}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '1px', color: error ? '#fca5a5' : 'inherit' }}>
+                    {step.eq}
+                  </div>
+                  {isCurrent && isFinal && !error && (
+                    <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring" }}>
+                      <Sparkles size={24} color="#f09819" fill="#f09819" />
+                    </motion.div>
+                  )}
                 </div>
-                {isCurrent && isFinal && <Sparkles className="w-6 h-6 text-emerald-500 ml-2 animate-bounce" />}
-              </div>
-            </div>
-          );
-        })}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
-      {nextTarget && !isFinal && steps.length > 0 && (
-        <div className="flex items-center justify-center gap-2 py-3 relative z-10 animate-pulse mt-2">
-          <Target className="w-4 h-4 text-orange-500" />
-          <span className="text-[10px] font-extrabold tracking-[0.15em] uppercase text-orange-500">
-            Target Locked: <span className="text-white">[{nextTarget}]</span>
-          </span>
-        </div>
-      )}
-
-      <button disabled={steps.length === 0 || isFinal} onClick={solveNextStep} className={`w-full mt-4 group/btn relative rounded-2xl py-4 flex items-center justify-center gap-2 overflow-hidden transition-all duration-300 active:scale-[0.98] ${isFinal ? 'bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white' : 'bg-emerald-500 shadow-[0_4px_0_rgb(4,120,87)] hover:shadow-[0_2px_0_rgb(4,120,87)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] text-white'} disabled:opacity-20 disabled:grayscale disabled:pointer-events-none disabled:shadow-none disabled:translate-y-0`}>
-        <span className="text-sm font-black italic uppercase tracking-wider relative z-10 flex items-center gap-2">
-          {isFinal ? "Mission Accomplished" : "Execute Step"}
-          {!isFinal && <Zap className="w-4 h-4 fill-current" />}
-        </span>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]" />
-      </button>
+      {/* Action Button */}
+      <motion.button 
+        whileTap={!isFinal && !error ? { scale: 0.96 } : {}}
+        disabled={steps.length === 0 || isFinal || error} 
+        onClick={solveNextStep} 
+        style={{
+          width: '100%',
+          background: isFinal || error ? 'rgba(255,255,255,0.1)' : '#fff',
+          color: isFinal || error ? 'rgba(255,255,255,0.5)' : '#047857',
+          border: 'none',
+          borderRadius: '20px',
+          padding: '18px',
+          fontSize: '16px',
+          fontWeight: 900,
+          fontStyle: 'italic',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          cursor: isFinal || error ? 'not-allowed' : 'pointer',
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+          position: 'relative',
+          zIndex: 1,
+          boxShadow: isFinal || error ? 'none' : '0 10px 20px rgba(0,0,0,0.15)'
+        }}
+      >
+        {isFinal && !error ? "MISSION ACCOMPLISHED" : error ? "ERROR DETECTED" : "EXECUTE NEXT STEP"}
+        {!isFinal && !error && <Zap size={20} fill="#047857" />}
+      </motion.button>
     </div>
   );
 }

@@ -1,8 +1,12 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Trophy, Play, RotateCcw, LayoutGrid, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Zap, Pause, FastForward } from 'lucide-react';
+import { 
+  ChevronLeft, Trophy, Play, RotateCcw, LayoutGrid, 
+  ArrowDown, ArrowLeft, ArrowRight, Zap, Pause, FastForward 
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- GAME CONSTANTS ---
 const COLS = 10;
@@ -335,53 +339,77 @@ export default function TetrisCore() {
   const ghost = getGhostPos();
 
   return (
-    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden select-none touch-none overscroll-none transition-colors duration-200 ${flash ? 'bg-blue-500/20' : ''}`}>
+    <div style={{
+      minHeight: '100dvh',
+      background: flash ? 'rgba(59, 130, 246, 0.1)' : '#fff',
+      padding: '40px 20px 120px',
+      maxWidth: '500px',
+      margin: '0 auto',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      transition: 'background 0.2s ease',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      overflow: 'hidden',
+      touchAction: 'none'
+    }}>
       
       {/* Background Ambience */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full bg-blue-500/10 blur-[80px]" />
-        <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-indigo-500/10 blur-[80px]" />
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', filter: 'blur(80px)' }} />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col h-full relative z-10">
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
         
         {/* Header Area */}
-        <div className="flex justify-between items-center mb-4">
-          <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-blue-500 shadow-sm z-50">
-            <ChevronLeft size={20} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+          <button 
+            onPointerDown={handleBack} 
+            style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <ChevronLeft size={24} strokeWidth={2.5} />
           </button>
-          <div className="text-right">
-            <h1 className="text-xl font-black italic uppercase tracking-tighter text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.4)]">Tetris Core</h1>
+          <div style={{ textAlign: 'right' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#3b82f6' }}>Tetris Core</h1>
           </div>
         </div>
 
         {/* Game Layout Wrapper */}
-        <div className="flex gap-4 mb-4 flex-1 max-h-[460px]">
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', width: '100%', height: '460px' }}>
           
           {/* Left Column: Hold & Score */}
-          <div className="flex flex-col gap-3 w-20">
-            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-2 flex flex-col items-center shadow-sm">
-              <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest mb-1">HOLD</span>
-              <div className="w-12 h-12 flex items-center justify-center">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '80px' }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+              <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>HOLD</span>
+              <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {holdPiece && <MiniPreview piece={holdPiece} />}
               </div>
             </div>
-            <div className="flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-2 flex flex-col items-center justify-center shadow-sm">
-              <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest mb-1">SCORE</span>
-              <span className="text-lg font-black italic text-blue-500 leading-none">{score}</span>
-              <div className="h-px w-8 bg-[var(--border)] my-3" />
-              <Trophy size={10} className="text-amber-500 mb-1" />
-              <span className="text-xs font-black italic text-zinc-400">{highScore}</span>
+            <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+              <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>SCORE</span>
+              <span style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', color: '#3b82f6', lineHeight: 1 }}>{score}</span>
+              <div style={{ height: '1px', width: '32px', background: '#cbd5e1', margin: '12px 0' }} />
+              <Trophy size={14} color="#f59e0b" style={{ marginBottom: '4px' }} />
+              <span style={{ fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#f59e0b' }}>{highScore}</span>
             </div>
           </div>
 
           {/* Main Board */}
-          <div className={`relative flex-1 bg-[#050505] rounded-2xl border-2 transition-all duration-100 overflow-hidden shadow-2xl ${flash ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.6)]' : 'border-blue-500/20'}`}>
-            <div className="absolute inset-0 grid grid-cols-10 grid-rows-20 opacity-[0.05] pointer-events-none">
-              {Array.from({ length: 200 }).map((_, i) => <div key={i} className="border-[0.5px] border-white" />)}
+          <div style={{ 
+            position: 'relative', flex: 1, background: '#050505', borderRadius: '24px', 
+            border: flash ? '2px solid #60a5fa' : '2px solid rgba(59, 130, 246, 0.3)', 
+            transition: 'all 0.1s', overflow: 'hidden', 
+            boxShadow: flash ? '0 0 30px rgba(59,130,246,0.6)' : '0 10px 30px rgba(59,130,246,0.15)' 
+          }}>
+            {/* Grid Lines */}
+            <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: `repeat(${COLS}, 1fr)`, gridTemplateRows: `repeat(${ROWS}, 1fr)`, opacity: 0.08, pointerEvents: 'none' }}>
+              {Array.from({ length: COLS * ROWS }).map((_, i) => <div key={i} style={{ border: '0.5px solid #fff' }} />)}
             </div>
             
-            <div className="relative w-full h-full">
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
               {board.map((row, y) => row.map((cell, x) => cell ? (
                 <Block key={`b-${x}-${y}`} x={x} y={y} color={cell} />
               ) : null))}
@@ -395,71 +423,122 @@ export default function TetrisCore() {
               )))}
             </div>
 
-            {gameState === 'idle' && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 p-6 text-center">
-                <LayoutGrid size={48} className="text-blue-500 mb-4 animate-pulse drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]" />
-                <button onClick={startGame} className="w-full py-4 bg-blue-600 text-white font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_0_20px_rgba(59,130,246,0.5)]">
-                  <Play size={18} fill="currentColor" /> Initialize
-                </button>
-                <p className="text-[8px] font-black text-blue-300/60 uppercase tracking-[0.2em] mt-4">Engages Fullscreen</p>
-              </div>
-            )}
+            {/* Overlays */}
+            <AnimatePresence>
+              {gameState === 'idle' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', zIndex: 20 }}>
+                  <LayoutGrid size={48} color="#3b82f6" style={{ marginBottom: '16px', filter: 'drop-shadow(0 0 15px rgba(59,130,246,0.6))' }} className="animate-pulse" />
+                  <button 
+                    onClick={startGame} 
+                    style={{ width: '100%', padding: '16px', background: '#3b82f6', color: '#fff', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '16px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 0 20px rgba(59,130,246,0.5)' }}
+                    onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                    onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <Play size={18} fill="currentColor" /> Initialize
+                  </button>
+                  <p style={{ margin: '16px 0 0 0', fontSize: '8px', fontWeight: 900, color: 'rgba(147, 197, 253, 0.6)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Engages Fullscreen</p>
+                </motion.div>
+              )}
 
-            {gameState === 'gameover' && (
-              <div className="absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 p-6 text-center">
-                <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">Grid Overload</h2>
-                <div className="h-4 mb-4">
-                  {isSyncing && <p className="text-[8px] font-black text-white/50 uppercase tracking-widest animate-pulse">Syncing...</p>}
-                </div>
-                <button onClick={startGame} className="w-full py-4 bg-white text-red-600 font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 active:scale-95 shadow-xl transition-all">
-                  <RotateCcw size={18} /> Reboot
-                </button>
-              </div>
-            )}
+              {gameState === 'gameover' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'absolute', inset: 0, background: 'rgba(69, 10, 10, 0.9)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', zIndex: 20 }}>
+                  <h2 style={{ margin: '0 0 16px 0', fontSize: '28px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff', textShadow: '0 0 15px rgba(239,68,68,0.8)' }}>Grid Overload</h2>
+                  <div style={{ height: '20px', marginBottom: '16px' }}>
+                    {isSyncing && <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }} className="animate-pulse">Syncing...</p>}
+                  </div>
+                  <button 
+                    onClick={startGame} 
+                    style={{ width: '100%', padding: '16px', background: '#fff', color: '#dc2626', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '16px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 10px 15px rgba(0,0,0,0.3)' }}
+                    onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                    onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <RotateCcw size={18} /> Reboot
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Right Column: Next & Pause */}
-          <div className="w-16 flex flex-col gap-3">
-             <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-2 flex flex-col items-center shadow-sm">
-                <span className="text-[7px] font-black text-zinc-500 uppercase tracking-widest mb-1">NEXT</span>
-                <div className="w-12 h-12 flex items-center justify-center">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '64px' }}>
+             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+                <span style={{ fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>NEXT</span>
+                <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {nextPiece && <MiniPreview piece={nextPiece} />}
                 </div>
              </div>
              <button 
                 onPointerDown={(e) => { e.preventDefault(); setGameState(gameState === 'paused' ? 'playing' : 'paused'); }}
-                className={`flex-1 bg-[var(--card)] border rounded-2xl flex flex-col items-center justify-center active:scale-90 transition-all shadow-sm ${gameState === 'paused' ? 'text-amber-500 border-amber-500/50' : 'text-zinc-500 border-[var(--border)]'}`}
+                style={{ flex: 1, background: gameState === 'paused' ? 'rgba(245, 158, 11, 0.1)' : '#f8fafc', border: gameState === 'paused' ? '2px solid rgba(245, 158, 11, 0.3)' : '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: gameState === 'paused' ? '#f59e0b' : '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.02)', transition: 'all 0.2s ease' }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
-                {gameState === 'paused' ? <Play size={20} /> : <Pause size={20} />}
+                {gameState === 'paused' ? <Play size={24} /> : <Pause size={24} />}
              </button>
           </div>
         </div>
 
         {/* OVERHAULED D-PAD CONTROLS */}
-        <div className="mt-6 mb-auto w-full max-w-[340px] mx-auto grid grid-cols-4 gap-3 touch-none select-none">
-          <button onPointerDown={(e) => handleMove(-1, e)} className="h-20 bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:text-blue-500 active:scale-[0.85] transition-all shadow-sm text-zinc-500">
-            <ArrowLeft size={32} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', width: '100%', maxWidth: '340px', margin: '0 auto', touchAction: 'none', userSelect: 'none' }}>
+          <button 
+            onPointerDown={(e) => handleMove(-1, e)} 
+            style={{ height: '80px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+            onMouseDown={e => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'; e.currentTarget.style.color = '#3b82f6'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+            onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <ArrowLeft size={36} strokeWidth={2.5} />
           </button>
           
-          <div className="grid grid-rows-2 gap-2 h-20">
-            <button onPointerDown={(e) => handleRotate(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:scale-[0.85] transition-all shadow-sm">
-              <RotateCcw size={24} className="text-blue-500" />
+          <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: '8px', height: '80px' }}>
+            <button 
+              onPointerDown={(e) => handleRotate(e)} 
+              style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+              onMouseDown={e => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+              onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <RotateCcw size={26} color="#3b82f6" strokeWidth={2.5} />
             </button>
-            <button onPointerDown={(e) => handleHardDrop(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-orange-500/20 active:border-orange-500/50 active:scale-[0.85] transition-all shadow-sm">
-              <FastForward size={24} className="text-orange-500 rotate-90" />
+            <button 
+              onPointerDown={(e) => handleHardDrop(e)} 
+              style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+              onMouseDown={e => { e.currentTarget.style.background = 'rgba(249, 115, 22, 0.2)'; e.currentTarget.style.borderColor = 'rgba(249, 115, 22, 0.5)'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+              onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <FastForward size={26} color="#f97316" className="rotate-90" strokeWidth={2.5} />
             </button>
           </div>
 
-          <button onPointerDown={(e) => handleMove(1, e)} className="h-20 bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:text-blue-500 active:scale-[0.85] transition-all shadow-sm text-zinc-500">
-            <ArrowRight size={32} />
+          <button 
+            onPointerDown={(e) => handleMove(1, e)} 
+            style={{ height: '80px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+            onMouseDown={e => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'; e.currentTarget.style.color = '#3b82f6'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+            onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <ArrowRight size={36} strokeWidth={2.5} />
           </button>
           
-          <div className="grid grid-rows-2 gap-2 h-20">
-            <button onPointerDown={(e) => handleHold(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-purple-500/20 active:border-purple-500/50 active:scale-[0.85] transition-all shadow-sm">
-              <Zap size={20} className="text-purple-500" />
+          <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: '8px', height: '80px' }}>
+            <button 
+              onPointerDown={(e) => handleHold(e)} 
+              style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+              onMouseDown={e => { e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)'; e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+              onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <Zap size={22} color="#a855f7" strokeWidth={2.5} />
             </button>
-            <button onPointerDown={(e) => drop(e)} className="bg-[var(--card)] border border-[var(--border)] rounded-xl flex items-center justify-center active:bg-blue-500/20 active:border-blue-500/50 active:scale-[0.85] transition-all shadow-sm">
-              <ArrowDown size={24} className="text-zinc-500" />
+            <button 
+              onPointerDown={(e) => drop(e)} 
+              style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+              onMouseDown={e => { e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'; e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+              onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <ArrowDown size={26} color="#64748b" strokeWidth={2.5} />
             </button>
           </div>
         </div>
@@ -471,8 +550,10 @@ export default function TetrisCore() {
 
 const Block = ({ x, y, color, isGhost = false }: any) => (
   <div 
-    className="absolute rounded-[3px] transition-all duration-75"
     style={{
+      position: 'absolute',
+      borderRadius: '3px',
+      transition: 'all 0.075s',
       left: `${x * 10}%`,
       top: `${y * 5}%`,
       width: '10%',
@@ -486,13 +567,14 @@ const Block = ({ x, y, color, isGhost = false }: any) => (
 );
 
 const MiniPreview = ({ piece }: any) => (
-  <div className="relative w-12 h-12">
+  <div style={{ position: 'relative', width: '48px', height: '48px' }}>
     {piece.tetromino.shape.map((row: any, y: number) => row.map((value: number, x: number) => (
       value !== 0 && (
         <div 
           key={`${x}-${y}`}
-          className="absolute rounded-[2px]"
           style={{
+            position: 'absolute',
+            borderRadius: '2px',
             left: `${x * 9}px`,
             top: `${y * 9}px`,
             width: '8px',

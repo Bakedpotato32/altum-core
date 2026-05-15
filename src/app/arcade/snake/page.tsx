@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronRight, Sparkles, Pause, Volume2, VolumeX, Zap 
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const GRID_SIZE = 20;
 const INITIAL_SNAKE = [{ x: 10, y: 10 }, { x: 10, y: 11 }, { x: 10, y: 12 }];
@@ -131,7 +132,7 @@ export default function NeonSnake() {
     }
   };
 
-  // --- SUPABASE SYNC (untouched logic) ---
+  // --- SUPABASE SYNC ---
   const handleSyncScore = useCallback(async () => {
     const studentId = localStorage.getItem('studentId');
     if (studentId && scoreRef.current > 0) {
@@ -259,7 +260,6 @@ export default function NeonSnake() {
     requestFullscreen();
     initAudio();
     
-    // Reset refs
     snakeRef.current = [...INITIAL_SNAKE];
     directionRef.current = { ...INITIAL_DIRECTION };
     moveQueueRef.current = [];
@@ -271,7 +271,6 @@ export default function NeonSnake() {
     lastEatTimeRef.current = 0;
     countdownRef.current = 3;
     
-    // Reset state
     setSnake([...INITIAL_SNAKE]);
     setDirection({ ...INITIAL_DIRECTION });
     setScore(0);
@@ -290,7 +289,6 @@ export default function NeonSnake() {
     setHasStarted(true);
     hasStartedRef.current = true;
     
-    // Countdown
     setCountdown(3);
     let count = 3;
     const interval = setInterval(() => {
@@ -306,7 +304,7 @@ export default function NeonSnake() {
     }, 500);
   }, []);
 
-  // --- MAIN GAME LOOP (stable, ref-based) ---
+  // --- MAIN GAME LOOP ---
   useEffect(() => {
     if (!hasStartedRef.current || gameOverRef.current || isPausedRef.current || countdownRef.current >= 0) return;
 
@@ -456,7 +454,20 @@ export default function NeonSnake() {
   };
 
   return (
-    <div className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden touch-none overscroll-none transition-colors duration-200 ${flash ? 'bg-red-950/30' : ''}`}>
+    <div style={{
+      minHeight: '100dvh',
+      background: flash ? 'rgba(239, 68, 68, 0.1)' : '#fff',
+      padding: '40px 20px 120px',
+      maxWidth: '500px',
+      margin: '0 auto',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      transition: 'background 0.2s ease',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      overflow: 'hidden'
+    }}>
       
       <style>{`
         @keyframes particle-burst {
@@ -476,228 +487,297 @@ export default function NeonSnake() {
         .animate-death { animation: death-fly 0.6s ease-out forwards; }
       `}</style>
 
-      {/* Background Ambience */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full bg-emerald-500/10 blur-[80px]" />
-        <div className="absolute bottom-[20%] left-[-10%] w-[260px] h-[260px] rounded-full bg-cyan-500/10 blur-[80px]" />
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            onClick={handleBack} 
+            style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <ChevronLeft size={24} strokeWidth={2.5} />
+          </button>
+          
+          {hasStarted && !gameOver && (
+            <button 
+              onClick={togglePause} 
+              style={{ width: '45px', height: '45px', borderRadius: '14px', background: isPaused ? 'rgba(245, 158, 11, 0.1)' : '#f8fafc', border: isPaused ? '2px solid rgba(245, 158, 11, 0.3)' : '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPaused ? '#f59e0b' : '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.2s ease' }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {isPaused ? <Play size={20} /> : <Pause size={20} />}
+            </button>
+          )}
+          
+          <button 
+            onClick={() => { isMutedRef.current = !isMutedRef.current; setIsMuted(isMutedRef.current); }} 
+            style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.2s ease' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </button>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#10b981' }}>Neon Snake</h1>
+        </div>
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col h-full relative z-10">
+      {/* Score Board */}
+      <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '24px' }}>
+        <div style={{ flex: 1, background: '#f8fafc', border: pulse ? '2px solid #10b981' : combo > 1 ? '2px solid rgba(217, 70, 239, 0.4)' : '1px solid #e2e8f0', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', transition: 'all 0.15s ease', transform: pulse ? 'scale(1.05)' : 'scale(1)', boxShadow: pulse ? '0 0 20px rgba(16, 185, 129, 0.2)' : combo > 1 ? '0 0 15px rgba(217, 70, 239, 0.15)' : 'none' }}>
+          <div style={{ position: 'absolute', top: '12px', right: '16px', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.6 }}>
+            <Zap size={10} color="#10b981" />
+            <span style={{ fontSize: '9px', fontWeight: 900, color: '#10b981' }}>{speedPct}%</span>
+          </div>
+          <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Score</span>
+          <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#0f172a', lineHeight: 1 }}>{score}</span>
+          {combo > 1 && (
+            <span style={{ fontSize: '10px', fontWeight: 900, fontStyle: 'italic', color: '#d946ef', marginTop: '4px' }} className="animate-pulse">COMBO x{combo}</span>
+          )}
+        </div>
+
+        <div style={{ flex: 1, background: newBest ? 'rgba(245, 158, 11, 0.1)' : '#f8fafc', border: newBest ? '2px solid #f59e0b' : '1px solid #e2e8f0', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease', transform: newBest ? 'scale(1.05)' : 'scale(1)', boxShadow: newBest ? '0 0 20px rgba(245, 158, 11, 0.2)' : 'none' }}>
+          <span style={{ fontSize: '10px', fontWeight: 900, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Trophy size={12} /> Best
+          </span>
+          <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#f59e0b', lineHeight: 1 }}>{highScore}</span>
+          {newBest && <span style={{ fontSize: '9px', fontWeight: 900, color: '#f59e0b', marginTop: '4px' }} className="animate-bounce">NEW BEST!</span>}
+        </div>
+      </div>
+
+      {/* Game Board */}
+      <div 
+        style={{ 
+          position: 'relative', 
+          aspectRatio: '1/1', 
+          width: '100%', 
+          maxWidth: '360px', 
+          background: '#050505', 
+          borderRadius: '20px', 
+          border: flash ? '2px solid #ef4444' : '2px solid rgba(16, 185, 129, 0.3)', 
+          overflow: 'hidden', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          boxShadow: flash ? '0 0 40px rgba(239, 68, 68, 0.4)' : '0 10px 30px rgba(16, 185, 129, 0.15)',
+          transition: 'all 0.2s ease',
+          touchAction: 'none'
+        }}
+        onPointerDown={handleBoardPointerDown}
+        onPointerUp={handleBoardPointerUp}
+      >
         
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex gap-2">
-            <button onClick={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-emerald-500 shadow-sm z-50">
-              <ChevronLeft size={20} />
-            </button>
-            {hasStarted && !gameOver && (
-              <button onClick={togglePause} className={`p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all shadow-sm ${isPaused ? 'text-amber-500 border-amber-500/30' : 'text-zinc-500 hover:text-emerald-500'}`}>
-                {isPaused ? <Play size={20} /> : <Pause size={20} />}
-              </button>
-            )}
-            <button onClick={() => { isMutedRef.current = !isMutedRef.current; setIsMuted(isMutedRef.current); }} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-emerald-500 shadow-sm">
-              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
-          </div>
-          <div className="text-right">
-            <h1 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter leading-none text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]">
-              Neon Snake
-            </h1>
-          </div>
-        </div>
+        {/* Grid Background */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '5% 5%' }} />
 
-        {/* Score Board */}
-        <div className="flex gap-3 mb-4">
-          <div className={`flex-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 flex flex-col items-center justify-center shadow-sm relative overflow-hidden transition-all duration-100 ${pulse ? 'scale-105 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : ''} ${combo > 1 ? 'border-fuchsia-500/40 shadow-[0_0_15px_rgba(232,121,249,0.2)]' : ''}`}>
-            <div className="absolute top-1 right-2 flex items-center gap-1 opacity-40">
-              <Zap size={10} className="text-emerald-500" />
-              <span className="text-[8px] font-black text-emerald-500">{speedPct}%</span>
-            </div>
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Score</span>
-            <span className="text-3xl font-black italic text-[var(--text)] leading-none">{score}</span>
-            {combo > 1 && (
-              <span className="text-[10px] font-black italic text-fuchsia-400 mt-0.5 animate-pulse">COMBO x{combo}</span>
-            )}
-          </div>
-          <div className={`flex-1 bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.1)] transition-all ${newBest ? 'scale-110 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.3)]' : ''}`}>
-            <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest flex items-center gap-1 mb-1">
-              <Trophy size={12}/> Best
-            </span>
-            <span className="text-3xl font-black italic text-amber-500 leading-none">{highScore}</span>
-            {newBest && <span className="text-[9px] font-black text-amber-300 mt-0.5 animate-bounce">NEW BEST!</span>}
-          </div>
-        </div>
-
-        {/* Game Board */}
-        <div 
-          className={`relative aspect-square w-full max-w-[300px] mx-auto bg-[#050505] rounded-[8px] border overflow-hidden flex items-center justify-center transition-all duration-200 ${flash ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.4)]' : 'border-emerald-500/20 shadow-[0_0_40px_rgba(16,185,129,0.15)]'}`}
-          onPointerDown={handleBoardPointerDown}
-          onPointerUp={handleBoardPointerUp}
-          style={{ touchAction: 'none' }}
-        >
+        <div style={{ width: '100%', height: '100%', display: 'grid', gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)`, position: 'relative', zIndex: 10, padding: '4px' }}>
           
-          {/* Grid Background */}
-          <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '5% 5%' }}></div>
-
-          <div className="w-full h-full grid relative z-10 p-1" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)` }}>
+          {/* Snake */}
+          {snake.map((segment, index) => {
+            const isHead = index === 0;
+            const opacity = deathAnim ? 1 : 1 - (index / snake.length) * 0.65;
             
-            {/* Snake */}
-            {snake.map((segment, index) => {
-              const isHead = index === 0;
-              const opacity = deathAnim ? 1 : 1 - (index / snake.length) * 0.65;
-              
-              return (
-                <div 
-                  key={`snake-${index}`}
-                  className={`flex items-center justify-center ${deathAnim ? 'animate-death' : ''} ${isHead ? 'bg-emerald-400 z-10 scale-[1.15] shadow-[0_0_15px_rgba(52,211,153,1)] rounded-[6px]' : 'bg-emerald-500 scale-[0.9] rounded-[4px]'}`}
-                  style={{ 
-                    gridColumnStart: segment.x + 1, 
-                    gridRowStart: segment.y + 1, 
-                    opacity,
-                    ...(deathAnim ? {
-                      '--dx': `${(Math.random() - 0.5) * 80}px`,
-                      '--dy': `${(Math.random() - 0.5) * 80}px`,
-                    } as React.CSSProperties : {})
-                  }}
-                >
-                  {isHead && !deathAnim && (
-                    <div className="relative w-full h-full">
-                      <div className={`absolute w-1.5 h-1.5 bg-black rounded-full transition-all ${direction.x === 1 ? 'right-1 top-1' : direction.x === -1 ? 'left-1 top-1' : direction.y === 1 ? 'bottom-1 right-1' : 'top-1 right-1'}`} />
-                      <div className={`absolute w-1.5 h-1.5 bg-black rounded-full transition-all ${direction.x === 1 ? 'right-1 bottom-1' : direction.x === -1 ? 'left-1 bottom-1' : direction.y === 1 ? 'bottom-1 left-1' : 'top-1 left-1'}`} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Food */}
-            <div 
-              className={`${food.type === 'gold' ? 'bg-yellow-400 shadow-[0_0_20px_rgba(250,204,21,1)]' : 'bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.9)]'} rounded-full scale-[0.8] animate-pulse z-0 flex items-center justify-center`}
-              style={{ gridColumnStart: food.x + 1, gridRowStart: food.y + 1 }}
-            >
-              {food.type === 'gold' && <Sparkles size={10} className="text-white/90 animate-spin" style={{ animationDuration: '3s' }} />}
-            </div>
-
-            {/* Particles */}
-            {particles.map(p => (
-              <div
-                key={p.id}
-                className="absolute rounded-full pointer-events-none animate-particle"
-                style={{
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  width: p.size,
-                  height: p.size,
-                  backgroundColor: p.color,
-                  boxShadow: `0 0 8px ${p.color}`,
-                  '--tx': `${p.dx * 25}px`,
-                  '--ty': `${p.dy * 25}px`,
-                } as React.CSSProperties}
-              />
-            ))}
-
-            {/* Floating Texts */}
-            {floatingTexts.map(t => (
-              <div
-                key={t.id}
-                className="absolute pointer-events-none animate-float font-black text-sm italic whitespace-nowrap"
-                style={{
-                  left: `${t.x}%`,
-                  top: `${t.y}%`,
-                  color: t.color,
-                  textShadow: `0 0 10px ${t.color}`,
+            return (
+              <div 
+                key={`snake-${index}`}
+                className={deathAnim ? 'animate-death' : ''}
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gridColumnStart: segment.x + 1, 
+                  gridRowStart: segment.y + 1, 
+                  opacity,
+                  background: isHead ? '#34d399' : '#10b981',
+                  borderRadius: isHead ? '6px' : '4px',
+                  transform: isHead ? 'scale(1.15)' : 'scale(0.9)',
+                  boxShadow: isHead && !deathAnim ? '0 0 15px rgba(52,211,153,1)' : 'none',
+                  zIndex: isHead ? 10 : 1,
+                  ...(deathAnim ? {
+                    '--dx': `${(Math.random() - 0.5) * 80}px`,
+                    '--dy': `${(Math.random() - 0.5) * 80}px`,
+                  } as React.CSSProperties : {})
                 }}
               >
-                {t.text}
+                {isHead && !deathAnim && (
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <div style={{ position: 'absolute', width: '6px', height: '6px', background: '#000', borderRadius: '50%', transition: 'all 0.1s', ...(direction.x === 1 ? {right: '4px', top: '4px'} : direction.x === -1 ? {left: '4px', top: '4px'} : direction.y === 1 ? {bottom: '4px', right: '4px'} : {top: '4px', right: '4px'}) }} />
+                    <div style={{ position: 'absolute', width: '6px', height: '6px', background: '#000', borderRadius: '50%', transition: 'all 0.1s', ...(direction.x === 1 ? {right: '4px', bottom: '4px'} : direction.x === -1 ? {left: '4px', bottom: '4px'} : direction.y === 1 ? {bottom: '4px', left: '4px'} : {top: '4px', left: '4px'}) }} />
+                  </div>
+                )}
               </div>
-            ))}
+            );
+          })}
+
+          {/* Food */}
+          <div 
+            style={{ 
+              gridColumnStart: food.x + 1, gridRowStart: food.y + 1, 
+              background: food.type === 'gold' ? '#facc15' : '#22d3ee',
+              borderRadius: '50%', transform: 'scale(0.8)',
+              boxShadow: food.type === 'gold' ? '0 0 20px rgba(250,204,21,1)' : '0 0 15px rgba(34,211,238,0.9)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 0
+            }}
+            className="animate-pulse"
+          >
+            {food.type === 'gold' && <Sparkles size={12} color="#fff" fill="#fff" className="animate-spin" style={{ animationDuration: '3s' }} />}
           </div>
 
-          {/* Overlays */}
-          {!hasStarted && !gameOver && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-              <Ghost size={48} className="text-emerald-500 mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-              <button onClick={startGame} className="px-8 py-4 bg-emerald-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-2 hover:bg-emerald-400 active:scale-95 transition-all shadow-[0_0_25px_rgba(16,185,129,0.5)]">
-                <Play size={18} fill="currentColor" /> Initiate
-              </button>
-              <p className="text-[8px] font-black text-emerald-500/50 uppercase tracking-[0.2em] mt-6">Engages Fullscreen Mode</p>
-            </div>
-          )}
+          {/* Particles */}
+          {particles.map(p => (
+            <div
+              key={p.id}
+              className="animate-particle"
+              style={{
+                position: 'absolute',
+                borderRadius: '50%',
+                pointerEvents: 'none',
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                width: p.size,
+                height: p.size,
+                backgroundColor: p.color,
+                boxShadow: `0 0 8px ${p.color}`,
+                '--tx': `${p.dx * 25}px`,
+                '--ty': `${p.dy * 25}px`,
+              } as React.CSSProperties}
+            />
+          ))}
 
-          {countdown >= 0 && hasStarted && (
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-30">
-              <span className="text-7xl font-black italic text-emerald-400 drop-shadow-[0_0_30px_rgba(52,211,153,0.8)] animate-pulse">
-                {countdown === 0 ? 'GO!' : countdown}
-              </span>
+          {/* Floating Texts */}
+          {floatingTexts.map(t => (
+            <div
+              key={t.id}
+              className="animate-float"
+              style={{
+                position: 'absolute',
+                pointerEvents: 'none',
+                fontWeight: 900,
+                fontSize: '14px',
+                fontStyle: 'italic',
+                whiteSpace: 'nowrap',
+                left: `${t.x}%`,
+                top: `${t.y}%`,
+                color: t.color,
+                textShadow: `0 0 10px ${t.color}`,
+              }}
+            >
+              {t.text}
             </div>
-          )}
-
-          {isPaused && hasStarted && !gameOver && countdown < 0 && (
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-amber-500 mb-6 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">Paused</h2>
-              <button onClick={togglePause} className="px-8 py-4 bg-amber-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-2 hover:bg-amber-400 active:scale-95 transition-all shadow-[0_0_25px_rgba(245,158,11,0.4)]">
-                <Play size={18} fill="currentColor" /> Resume
-              </button>
-            </div>
-          )}
-
-          {gameOver && (
-            <div className={`absolute inset-0 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 transition-opacity duration-500 ${showGameOver ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_20px_rgba(239,68,68,1)]">System Failure</h2>
-              <p className="text-[10px] font-bold text-red-300 uppercase tracking-widest mb-3">Final Score: {score}</p>
-              
-              <div className="h-4 mb-6">
-                {isSyncing && <p className="text-[9px] font-black text-white/50 uppercase tracking-widest animate-pulse">Syncing to Cloud...</p>}
-                {!isSyncing && score > 0 && <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Score Saved</p>}
-              </div>
-
-              <button onClick={startGame} className="px-6 py-3 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-2 active:scale-95 transition-all shadow-xl hover:scale-105">
-                <RotateCcw size={16} /> Reboot
-              </button>
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* D-PAD (pointer-based, no double-fire) */}
-        <div className="mt-auto mb-10 max-w-[220px] mx-auto w-full grid grid-cols-3 grid-rows-3 gap-2 select-none" style={{ touchAction: 'none' }}>
-          <div /> 
-          <button 
-            onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: 0, y: -1 }); }}
-            className="w-16 h-16 mx-auto bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-emerald-500/20 active:border-emerald-500/50 active:scale-[0.85] transition-all shadow-sm text-zinc-500 active:text-emerald-500"
-          >
-            <ChevronUp size={36} strokeWidth={3} />
-          </button>
-          <div /> 
-
-          <button 
-            onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: -1, y: 0 }); }}
-            className="w-16 h-16 mx-auto bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-emerald-500/20 active:border-emerald-500/50 active:scale-[0.85] transition-all shadow-sm text-zinc-500 active:text-emerald-500"
-          >
-            <ChevronLeft size={36} strokeWidth={3} />
-          </button>
-          
-          <div className="flex items-center justify-center">
-            <div className="w-4 h-4 rounded-full bg-[var(--border)] opacity-30 shadow-inner" />
+        {/* Overlays */}
+        {!hasStarted && !gameOver && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+            <Ghost size={48} color="#10b981" style={{ marginBottom: '16px', filter: 'drop-shadow(0 0 15px rgba(16,185,129,0.5))' }} className="animate-bounce" />
+            <button 
+              onClick={startGame} 
+              style={{ padding: '16px 32px', background: '#10b981', color: '#fff', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)' }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <Play size={20} fill="currentColor" /> INITIATE
+            </button>
+            <p style={{ margin: '24px 0 0 0', fontSize: '10px', fontWeight: 900, color: 'rgba(16, 185, 129, 0.5)', textTransform: 'uppercase', letterSpacing: '2px' }}>Engages Fullscreen Mode</p>
           </div>
+        )}
 
-          <button 
-            onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: 1, y: 0 }); }}
-            className="w-16 h-16 mx-auto bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-emerald-500/20 active:border-emerald-500/50 active:scale-[0.85] transition-all shadow-sm text-zinc-500 active:text-emerald-500"
-          >
-            <ChevronRight size={36} strokeWidth={3} />
-          </button>
+        {countdown >= 0 && hasStarted && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 30 }}>
+            <span style={{ fontSize: '80px', fontWeight: 900, fontStyle: 'italic', color: '#34d399', textShadow: '0 0 30px rgba(52,211,153,0.8)' }} className="animate-pulse">
+              {countdown === 0 ? 'GO!' : countdown}
+            </span>
+          </div>
+        )}
 
-          <div /> 
-          <button 
-            onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: 0, y: 1 }); }}
-            className="w-16 h-16 mx-auto bg-[var(--card)] border border-[var(--border)] rounded-2xl flex items-center justify-center active:bg-emerald-500/20 active:border-emerald-500/50 active:scale-[0.85] transition-all shadow-sm text-zinc-500 active:text-emerald-500"
-          >
-            <ChevronDown size={36} strokeWidth={3} />
-          </button>
-          <div /> 
-        </div>
+        {isPaused && hasStarted && !gameOver && countdown < 0 && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+            <h2 style={{ margin: '0 0 24px 0', fontSize: '36px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#f59e0b', textShadow: '0 0 15px rgba(245,158,11,0.5)' }}>Paused</h2>
+            <button 
+              onClick={togglePause} 
+              style={{ padding: '16px 32px', background: '#f59e0b', color: '#fff', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(245, 158, 11, 0.4)' }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <Play size={20} fill="currentColor" /> Resume
+            </button>
+          </div>
+        )}
 
+        {gameOver && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(69, 10, 10, 0.9)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, transition: 'opacity 0.5s', opacity: showGameOver ? 1 : 0, pointerEvents: showGameOver ? 'auto' : 'none' }}>
+            <h2 style={{ margin: '0 0 4px 0', fontSize: '32px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#fff', textShadow: '0 0 20px rgba(239,68,68,1)' }}>System Failure</h2>
+            <p style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 900, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px' }}>Final Score: {score}</p>
+            
+            <div style={{ height: '20px', marginBottom: '24px' }}>
+              {isSyncing && <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }} className="animate-pulse">Syncing to Cloud...</p>}
+              {!isSyncing && score > 0 && <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, color: '#34d399', textTransform: 'uppercase', letterSpacing: '1px' }}>Score Saved</p>}
+            </div>
+
+            <button 
+              onClick={startGame} 
+              style={{ padding: '12px 24px', background: '#fff', color: '#dc2626', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <RotateCcw size={18} /> Reboot
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* D-PAD (pointer-based, no double-fire) */}
+      <div style={{ marginTop: 'auto', marginBottom: '20px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: '12px', width: '220px', userSelect: 'none', touchAction: 'none' }}>
+        <div /> 
+        <button 
+          onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: 0, y: -1 }); }}
+          style={{ width: '64px', height: '64px', margin: 'auto', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+          onMouseDown={e => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'; e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)'; e.currentTarget.style.color = '#10b981'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+          onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <ChevronUp size={36} strokeWidth={3} />
+        </button>
+        <div /> 
+
+        <button 
+          onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: -1, y: 0 }); }}
+          style={{ width: '64px', height: '64px', margin: 'auto', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+          onMouseDown={e => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'; e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)'; e.currentTarget.style.color = '#10b981'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+          onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <ChevronLeft size={36} strokeWidth={3} />
+        </button>
+        
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#e2e8f0', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)' }} />
+        </div>
+
+        <button 
+          onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: 1, y: 0 }); }}
+          style={{ width: '64px', height: '64px', margin: 'auto', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+          onMouseDown={e => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'; e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)'; e.currentTarget.style.color = '#10b981'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+          onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <ChevronRight size={36} strokeWidth={3} />
+        </button>
+
+        <div /> 
+        <button 
+          onPointerDown={(e) => { e.preventDefault(); changeDirection({ x: 0, y: 1 }); }}
+          style={{ width: '64px', height: '64px', margin: 'auto', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', transition: 'all 0.1s' }}
+          onMouseDown={e => { e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'; e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)'; e.currentTarget.style.color = '#10b981'; e.currentTarget.style.transform = 'scale(0.85)'; }}
+          onMouseUp={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <ChevronDown size={36} strokeWidth={3} />
+        </button>
+        <div /> 
+      </div>
+
     </div>
   );
 }

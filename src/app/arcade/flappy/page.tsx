@@ -6,6 +6,7 @@ import {
   Loader2, Pause, Volume2, VolumeX, Sparkles 
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { motion } from 'framer-motion';
 
 // RECALIBRATED & CAPPED PHYSICS
 const GRAVITY = 0.35; // Floaty feel
@@ -187,7 +188,7 @@ export default function FlappyAltu() {
       const birdBottom = birdY.current + BIRD_SIZE;
       const birdLeft = 50; 
       const birdRight = 50 + BIRD_SIZE;
-      const hitboxTolerance = 4; // Slightly more forgiving so tight squeezes feel fair
+      const hitboxTolerance = 4;
 
       // Floor / Ceiling Collision
       if (birdBottom >= GAME_HEIGHT || birdTop <= 0) {
@@ -246,12 +247,12 @@ export default function FlappyAltu() {
     return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
   }, [gameState, updatePhysics]);
 
-  const jump = useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
-    if (e && 'preventDefault' in e) e.preventDefault();
+  const jump = useCallback((e?: React.SyntheticEvent | KeyboardEvent | React.PointerEvent) => {
+    if (e && 'preventDefault' in e && e.type !== 'pointerdown') e.preventDefault();
     if (isPaused) return; 
     
     if (gameState === 'idle' || gameState === 'gameover') {
-      requestFullscreen(); // Engage Immersive Mode
+      requestFullscreen();
       initAudio();
       birdY.current = GAME_HEIGHT / 2;
       velocity.current = 0;
@@ -290,80 +291,128 @@ export default function FlappyAltu() {
     // FULLSCREEN ROOT: Tap anywhere in this div to jump
     <div 
       onPointerDown={jump}
-      className={`h-[100dvh] w-screen font-sans bg-[var(--background)] text-[var(--text)] flex flex-col items-center pt-8 relative overflow-hidden touch-none overscroll-none cursor-pointer transition-colors duration-200 ${flash ? 'bg-red-950/30' : ''}`}
+      style={{
+        minHeight: '100dvh',
+        background: flash ? 'rgba(239, 68, 68, 0.1)' : '#fff',
+        padding: '40px 20px 120px',
+        maxWidth: '500px',
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        transition: 'background 0.2s ease',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        overflow: 'hidden',
+        touchAction: 'none',
+        cursor: 'pointer'
+      }}
     >
       
       {/* Background Ambience */}
-      <div className="fixed inset-0 -z-10 pointer-events-none transition-all duration-1000" style={{ filter: `hue-rotate(${hueShift}deg)` }}>
-        <div className="absolute top-[-10%] left-[-10%] w-[320px] h-[320px] rounded-full bg-violet-500/10 blur-[80px]" />
-        <div className="absolute bottom-[20%] right-[-10%] w-[260px] h-[260px] rounded-full bg-orange-500/10 blur-[80px]" />
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', filter: 'blur(80px)' }} />
       </div>
 
-      <div className="w-full max-w-md px-5 flex flex-col items-center relative z-10">
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
         
         {/* Header Area */}
-        <div className="w-full flex justify-between items-center mb-6">
-          <div className="flex gap-2 z-50">
-            <button onPointerDown={handleBack} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-violet-500 shadow-sm cursor-pointer">
-              <ChevronLeft size={20} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', gap: '8px', zIndex: 50 }}>
+            <button 
+                onPointerDown={handleBack} 
+                style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <ChevronLeft size={24} strokeWidth={2.5} />
             </button>
             {gameState === 'playing' && (
-              <button onPointerDown={togglePause} className={`p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all shadow-sm cursor-pointer ${isPaused ? 'text-amber-500 border-amber-500/30' : 'text-zinc-500 hover:text-violet-500'}`}>
+              <button 
+                onPointerDown={togglePause} 
+                style={{ width: '45px', height: '45px', borderRadius: '14px', background: isPaused ? 'rgba(245, 158, 11, 0.1)' : '#f8fafc', border: isPaused ? '2px solid rgba(245, 158, 11, 0.3)' : '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPaused ? '#f59e0b' : '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.2s ease' }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
                 {isPaused ? <Play size={20} /> : <Pause size={20} />}
               </button>
             )}
-            <button onPointerDown={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }} className="p-2.5 bg-[var(--card)] rounded-xl border border-[var(--border)] active:scale-90 transition-all text-zinc-500 hover:text-violet-500 shadow-sm cursor-pointer">
+            <button 
+                onPointerDown={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }} 
+                style={{ width: '45px', height: '45px', borderRadius: '14px', background: '#f8fafc', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', transition: 'all 0.2s ease' }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
               {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
           </div>
-          <div className="text-right transition-all duration-1000" style={{ filter: `hue-rotate(${hueShift}deg)` }}>
-            <h1 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter leading-none text-violet-500 drop-shadow-[0_0_10px_rgba(139,92,246,0.4)]">
+          <div style={{ textAlign: 'right' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#8b5cf6' }}>
               Flappy Altu
             </h1>
           </div>
         </div>
 
         {/* Score Board */}
-        <div className="w-full flex gap-3 mb-6">
-          <div className={`flex-1 bg-[var(--card)] border rounded-2xl p-3 flex flex-col items-center justify-center transition-all duration-300 ${isMilestone ? 'border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)] scale-105 z-10' : 'border-[var(--border)] shadow-sm'}`}>
-            <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isMilestone ? 'text-yellow-500' : 'text-zinc-500'}`}>Score</span>
-            <span className={`text-3xl font-black italic leading-none flex items-center gap-2 ${isMilestone ? 'text-yellow-400' : 'text-[var(--text)]'}`}>
-              {score} {isMilestone && <Sparkles size={16} className="animate-spin-slow"/>}
+        <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '24px' }}>
+          <div style={{ flex: 1, background: '#f8fafc', border: isMilestone ? '2px solid #facc15' : '1px solid #e2e8f0', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', transition: 'all 0.15s ease', transform: isMilestone ? 'scale(1.05)' : 'scale(1)', boxShadow: isMilestone ? '0 0 20px rgba(250, 204, 21, 0.3)' : 'none', zIndex: isMilestone ? 10 : 1 }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: isMilestone ? '#facc15' : '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Score</span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: isMilestone ? '#facc15' : '#0f172a', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {score} {isMilestone && <Sparkles size={16} className="animate-spin" style={{ animationDuration: '3s' }} />}
             </span>
           </div>
-          <div className="flex-1 bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-            <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest flex items-center gap-1 mb-1">
-              <Trophy size={12}/> Best
+
+          <div style={{ flex: 1, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(245, 158, 11, 0.1)' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: 'rgba(245, 158, 11, 0.7)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Trophy size={12} /> Best
             </span>
-            <span className="text-3xl font-black italic text-amber-500 leading-none">{highScore}</span>
+            <span style={{ fontSize: '32px', fontWeight: 900, fontStyle: 'italic', color: '#f59e0b', lineHeight: 1 }}>{highScore}</span>
           </div>
         </div>
 
         {/* The Game Box */}
         <div 
-          className={`relative w-full max-w-[340px] h-[500px] bg-[#050505] rounded-[30px] border-2 ${flash ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.4)]' : 'border-violet-500/30 shadow-[0_0_40px_rgba(139,92,246,0.15)]'} overflow-hidden pointer-events-none transition-all duration-1000`}
-          style={!flash ? { filter: `hue-rotate(${hueShift}deg)` } : {}}
+          style={{
+            position: 'relative', 
+            width: '100%', 
+            maxWidth: '340px', 
+            height: '500px', 
+            background: '#050505', 
+            borderRadius: '30px', 
+            border: flash ? '2px solid #ef4444' : '2px solid rgba(139, 92, 246, 0.3)', 
+            overflow: 'hidden', 
+            pointerEvents: 'none', 
+            transition: 'border 0.2s ease, box-shadow 0.2s ease',
+            boxShadow: flash ? '0 0 50px rgba(239, 68, 68, 0.4)' : '0 10px 40px rgba(139, 92, 246, 0.15)',
+            filter: !flash ? `hue-rotate(${hueShift}deg)` : 'none'
+          }}
         >
           {/* Base Grid Parallax */}
-          <div className="absolute inset-0 opacity-[0.1]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px', backgroundPosition: `-${frameCount.current * 0.5}px 0` }}></div>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.1, backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px', backgroundPosition: `-${frameCount.current * 0.5}px 0` }} />
           
           {/* Fast Moving Parallax "Dust" */}
-          <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: 'radial-gradient(circle, #fff 2px, transparent 2px)', backgroundSize: '60px 80px', backgroundPosition: `-${frameCount.current * 1.5}px ${frameCount.current * 0.2}px` }}></div>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.15, backgroundImage: 'radial-gradient(circle, #fff 2px, transparent 2px)', backgroundSize: '60px 80px', backgroundPosition: `-${frameCount.current * 1.5}px ${frameCount.current * 0.2}px` }} />
 
           {/* Render Pipes */}
           {pipes.current.map((pipe, i) => (
             <React.Fragment key={i}>
               <div 
-                className="absolute top-0 bg-violet-600 border-x-2 border-b-4 border-violet-400 rounded-b-md shadow-[0_0_15px_rgba(139,92,246,0.4)]"
-                style={{ left: pipe.x, width: PIPE_WIDTH, height: pipe.topHeight }}
+                style={{ 
+                  position: 'absolute', top: 0, left: pipe.x, width: PIPE_WIDTH, height: pipe.topHeight, 
+                  background: '#7c3aed', borderLeft: '2px solid #a78bfa', borderRight: '2px solid #a78bfa', borderBottom: '4px solid #a78bfa', 
+                  borderRadius: '0 0 6px 6px', boxShadow: '0 0 15px rgba(139, 92, 246, 0.4)' 
+                }}
               >
-                <div className="absolute top-0 left-0 bottom-0 w-2 bg-white/10" />
+                <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '8px', background: 'rgba(255,255,255,0.1)' }} />
               </div>
               <div 
-                className="absolute bottom-0 bg-violet-600 border-x-2 border-t-4 border-violet-400 rounded-t-md shadow-[0_0_15px_rgba(139,92,246,0.4)]"
-                style={{ left: pipe.x, width: PIPE_WIDTH, height: GAME_HEIGHT - pipe.topHeight - PIPE_GAP }}
+                style={{ 
+                  position: 'absolute', bottom: 0, left: pipe.x, width: PIPE_WIDTH, height: GAME_HEIGHT - pipe.topHeight - PIPE_GAP, 
+                  background: '#7c3aed', borderLeft: '2px solid #a78bfa', borderRight: '2px solid #a78bfa', borderTop: '4px solid #a78bfa', 
+                  borderRadius: '6px 6px 0 0', boxShadow: '0 0 15px rgba(139, 92, 246, 0.4)' 
+                }}
               >
-                <div className="absolute top-0 left-0 bottom-0 w-2 bg-white/10" />
+                <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '8px', background: 'rgba(255,255,255,0.1)' }} />
               </div>
             </React.Fragment>
           ))}
@@ -371,69 +420,71 @@ export default function FlappyAltu() {
           {/* Fox Bird */}
           {gameState !== 'idle' && (
             <div 
-              className="absolute bg-orange-500 border-2 border-orange-300 rounded-md shadow-[0_0_20px_rgba(249,115,22,0.8)] transition-transform duration-75"
               style={{ 
-                left: 50, 
-                top: birdY.current, 
-                width: BIRD_SIZE, 
-                height: BIRD_SIZE,
+                position: 'absolute', left: 50, top: birdY.current, width: BIRD_SIZE, height: BIRD_SIZE,
+                background: '#f97316', border: '2px solid #fdba74', borderRadius: '6px', 
+                boxShadow: '0 0 20px rgba(249, 115, 22, 0.8)', transition: 'transform 0.075s',
                 transform: `rotate(${Math.min(Math.max(velocity.current * 4, -25), 90)}deg)`,
                 filter: `hue-rotate(-${hueShift}deg)` // Cancels out container shift
               }}
             >
               {/* Fox Details */}
-              <div className="absolute top-1 right-1 flex gap-0.5 z-10">
-                <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
+              <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '2px', zIndex: 10 }}>
+                <div style={{ width: '4px', height: '4px', background: '#fff', borderRadius: '50%' }} className="animate-pulse" />
+                <div style={{ width: '4px', height: '4px', background: '#fff', borderRadius: '50%' }} className="animate-pulse" />
               </div>
-              <div className="absolute -top-1 left-1 w-1.5 h-1.5 bg-orange-400 rotate-45 z-0" />
+              <div style={{ position: 'absolute', top: '-4px', left: '4px', width: '6px', height: '6px', background: '#fb923c', transform: 'rotate(45deg)', zIndex: 0 }} />
               
               {/* Rocket Boost Trail */}
               <div 
-                className="absolute top-1/2 -left-3 h-1 bg-gradient-to-r from-transparent to-yellow-300 rounded-full blur-[1px] transition-all duration-100" 
-                style={{ width: velocity.current < 0 ? '12px' : '0px', opacity: velocity.current < 0 ? 1 : 0 }} 
+                style={{ 
+                  position: 'absolute', top: '50%', left: '-12px', height: '4px', 
+                  background: 'linear-gradient(to right, transparent, #fde047)', borderRadius: '4px', 
+                  filter: 'blur(1px)', transition: 'all 0.1s', transform: 'translateY(-50%)',
+                  width: velocity.current < 0 ? '12px' : '0px', opacity: velocity.current < 0 ? 1 : 0 
+                }} 
               />
             </div>
           )}
 
           {/* Overlays */}
           {gameState === 'idle' && (
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center z-20 pointer-events-none" style={{ filter: `hue-rotate(-${hueShift}deg)` }}>
-              <Flame size={56} className="text-orange-500 mb-4 animate-bounce drop-shadow-[0_0_20px_rgba(249,115,22,0.6)]" />
-              <div className="px-8 py-4 bg-violet-500 text-white font-black uppercase tracking-widest rounded-full flex items-center gap-2 shadow-[0_0_25px_rgba(139,92,246,0.5)]">
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, pointerEvents: 'none', filter: `hue-rotate(-${hueShift}deg)` }}>
+              <Flame size={56} color="#f97316" style={{ marginBottom: '16px', filter: 'drop-shadow(0 0 20px rgba(249, 115, 22, 0.6))' }} className="animate-bounce" />
+              <div style={{ padding: '16px 32px', background: '#8b5cf6', color: '#fff', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 25px rgba(139, 92, 246, 0.5)' }}>
                 <Play size={18} fill="currentColor" /> Tap to Start
               </div>
-              <p className="text-[8px] font-black text-violet-300/60 uppercase tracking-[0.2em] mt-6">Engages Fullscreen</p>
+              <p style={{ margin: '24px 0 0 0', fontSize: '8px', fontWeight: 900, color: 'rgba(196, 181, 253, 0.6)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Engages Fullscreen</p>
             </div>
           )}
 
           {isPaused && gameState === 'playing' && (
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-20 pointer-events-none" style={{ filter: `hue-rotate(-${hueShift}deg)` }}>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-amber-500 mb-6 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">Paused</h2>
-              <div className="px-8 py-4 bg-amber-500 text-black font-black uppercase tracking-widest rounded-full flex items-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.4)]">
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, pointerEvents: 'none', filter: `hue-rotate(-${hueShift}deg)` }}>
+              <h2 style={{ margin: '0 0 24px 0', fontSize: '30px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#f59e0b', textShadow: '0 0 15px rgba(245, 158, 11, 0.5)' }}>Paused</h2>
+              <div style={{ padding: '16px 32px', background: '#f59e0b', color: '#000', fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 25px rgba(245, 158, 11, 0.4)' }}>
                 <Play size={18} fill="currentColor" /> Tap to Resume
               </div>
             </div>
           )}
 
           {gameState === 'gameover' && (
-            <div className="absolute inset-0 bg-red-950/80 backdrop-blur-md flex flex-col items-center justify-center z-20 pointer-events-none" style={{ filter: `hue-rotate(-${hueShift}deg)` }}>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-1 drop-shadow-[0_0_20px_rgba(239,68,68,1)]">Core Crashed</h2>
-              <p className="text-[10px] font-bold text-red-300 uppercase tracking-widest mb-3">Final Score: {score}</p>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(69, 10, 10, 0.8)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, pointerEvents: 'none', filter: `hue-rotate(-${hueShift}deg)` }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '30px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', color: '#fff', textShadow: '0 0 20px rgba(239, 68, 68, 1)' }}>Core Crashed</h2>
+              <p style={{ margin: '0 0 12px 0', fontSize: '10px', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '2px' }}>Final Score: {score}</p>
               
-              <div className="h-4 mb-6">
-                {isSyncing && <p className="text-[9px] font-black text-white/50 uppercase tracking-widest flex items-center gap-2"><Loader2 size={12} className="animate-spin"/> Syncing...</p>}
-                {!isSyncing && score > 0 && <p className="text-[9px] font-black text-violet-400 uppercase tracking-widest">Score Saved</p>}
+              <div style={{ height: '16px', marginBottom: '24px' }}>
+                {isSyncing && <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}><Loader2 size={12} className="animate-spin"/> Syncing...</p>}
+                {!isSyncing && score > 0 && <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '1px' }}>Score Saved</p>}
               </div>
 
-              <div className="px-6 py-3 bg-white text-red-600 font-black uppercase tracking-widest rounded-full flex items-center gap-2 shadow-xl">
+              <div style={{ padding: '12px 24px', background: '#fff', color: '#dc2626', fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', borderRadius: '32px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 10px 15px rgba(0,0,0,0.3)' }}>
                 <RotateCcw size={16} /> Tap to Retry
               </div>
             </div>
           )}
         </div>
         
-        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-8 text-center pointer-events-none">
+        <p style={{ margin: '32px 0 0 0', fontSize: '9px', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', pointerEvents: 'none' }}>
           Tap anywhere on screen to fly
         </p>
 

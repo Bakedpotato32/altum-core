@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, Loader2, IndianRupee, ShieldCheck, ShieldAlert, Clock, ReceiptText, AlertTriangle, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Loader2, IndianRupee, ShieldCheck, ShieldAlert, Clock, ReceiptText, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useLanguage } from '@/lib/LanguageContext';
+import { motion } from 'framer-motion';
 
 export default function StudentFeeDiary() {
   const router = useRouter();
@@ -49,191 +50,171 @@ export default function StudentFeeDiary() {
       setLoading(false);
     };
     fetchFees();
-  }, []);
+  }, [router]);
 
   if (loading || !student) return (
-    <div className="h-svh flex items-center justify-center" style={{ background: 'var(--background)' }}>
-      <div style={{ position: 'relative' }}>
-        <div className="absolute inset-0 rounded-full animate-ping" style={{ border: '2px solid rgba(16,185,129,0.25)' }} />
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Loader2 className="animate-spin" size={20} style={{ color: '#10b981' }} />
-        </div>
-      </div>
+    <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--background)' }}>
+      <Loader2 className="animate-spin" color="#10b981" size={32} />
     </div>
   );
 
   const clearance = getClearanceLevel(student.paid_till);
 
-  const statusConfig: Record<string, { color: string; bg: string; border: string; glow: string; gradientFrom: string; gradientTo: string; title: string; subtitle: string; Icon: any; textLight: boolean }> = {
+  const statusConfig: Record<string, { color: string; glow: string; gradient: string; title: string; subtitle: string; Icon: any; textLight: boolean }> = {
     cleared: {
-      color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.3)',
-      glow: 'rgba(16,185,129,0.4)', gradientFrom: '#059669', gradientTo: '#10b981',
-      title: t('cleared'), subtitle: `Till: ${student.paid_till}`,
-      Icon: ShieldCheck, textLight: true,
+      color: '#10b981', glow: 'rgba(16,185,129,0.3)', gradient: 'linear-gradient(135deg, #10b981, #059669)',
+      title: t('cleared') || 'CLEARED', subtitle: `Till: ${student.paid_till}`, Icon: ShieldCheck, textLight: true,
     },
     warning: {
-      color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)',
-      glow: 'rgba(245,158,11,0.4)', gradientFrom: '#d97706', gradientTo: '#f59e0b',
-      title: t('dueSoon'), subtitle: `${t('pendingFor')} 1 ${t('month')}`,
-      Icon: AlertCircle, textLight: false,
+      color: '#f59e0b', glow: 'rgba(245,158,11,0.3)', gradient: 'linear-gradient(135deg, #fcd34d, #f59e0b)',
+      title: t('dueSoon') || 'DUE SOON', subtitle: `${t('pendingFor') || 'PENDING FOR'} 1 ${t('month') || 'MONTH'}`, Icon: AlertCircle, textLight: false,
     },
     alert: {
-      color: '#f97316', bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.3)',
-      glow: 'rgba(249,115,22,0.4)', gradientFrom: '#ea580c', gradientTo: '#f97316',
-      title: t('overdue'), subtitle: `${t('pendingFor')} 2 ${t('months')}`,
-      Icon: AlertTriangle, textLight: true,
+      color: '#f97316', glow: 'rgba(249,115,22,0.3)', gradient: 'linear-gradient(135deg, #fb923c, #ea580c)',
+      title: t('overdue') || 'OVERDUE', subtitle: `${t('pendingFor') || 'PENDING FOR'} 2 ${t('months') || 'MONTHS'}`, Icon: AlertTriangle, textLight: true,
     },
     danger: {
-      color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)',
-      glow: 'rgba(239,68,68,0.4)', gradientFrom: '#dc2626', gradientTo: '#ef4444',
-      title: t('actionNeeded'),
-      subtitle: student.paid_till && student.paid_till.toUpperCase() !== 'PENDING' ? `${t('overdueSince')} ${student.paid_till}` : t('contactAdmin'),
+      color: '#ef4444', glow: 'rgba(239,68,68,0.3)', gradient: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+      title: t('actionNeeded') || 'ACTION NEEDED',
+      subtitle: student.paid_till && student.paid_till.toUpperCase() !== 'PENDING' ? `${t('overdueSince') || 'OVERDUE SINCE'} ${student.paid_till}` : (t('contactAdmin') || 'CONTACT ADMIN'),
       Icon: ShieldAlert, textLight: true,
     },
   };
 
-  const cfg = statusConfig[clearance.level];const totalPaid = history.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+  const cfg = statusConfig[clearance.level];
+  const totalPaid = history.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
 
   return (
-    <div className="min-h-screen pb-40 font-sans" style={{ background: 'var(--background)', color: 'var(--text)' }}>
+    <div style={{ minHeight: '100svh', background: 'var(--background)', color: 'var(--text)', padding: '40px 20px 120px', maxWidth: '500px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Ambient orbs */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div style={{ position: 'absolute', top: '-8%', right: '-12%', width: 340, height: 340, borderRadius: '50%', background: `radial-gradient(circle, ${cfg.glow.replace('0.4','0.08')} 0%, transparent 70%)`, filter: 'blur(50px)', transition: 'background 0.5s' }} />
-        <div style={{ position: 'absolute', bottom: '10%', left: '-10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.05) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+      {/* Ambient Orbs */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: cfg.glow, filter: 'blur(80px)', transition: 'background 0.5s ease' }} />
+        <div style={{ position: 'absolute', bottom: '10%', left: '-10%', width: '260px', height: '260px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.08)', filter: 'blur(80px)' }} />
       </div>
 
-      <div className="max-w-md mx-auto px-5 pt-28">
-
-        {/* ── Back ── */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform"
-          style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4 }}
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px' }}>
+        <button 
+          onClick={() => router.push('/dashboard')}
+          style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', flexShrink: 0, transition: 'transform 0.2s' }}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <ArrowLeft size={15} strokeWidth={3} /> {t('dashboard')}
+          <ChevronLeft size={26} strokeWidth={2.5} />
         </button>
-
-        {/* ── Header ── */}
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 44, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.92, color: 'var(--text)' }}>
-            {t('feeDiary')}
-          </h1>
-          <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3, marginTop: 8 }}>
-            {t('financeNode')}
-          </p>
-          <div style={{ marginTop: 16, height: 1, background: `linear-gradient(90deg, ${cfg.color}55, transparent)`, borderRadius: 1, transition: 'background 0.5s' }} />
-        </div>
-
-        {/* ── STATUS HERO CARD ── */}
-        <div style={{ borderRadius: 32, background: `linear-gradient(135deg, ${cfg.gradientFrom}, ${cfg.gradientTo})`, padding: '28px 24px', position: 'relative', overflow: 'hidden', marginBottom: 20, boxShadow: `0 20px 60px ${cfg.glow}` }}>
-          {/* Watermark icon */}
-          <div style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.1, transform: 'rotate(-12deg)' }}>
-            <cfg.Icon size={130} style={{ color: cfg.textLight ? '#fff' : '#000' }} />
-          </div>
-          {/* Shine overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%)', borderRadius: 32, pointerEvents: 'none' }} />
-
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.28em', textTransform: 'uppercase', color: cfg.textLight ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)', marginBottom: 10 }}>
-              {t('currentStatus')}
-            </p>
-            <h2 style={{ fontSize: 36, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 0.95, color: cfg.textLight ? '#fff' : '#1a1200', marginBottom: 8 }}>
-              {cfg.title}
-            </h2>
-            <p style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: cfg.textLight ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.5)' }}>
-              {cfg.subtitle}
-            </p>
-          </div>
-        </div>
-
-        {/* ── TOTAL PAID PILL ── */}
-        {history.length > 0 && (
-          <div style={{ borderRadius: 20, background: 'var(--card)', border: '1px solid var(--border)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35 }}>
-              Total Paid
-            </p>
-            <span style={{ fontSize: 22, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.03em', color: '#10b981', textShadow: '0 0 16px rgba(16,185,129,0.3)' }}>
-              ₹{totalPaid.toLocaleString('en-IN')}
-            </span>
-          </div>
-        )}{/* ── PAYMENT HISTORY ── */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingLeft: 4 }}>
-            <ReceiptText size={13} style={{ color: 'var(--text)', opacity: 0.3 }} />
-            <h2 style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.3 }}>
-              {t('paymentHistory')}
-            </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+            <ReceiptText size={14} color={cfg.color} strokeWidth={3} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, color: cfg.color, letterSpacing: '1px', textTransform: 'uppercase' }}>
+              FINANCE NODE
+            </p>
           </div>
+          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1 }}>
+            {t('feeDiary') || 'FEE DIARY'}
+          </h1>
+        </div>
+      </div>
 
-          {history.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {history.map((payment, index) => (
-                <div
-                  key={payment.id}
-                  style={{
-                    borderRadius: 24,
-                    background: 'var(--card)',
-                    border: '1px solid var(--border)',
-                    padding: '16px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 14,
-                    animation: 'fadeSlideIn 0.35s ease both',
-                    animationDelay: `${index * 0.05}s`,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Left green stripe accent */}
-                  <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: 3, borderRadius: '0 3px 3px 0', background: 'linear-gradient(180deg, #10b981, #059669)', opacity: 0.6 }} />
+      {/* STATUS HERO CARD */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+        style={{ borderRadius: '32px', background: cfg.gradient, padding: '32px 28px', position: 'relative', overflow: 'hidden', marginBottom: '24px', boxShadow: `0 15px 40px ${cfg.glow}` }}
+      >
+        {/* Watermark icon */}
+        <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.15, transform: 'rotate(-15deg)', pointerEvents: 'none' }}>
+          <cfg.Icon size={140} style={{ color: cfg.textLight ? '#fff' : '#000' }} />
+        </div>
+        {/* Shine overlay */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%)', borderRadius: '32px', pointerEvents: 'none' }} />
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0, paddingLeft: 8 }}>
-                    {/* Icon */}
-                    <div style={{ width: 44, height: 44, borderRadius: 16, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <IndianRupee size={18} style={{ color: '#10b981' }} />
-                    </div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '10px', fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', color: cfg.textLight ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)' }}>
+            {t('currentStatus') || 'CURRENT STATUS'}
+          </p>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '38px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.5px', lineHeight: 1, color: cfg.textLight ? '#fff' : '#1a1200' }}>
+            {cfg.title}
+          </h2>
+          <p style={{ margin: 0, fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: cfg.textLight ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)' }}>
+            {cfg.subtitle}
+          </p>
+        </div>
+      </motion.div>
 
-                    {/* Text */}
-                    <div style={{ minWidth: 0 }}>
-                      <h4 style={{ fontSize: 13, fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text)', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>
-                        {payment.fee_title}
-                      </h4>
-                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.35, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={9} />
-                        {format(new Date(payment.payment_date), 'dd MMM yyyy')}
-                      </p>
-                    </div>
+      {/* TOTAL PAID PILL */}
+      {history.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} style={{ borderRadius: '24px', background: 'var(--card)', border: '1px solid var(--border)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px', boxShadow: '0 8px 20px rgba(0,0,0,0.03)' }}>
+          <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#64748b' }}>
+            TOTAL PAID
+          </p>
+          <span style={{ fontSize: '26px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.5px', color: '#10b981', textShadow: '0 0 15px rgba(16,185,129,0.3)', lineHeight: 1 }}>
+            ₹{totalPaid.toLocaleString('en-IN')}
+          </span>
+        </motion.div>
+      )}
+
+      {/* PAYMENT HISTORY */}
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingLeft: '8px' }}>
+          <ReceiptText size={16} color="#94a3b8" />
+          <h2 style={{ margin: 0, fontSize: '12px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#94a3b8' }}>
+            {t('paymentHistory') || 'PAYMENT HISTORY'}
+          </h2>
+        </div>
+
+        {history.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {history.map((payment, index) => (
+              <motion.div
+                key={payment.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                style={{
+                  borderRadius: '24px', background: 'var(--card)', border: '1px solid var(--border)',
+                  padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
+                  position: 'relative', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.02)'
+                }}
+              >
+                {/* Left accent stripe */}
+                <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '4px', borderRadius: '0 4px 4px 0', background: 'linear-gradient(180deg, #10b981, #059669)' }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, paddingLeft: '6px' }}>
+                  {/* Icon Box */}
+                  <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <IndianRupee size={20} color="#10b981" />
                   </div>
 
-                  {/* Amount */}
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.03em', color: '#10b981', textShadow: '0 0 12px rgba(16,185,129,0.25)' }}>
-                      ₹{Number(payment.amount_paid).toLocaleString('en-IN')}
-                    </span>
+                  {/* Text Details */}
+                  <div style={{ minWidth: 0 }}>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {payment.fee_title}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '10px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={10} />
+                      {format(new Date(payment.payment_date), 'dd MMM yyyy')}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
 
-          ) : (
-            <div style={{ textAlign: 'center', padding: '60px 24px', borderRadius: 28, background: 'var(--card)', border: '1px dashed var(--border)', opacity: 0.5 }}>
-              <ReceiptText size={36} style={{ color: 'var(--text)', opacity: 0.2, margin: '0 auto 12px' }} />
-              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--text)', opacity: 0.4, lineHeight: 1.8 }}>
-                {t('noPaymentRecords')}
-              </p>
-            </div>
-          )}
-        </div>
+                {/* Amount */}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <span style={{ fontSize: '20px', fontWeight: 900, fontStyle: 'italic', color: '#10b981', lineHeight: 1 }}>
+                    ₹{Number(payment.amount_paid).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '60px 24px', borderRadius: '32px', background: 'var(--card)', border: '2px dashed var(--border)' }}>
+            <ReceiptText size={48} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
+            <p style={{ margin: 0, fontSize: '12px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#94a3b8', lineHeight: 1.6 }}>
+              {t('noPaymentRecords') || 'NO PAYMENT RECORDS FOUND'}
+            </p>
+          </motion.div>
+        )}
       </div>
-
-      <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,286 +1,219 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Calendar, Star, ArrowUpRight, Zap, Loader2, MessageSquare, Trophy, ChevronRight, Crown, ListChecks, Bell, Megaphone, Wallet, Gamepad2, Calculator } from 'lucide-react';
+import { 
+  Bell, Trophy, ChevronRight, ListChecks, Megaphone, 
+  Gamepad2, Calculator, Loader2, Star, MessageSquare, ArrowUpRight,
+  ReceiptText
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/LanguageContext';
 
 export default function Dashboard() {
   const router = useRouter();
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [student, setStudent] = useState<any>(null);
   const [globalNotice, setGlobalNotice] = useState("...");
   const [classNotice, setClassNotice] = useState("");
-  const [loading, setLoading] = useState(true);
   const [rank, setRank] = useState<number | string>('--');
-
-  const getClearanceLevel = (paidTill: string | null) => {
-    if (!paidTill || paidTill.toUpperCase() === 'PENDING') return { level: 'danger', monthsBehind: 99 };
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-    const str = paidTill.toUpperCase();
-    let parsedMonth = -1;
-    let parsedYear = currentYear;
-    months.forEach((m, idx) => { if (str.includes(m)) parsedMonth = idx; });
-    const yearMatch = str.match(/\d{4}/);
-    if (yearMatch) parsedYear = parseInt(yearMatch[0]);
-    if (parsedMonth === -1) return { level: 'cleared', monthsBehind: 0 };
-    const totalCurrentMonths = currentYear * 12 + currentMonth;
-    const totalPaidMonths = parsedYear * 12 + parsedMonth;
-    const monthsBehind = totalCurrentMonths - totalPaidMonths;
-    if (monthsBehind <= 0) return { level: 'cleared', monthsBehind: 0 };
-    if (monthsBehind === 1) return { level: 'warning', monthsBehind: 1 };
-    if (monthsBehind === 2) return { level: 'alert', monthsBehind: 2 };
-    return { level: 'danger', monthsBehind };
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const role = localStorage.getItem('role');
-    if (role === 'principal' || role === 'teacher') { router.push('/admin'); return; }
     const activeId = localStorage.getItem('studentId');
     if (!activeId) { router.push('/login'); return; }
 
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      const { data: studentData } = await supabase.from('students').select('*').eq('id', activeId).single();
-      if (studentData) {
-        setStudent(studentData);
-        const cleanClass = studentData.class.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
-        const classNoticeKey = `notice_class_${cleanClass}`;
-        const [globalRes, classRes] = await Promise.all([
+    const fetchData = async () => {
+      const { data: sData } = await supabase.from('students').select('*').eq('id', activeId).single();
+      if (sData) {
+        setStudent(sData);
+        const cleanClass = sData.class.toLowerCase().replace(/(st|nd|rd|th)/g, "").trim();
+        const [gn, cn] = await Promise.all([
           supabase.from('config').select('value').eq('key', 'global_notice').maybeSingle(),
-          supabase.from('config').select('value').eq('key', classNoticeKey).maybeSingle()
+          supabase.from('config').select('value').eq('key', `notice_class_${cleanClass}`).maybeSingle()
         ]);
-        if (globalRes.data) setGlobalNotice(globalRes.data.value);
-        if (classRes.data) setClassNotice(classRes.data.value);
-        const { data: classmates } = await supabase.from('students').select('id').eq('class', studentData.class);
-        const classmateIds = classmates ? classmates.map(c => c.id) : [activeId];
+        if (gn.data) setGlobalNotice(gn.data.value);
+        if (cn.data) setClassNotice(cn.data.value);
+
+        const { data: classmates } = await supabase.from('students').select('id').eq('class', sData.class);
+        const classmateIds = classmates?.map(c => c.id) || [activeId];
         const { data: allScores } = await supabase.from('test_scores').select('student_id, marks_obtained, total_marks').in('student_id', classmateIds);
         if (allScores) {
-          const studentStats: any = {};
-          classmateIds.forEach(id => { studentStats[id] = { got: 0, total: 0 }; });
-          allScores.forEach(s => {
-            if (studentStats[s.student_id]) {
-              studentStats[s.student_id].got += Number(s.marks_obtained);
-              studentStats[s.student_id].total += Number(s.total_marks);
-            }
-          });
-          const rankedList = Object.keys(studentStats)
-            .filter(id => studentStats[id].total > 0)
-            .map(id => ({ id, avg: (studentStats[id].got / studentStats[id].total) * 100 }))
-            .sort((a, b) => b.avg - a.avg);
-          const myRank = rankedList.findIndex(item => item.id === activeId) + 1;
-          setRank(myRank > 0 ? myRank : '--');
+          const stats: any = {};
+          classmateIds.forEach(id => { stats[id] = { got: 0, total: 0 }; });
+          allScores.forEach(s => { if (stats[s.student_id]) { stats[s.student_id].got += Number(s.marks_obtained); stats[s.student_id].total += Number(s.total_marks); }});
+          const ranked = Object.keys(stats).filter(id => stats[id].total > 0).map(id => ({ id, avg: stats[id].got / stats[id].total })).sort((a,b) => b.avg - a.avg);
+          const myPos = ranked.findIndex(x => x.id === activeId) + 1;
+          setRank(myPos > 0 ? myPos : '--');
         }
       }
       setLoading(false);
     };
-    fetchDashboardData();
+    fetchData();
   }, [router]);
 
   if (loading || !student) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="relative">
-        <div className="absolute inset-0 rounded-full animate-ping bg-blue-500/20" />
-        <div className="relative w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center backdrop-blur-sm">
-          <Loader2 className="animate-spin w-5 h-5 text-blue-500" />
-        </div>
-      </div>
+    <div style={{ minHeight: '50svh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Loader2 className="animate-spin" color="#3b82f6" size={32} />
     </div>
   );
 
-  const clearance = getClearanceLevel(student.paid_till);
-  const badgeConfig: Record<string, { bg: string; border: string; label: string; color: string }> = {
-    cleared:  { bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', label: t('paidTill'),     color: 'text-emerald-500' },
-    warning:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/30',   label: t('dueSoon'),      color: 'text-amber-500' },
-    alert:    { bg: 'bg-orange-500/10',  border: 'border-orange-500/30',   label: t('overdue'),      color: 'text-orange-500' },
-    danger:   { bg: 'bg-red-500/10',    border: 'border-red-500/25',   label: t('actionNeeded'), color: 'text-red-500' },
-  };
-  const badge = badgeConfig[clearance.level];
+  const isPending = student.paid_till?.toUpperCase() === 'PENDING' || !student.paid_till;
 
   return (
-    <div className="min-h-screen pb-32 font-sans bg-background text-text">
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute -top-[20%] -right-[20%] w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[80px]" />
-        <div className="absolute bottom-[10%] -left-[20%] w-[350px] h-[350px] rounded-full bg-emerald-500/5 blur-[80px]" />
-        <div className="absolute top-[40%] left-[30%] w-[200px] h-[200px] rounded-full bg-amber-500/5 blur-[60px]" />
-      </div>
-
-      <div className="px-5 pt-28 pb-6">
-        <div className="flex justify-between items-center gap-3">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/10 overflow-hidden">
-              {student.avatar_url ? (
-                <img src={student.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-3xl font-black italic text-blue-500">
-                  {student.name[0]}
-                </span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-extrabold tracking-[0.22em] uppercase text-text/40 mb-1">
-                {t('welcome')}
-              </p>
-              <h1 className="text-3xl font-black italic uppercase tracking-[-0.02em] leading-[0.95] text-text">
-                {student.name.split(' ')[0].split('').map((char: string, i: number) => (
-                  <span key={i} className={i === 0 ? 'text-blue-500' : 'text-text'}>{char}</span>
-                ))}
-              </h1>
-              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-text/30 mt-1.5 truncate">
-                {student.class} {t('student')} · ID: {student.id}
-              </p>
-            </div>
+    <div style={{ padding: '16px 20px 40px', maxWidth: '500px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      {/* 1. PROFILE SECTION */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '72px', height: '72px', borderRadius: '22px', border: '3px solid #3b82f6', padding: '3px', overflow: 'hidden', boxShadow: '0 8px 20px rgba(59, 130, 246, 0.2)', background: '#fff' }}>
+             <img src={student.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Karan'} style={{ width: '100%', height: '100%', borderRadius: '14px', objectFit: 'cover' }} alt="avatar" />
           </div>
-
-          <div className={`shrink-0 px-3 py-2 rounded-xl ${badge.bg} ${badge.border} border flex flex-col items-center gap-0.5 backdrop-blur-sm`}>
-            <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${badge.color}/80`}>
-              {badge.label}
-            </span>
-            <span className={`text-xs font-black italic uppercase tracking-[-0.02em] ${badge.color}`}>
-              {student.paid_till || t('pending')}
-            </span>
+          <div>
+            <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, color: '#94a3b8', letterSpacing: '1px', textTransform: 'uppercase' }}>{t('welcomeBack')}</p>
+            <h1 style={{ margin: '2px 0', fontSize: '26px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#0f172a', lineHeight: 1 }}>{student.name.split(' ')[0]}</h1>
+            <p style={{ margin: 0, fontSize: '11px', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>CLASS {student.class} • {student.id}</p>
           </div>
         </div>
-        <div className="mt-6 h-px bg-gradient-to-r from-blue-500/40 to-transparent rounded-full" />
-      </div>
-
-      <div className="px-5 space-y-4">
-        {/* Live Notice & Update Cards */}
-        <div className="relative rounded-3xl bg-card border border-border p-5 overflow-hidden transition-all duration-200 hover:scale-[1.01] hover:shadow-xl cursor-pointer">
-          <Megaphone className="absolute -right-3 -top-3 w-20 h-20 text-blue-500/5" />
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse" />
-            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-blue-500">{t('liveNotice')}</span>
-          </div>
-          <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">“{globalNotice}”</p>
-        </div>
-
-        <div className="relative rounded-3xl bg-orange-500/5 border border-orange-500/20 p-5 overflow-hidden transition-all duration-200 hover:scale-[1.01]">
-          <Bell className="absolute -right-3 -top-3 w-20 h-20 text-orange-500/5" />
-          <div className="flex items-center gap-2 mb-3">
-            <Bell className="w-3 h-3 text-orange-500" />
-            <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-orange-500">{student.class} {t('update')}</span>
-          </div>
-          <p className="text-sm font-extrabold italic uppercase tracking-[-0.01em] leading-relaxed text-text relative z-10">
-            {classNotice ? `“${classNotice}”` : "No specific updates for your class today. Keep studying! 🦊"}
-          </p>
-        </div>
-
-        {/* Learning Lab Card - NEW! */}
-        <div
-          onClick={() => router.push('/learning-lab')}
-          className="group relative rounded-3xl bg-cyan-500/5 border border-cyan-500/20 p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-cyan-500/40 overflow-hidden"
+        <div 
+          onClick={() => router.push('/fees')} 
+          style={{ background: isPending ? '#fee2e2' : '#dcfce7', padding: '10px 14px', borderRadius: '18px', textAlign: 'center', cursor: 'pointer', boxShadow: isPending ? '0 4px 15px rgba(239, 68, 68, 0.15)' : '0 4px 15px rgba(16, 185, 129, 0.15)', transition: 'transform 0.2s', flexShrink: 0 }}
+          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <Calculator className="absolute -right-5 -top-5 w-28 h-28 text-cyan-500/5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500" />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-              <Calculator className="w-6 h-6 text-cyan-500" />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-cyan-500 mb-1">
-                Smart Tools
-              </p>
-              <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-tight">
-                Learning Lab
-              </h3>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-cyan-500/40 group-hover:translate-x-1 transition-transform" />
+          <p style={{ margin: 0, fontSize: '8px', fontWeight: 900, color: isPending ? '#ef4444' : '#10b981', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{t('feesStatus')}</p>
+          <p style={{ margin: '2px 0 0 0', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', color: isPending ? '#ef4444' : '#10b981' }}>{isPending ? t('pending') : student.paid_till}</p>
         </div>
+      </div>
 
-        {/* Existing Grid Cards */}
-        <div
+      {/* 2. SCHOOL NOTICE */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ position: 'relative', padding: '18px 22px', background: '#fff', borderRadius: '28px', boxShadow: '0 8px 25px rgba(0,0,0,0.04)', borderLeft: '5px solid #3b82f6', border: '1px solid #f1f5f9', borderLeftWidth: '5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <Megaphone size={18} color="#3b82f6" />
+          <span style={{ fontSize: '11px', fontWeight: 900, color: '#3b82f6', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{t('schoolNotice')}</span>
+        </div>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#334155', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>"{globalNotice}"</p>
+      </motion.div>
+
+      {/* 3. CLASS NOTICE */}
+      {classNotice && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ position: 'relative', padding: '18px 22px', background: '#fff', borderRadius: '28px', boxShadow: '0 8px 25px rgba(0,0,0,0.04)', borderLeft: '5px solid #f97316', border: '1px solid #f1f5f9', borderLeftWidth: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Bell size={18} color="#f97316" />
+            <span style={{ fontSize: '11px', fontWeight: 900, color: '#f97316', letterSpacing: '0.5px', textTransform: 'uppercase' }}>CLASS {student.class} {t('classUpdate')}</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#334155', lineHeight: 1.6, fontStyle: 'italic', opacity: 0.9 }}>"{classNotice}"</p>
+        </motion.div>
+      )}
+
+      {/* 4. KIDS HUB (Main Banner) */}
+      <motion.div 
+        whileTap={{ scale: 0.96 }}
+        onClick={() => router.push('/kids')}
+        style={{ 
+          background: 'linear-gradient(135deg, #FF416C, #8E2DE2)', 
+          borderRadius: '32px', padding: '24px', position: 'relative', overflow: 'hidden', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          boxShadow: '0 15px 35px rgba(142, 45, 226, 0.25)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', zIndex: 1 }}>
+          <div style={{ width: '56px', height: '56px', background: 'rgba(255,255,255,0.2)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.3)' }}>
+            <Star fill="white" color="white" size={28} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, color: '#fff', fontSize: '26px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1, textTransform: 'uppercase' }}>{t('kidsHub')}</h2>
+            <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.9)', fontSize: '10px', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase' }}>{t('playLearn')}</p>
+          </div>
+        </div>
+        <ChevronRight color="white" size={28} strokeWidth={3} style={{ opacity: 0.8 }} />
+        <span style={{ position: 'absolute', right: '10%', top: '50%', transform: 'translateY(-50%)', fontSize: '90px', opacity: 0.1, pointerEvents: 'none' }}>🎈</span>
+      </motion.div>
+
+      {/* 5. FUNCTIONAL CARDS */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <ActivityCard 
           onClick={() => router.push('/fees')}
-          className="group relative rounded-3xl bg-emerald-500/5 border border-emerald-500/20 p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-emerald-500/40 overflow-hidden"
-        >
-          <Wallet className="absolute -right-5 -top-5 w-28 h-28 text-emerald-500/5 group-hover:scale-110 transition-transform duration-300" />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-emerald-500 mb-1">{t('financeNode')}</p>
-              <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text leading-tight">{t('feeDiary')}</h3>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-emerald-500/40 group-hover:translate-x-1 transition-transform" />
-        </div>
-        
-        <div
+          icon={<ReceiptText size={24} />}
+          title={t('feeDiary')}
+          subtitle={t('paymentsDues')}
+          gradient="linear-gradient(135deg, #10b981, #059669)"
+          watermark="💳"
+        />
+        <ActivityCard 
+          onClick={() => router.push('/learning-lab')}
+          icon={<Calculator size={24} />}
+          title={t('learningLab')}
+          subtitle={t('smartTools')}
+          gradient="linear-gradient(135deg, #06b6d4, #0284c7)"
+          watermark="🔬"
+        />
+        <ActivityCard 
           onClick={() => router.push('/leaderboard')}
-          className="group relative rounded-3xl bg-card border border-border p-5 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg overflow-hidden"
-        >
-          <Trophy className="absolute -right-5 -top-5 w-28 h-28 text-yellow-500/5 group-hover:scale-110 transition-transform duration-300" />
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-yellow-500" />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-yellow-500 mb-1">{t('rank')}</p>
-              <h3 className="text-3xl font-black italic uppercase tracking-[-0.03em] text-text leading-tight flex items-center gap-1">
-                {rank === 1 && <Crown className="w-5 h-5 text-yellow-500 -mt-1" />}#{rank}
-              </h3>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-border group-hover:translate-x-1 transition-transform" />
-        </div>
-
-        <div
-          onClick={() => router.push('/syllabus')}
-          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-red-500/30"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-              <ListChecks className="w-5 h-5 text-red-500" />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-text/40 mb-1">{t('syllabus')}</p>
-              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">{t('trackProgress')}</h4>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-        </div>
-
-        <div
+          icon={<Trophy size={24} />}
+          title={`${t('rank')} #${rank}`}
+          subtitle="CLASS PERFORMANCE"
+          gradient="linear-gradient(135deg, #f59e0b, #d97706)"
+          watermark="🥇"
+        />
+        <ActivityCard 
           onClick={() => router.push('/arcade')}
-          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-violet-500/30"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-              <Gamepad2 className="w-5 h-5 text-violet-500" />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-violet-500 mb-1">Altum Arcade</p>
-              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">Mini Games</h4>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-        </div>
-
-        {/* WhatsApp Card - RESTORED! */}
-        <div
+          icon={<Gamepad2 size={24} />}
+          title={t('altumArcade')}
+          subtitle={t('miniGames')}
+          gradient="linear-gradient(135deg, #8b5cf6, #6d28d9)"
+          watermark="👾"
+        />
+        <ActivityCard 
+          onClick={() => router.push('/syllabus')}
+          icon={<ListChecks size={24} />}
+          title={t('trackProgress')}
+          subtitle={t('syllabus')}
+          gradient="linear-gradient(135deg, #f43f5e, #be123c)"
+          watermark="📈"
+        />
+        <ActivityCard 
           onClick={() => window.open('https://chat.whatsapp.com/Fdahi7f77q15O7i2KNvAc3', '_blank')}
-          className="group rounded-3xl bg-card border border-border p-4 flex items-center justify-between cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-lg hover:border-green-500/30"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-[#25D366] flex items-center justify-center shadow-lg shadow-green-500/20">
-              <MessageSquare className="w-5 h-5 text-white fill-white" />
-            </div>
-            <div>
-              <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-[#25D366] mb-1">
-                {t('support')}
-              </p>
-              <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] text-text">
-                {t('whatsappGroup')}
-              </h4>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-border group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-        </div>
+          icon={<MessageSquare size={24} fill="white" />}
+          title={t('helpGroup')}
+          subtitle={t('studentSupport')}
+          gradient="linear-gradient(135deg, #22c55e, #16a34a)"
+          watermark="💬"
+          isExternal
+        />
       </div>
     </div>
+  );
+}
+
+// Compact Card Component
+function ActivityCard({ onClick, icon, title, subtitle, gradient, watermark, isExternal }: any) {
+  return (
+    <motion.div 
+      whileTap={{ scale: 0.97 }}
+      onClick={onClick}
+      style={{ 
+        background: gradient, borderRadius: '26px', padding: '16px 20px', 
+        position: 'relative', overflow: 'hidden', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', zIndex: 1 }}>
+        <div style={{ width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+          {React.cloneElement(icon as React.ReactElement, { color: 'white' })}
+        </div>
+        <div>
+          <h3 style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1, textTransform: 'uppercase' }}>{title}</h3>
+          <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.85)', fontSize: '10px', fontWeight: 900, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{subtitle}</p>
+        </div>
+      </div>
+      {isExternal ? <ArrowUpRight color="white" size={24} style={{ opacity: 0.7 }} /> : <ChevronRight color="white" size={24} style={{ opacity: 0.7 }} />}
+      
+      {/* Background Watermark */}
+      <span style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', fontSize: '75px', opacity: 0.15, pointerEvents: 'none' }}>
+        {watermark}
+      </span>
+    </motion.div>
   );
 }

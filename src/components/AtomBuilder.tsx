@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { Atom, RotateCcw, Sparkles, Cpu, Info, TestTube2 } from 'lucide-react';
+import { Atom, RotateCcw, Sparkles, Cpu } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SYMBOLS = "H,He,Li,Be,B,C,N,O,F,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Co,Ni,Cu,Zn,Ga,Ge,As,Se,Br,Kr,Rb,Sr,Y,Zr,Nb,Mo,Tc,Ru,Rh,Pd,Ag,Cd,In,Sn,Sb,Te,I,Xe,Cs,Ba,La,Ce,Pr,Nd,Pm,Sm,Eu,Gd,Tb,Dy,Ho,Er,Tm,Yb,Lu,Hf,Ta,W,Re,Os,Ir,Pt,Au,Hg,Tl,Pb,Bi,Po,At,Rn,Fr,Ra,Ac,Th,Pa,U,Np,Pu,Am,Cm,Bk,Cf,Es,Fm,Md,No,Lr,Rf,Db,Sg,Bh,Hs,Mt,Ds,Rg,Cn,Nh,Fl,Mc,Lv,Ts,Og".split(',');
 const NAMES = "Hydrogen,Helium,Lithium,Beryllium,Boron,Carbon,Nitrogen,Oxygen,Fluorine,Neon,Sodium,Magnesium,Aluminium,Silicon,Phosphorus,Sulfur,Chlorine,Argon,Potassium,Calcium,Scandium,Titanium,Vanadium,Chromium,Manganese,Iron,Cobalt,Nickel,Copper,Zinc,Gallium,Germanium,Arsenic,Selenium,Bromine,Krypton,Rubidium,Strontium,Yttrium,Zirconium,Niobium,Molybdenum,Technetium,Ruthenium,Rhodium,Palladium,Silver,Cadmium,Indium,Tin,Antimony,Tellurium,Iodine,Xenon,Caesium,Barium,Lanthanum,Cerium,Praseodymium,Neodymium,Promethium,Samarium,Europium,Gadolinium,Terbium,Dysprosium,Holmium,Erbium,Thulium,Ytterbium,Lutetium,Hafnium,Tantalum,Tungsten,Rhenium,Osmium,Iridium,Platinum,Gold,Mercury,Thallium,Lead,Bismuth,Polonium,Astatine,Radon,Francium,Radium,Actinium,Thorium,Protactinium,Uranium,Neptunium,Plutonium,Americium,Curium,Berkelium,Californium,Einsteinium,Fermium,Mendelevium,Nobelium,Lawrencium,Rutherfordium,Dubnium,Seaborgium,Bohrium,Hassium,Meitnerium,Darmstadtium,Roentgenium,Copernicium,Nihonium,Flerovium,Moscovium,Livermorium,Tennessine,Oganesson".split(',');
@@ -41,14 +42,14 @@ export default function AtomBuilder() {
   const [atomicNum, setAtomicNum] = useState('');
   const [activeElement, setActiveElement] = useState<{ z: number, sym: string, name: string, mass: number } | null>(null);
   const [steps, setSteps] = useState<{ title: string, desc: string }[]>([]);
-  const [isFinal, setIsFinal] = useState(false);
+  const [isCalculated, setIsCalculated] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [config, setConfig] = useState<number[]>([]);
 
   const reset = () => {
     setActiveElement(null);
     setSteps([]);
-    setIsFinal(false);
+    setIsCalculated(false);
     setErrorMsg('');
     setConfig([]);
   };
@@ -58,7 +59,7 @@ export default function AtomBuilder() {
     let z = parseInt(atomicNum);
 
     if (isNaN(z) || z < 1 || z > 118) {
-      setErrorMsg("Quantum Limit Reached: Enter an Atomic Number between 1 and 118.");
+      setErrorMsg("QUANTUM LIMIT REACHED: Enter an Atomic Number between 1 and 118.");
       return;
     }
 
@@ -101,14 +102,8 @@ export default function AtomBuilder() {
 
     setActiveElement(el);
     setConfig(conf);
-    
-    setSteps([]);
-    newSteps.forEach((step, index) => {
-      setTimeout(() => {
-        setSteps(prev => [...prev, step]);
-        if (index === newSteps.length - 1) setIsFinal(true);
-      }, (index + 1) * (z > 20 ? 400 : 700)); 
-    });
+    setSteps(newSteps);
+    setIsCalculated(true);
   };
 
   const renderElectrons = (count: number, radius: number) => {
@@ -118,29 +113,35 @@ export default function AtomBuilder() {
         let cx = 160 + radius * Math.cos(i * angleStep);
         let cy = 160 + radius * Math.sin(i * angleStep);
         dots.push(
-            <circle key={i} cx={cx} cy={cy} r={count > 18 ? "3" : "4"} className="fill-violet-500 drop-shadow-[0_0_8px_rgba(139,92,246,0.9)]" />
+            <circle key={i} cx={cx} cy={cy} r={count > 18 ? "3" : "4"} fill="#fff" style={{ filter: 'drop-shadow(0 0 6px #fff)' }} />
         );
     }
     return dots;
   };
 
-  // Helper function to return the correct inline style object for different spin directions and speeds
-  const getSpinStyle = (shellIndex: number, isActive: boolean) => {
-      if (!isActive) return {};
-      // Alternating Directions and Different Speeds based on radius
-      // Odd shells (1st, 3rd...) spin clockwise, Even shells (2nd, 4th...) spin reverse
+  const getSpinStyle = (shellIndex: number) => {
       const name = (shellIndex + 1) % 2 === 0 ? 'atom-spin-reverse' : 'atom-spin';
-      const duration = 10 + shellIndex * 4; // Faster spin for smaller radii
+      const duration = 10 + shellIndex * 4; 
       return {
           animation: `${name} ${duration}s linear infinite`,
-          transformOrigin: 'center center' // Ensure rotation around the nucleus
-      }
+          transformOrigin: '160px 160px' // Keep perfectly centered on the SVG
+      };
   };
 
   return (
-    <div className="relative rounded-3xl bg-card border border-border p-5 overflow-hidden transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.1)] group">
+    <div style={{
+      background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+      borderRadius: '32px',
+      padding: '24px',
+      color: '#fff',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 15px 35px rgba(139, 92, 246, 0.3)',
+      maxWidth: '500px',
+      margin: '0 auto'
+    }}>
       
-      {/* Component-local style block for CSS keyframes. This ensures guaranteed execution. */}
+      {/* Component-local style block for CSS keyframes */}
       <style>{`
           @keyframes atom-spin {
               from { transform: rotate(0deg); }
@@ -152,135 +153,191 @@ export default function AtomBuilder() {
           }
       `}</style>
       
-      <Atom className="absolute -right-4 -top-4 w-24 h-24 text-violet-500/5 group-hover:scale-110 group-hover:rotate-[15deg] transition-all duration-700" />
-      
-      <div className="flex items-center gap-2 mb-4 relative z-10">
-        <div className="w-2 h-2 rounded-full bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.8)] animate-pulse" />
-        <span className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-violet-500">Quantum Engine</span>
-      </div>
-      
-      <div className="flex justify-between items-start mb-6 relative z-10">
-        <h3 className="text-xl font-black italic uppercase tracking-[-0.02em] text-text">
-          Atom <span className="text-violet-500">Builder</span>
-        </h3>
-        <button onClick={() => { setAtomicNum(''); reset(); }} className="w-10 h-10 rounded-xl bg-background border border-border flex items-center justify-center hover:bg-violet-500/10 hover:text-violet-500 transition-colors active:scale-95">
-          <RotateCcw className="w-5 h-5" />
-        </button>
-      </div>
+      {/* Background Watermark */}
+      <span style={{ position: 'absolute', right: '-10px', top: '20px', fontSize: '140px', opacity: 0.15, pointerEvents: 'none', zIndex: 0 }}>
+        ⚛️
+      </span>
 
-      <div className="mb-4 relative z-10">
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-bold uppercase text-text/50 pl-1">Atomic Number (Z) : 1 to 118</label>
-          <div className="relative">
-            <input 
-                type="number" 
-                placeholder="e.g. 79 (for Gold)" 
-                value={atomicNum} 
-                onChange={(e) => { setAtomicNum(e.target.value); reset(); }} 
-                className="w-full bg-background/50 border-2 border-border rounded-xl px-4 py-3 text-center font-black italic outline-none focus:border-violet-500 text-text transition-colors tracking-widest" 
-            />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '50px', height: '50px', background: 'rgba(255,255,255,0.25)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+            <Atom color="#fff" size={26} />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1.1, textTransform: 'uppercase' }}>ATOM BUILDER</h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '10px', fontWeight: 800, opacity: 0.8, letterSpacing: '1px', textTransform: 'uppercase' }}>QUANTUM ENGINE</p>
           </div>
         </div>
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => { setAtomicNum(''); reset(); }} 
+          style={{ background: '#fff', border: 'none', color: '#6d28d9', width: '45px', height: '45px', borderRadius: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+        >
+          <RotateCcw size={22} strokeWidth={3} />
+        </motion.button>
       </div>
 
-      {errorMsg && (
-        <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest text-center mt-3 animate-bounce relative z-10">{errorMsg}</p>
-      )}
+      {/* Input Section */}
+      <div style={{ marginBottom: '16px', position: 'relative', zIndex: 1 }}>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: 900, fontStyle: 'italic', color: 'rgba(255,255,255,0.9)', zIndex: 2 }}>Atomic No. (Z)</span>
+          <input 
+              type="number" 
+              placeholder="e.g. 79 (Gold)" 
+              value={atomicNum} 
+              onChange={(e) => { setAtomicNum(e.target.value); reset(); }} 
+              style={{
+                boxSizing: 'border-box',
+                width: '100%', 
+                background: 'rgba(255,255,255,0.15)', 
+                border: '2px solid rgba(255,255,255,0.3)', 
+                borderRadius: '18px', 
+                padding: '14px 16px 14px 130px', 
+                color: '#fff', 
+                fontSize: '18px', 
+                fontWeight: 900, 
+                fontStyle: 'italic', 
+                textAlign: 'left', 
+                outline: 'none', 
+                backdropFilter: 'blur(5px)'
+              }}
+          />
+        </div>
+        <p style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.6)', marginTop: '8px', textTransform: 'uppercase', letterSpacing: '0.5px', paddingLeft: '8px' }}>
+          Supports Element 1 through 118
+        </p>
+      </div>
 
-      <button onClick={buildAtom} className="w-full mt-2 mb-6 group/btn relative rounded-2xl bg-violet-500 py-4 flex items-center justify-center gap-2 overflow-hidden transition-all active:scale-[0.98] shadow-[0_4px_0_rgb(109,40,217)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px]">
-        <span className="text-sm font-black italic uppercase tracking-wider text-white relative z-10 flex items-center gap-2">
-           <Cpu className="w-5 h-5" /> Synthesize Atom
-        </span>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]" />
-      </button>
+      <AnimatePresence>
+        {errorMsg && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+            <p style={{ margin: '0 0 16px 0', padding: '12px', background: 'rgba(239, 68, 68, 0.4)', borderLeft: '4px solid #ef4444', borderRadius: '8px', fontSize: '10px', fontWeight: 900, color: '#fee2e2', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', backdropFilter: 'blur(5px)' }}>
+              {errorMsg}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.button 
+        whileTap={{ scale: 0.96 }}
+        onClick={buildAtom} 
+        style={{ width: '100%', background: '#fff', color: '#6d28d9', border: 'none', borderRadius: '20px', padding: '18px', fontSize: '16px', fontWeight: 900, fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px', position: 'relative', zIndex: 1, boxShadow: '0 10px 20px rgba(0,0,0,0.15)', marginBottom: '24px' }}
+      >
+        SYNTHESIZE ATOM <Cpu size={20} color="#6d28d9" strokeWidth={3} />
+      </motion.button>
 
       {/* Bohr Model SVG Visualizer */}
-      {activeElement && (
-        <div className="mb-6 relative z-10 bg-background/50 rounded-2xl border border-border p-4 flex justify-center items-center overflow-hidden animate-in zoom-in duration-500 shadow-inner">
-           <div className="relative w-72 h-72 flex items-center justify-center overflow-visible">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 320 320">
-                  {/* Static Nucleus */}
-                  <circle cx="160" cy="160" r="18" className="fill-violet-500/20 stroke-violet-500" strokeWidth="2" />
-                  <text x="160" y="164" textAnchor="middle" className="fill-violet-500 text-xs font-black italic">{activeElement.sym}</text>
-                  
-                  {/* Orbit Shells and Electrons */}
-                  {config.map((count, i) => {
-                      const radii = [40, 60, 80, 100, 120, 140, 160];
-                      const r = radii[i];
-                      const offsetCount = activeElement.z > 20 ? 2 : 1; // Offset for build animation sequence
-                      const isBuildStepReached = steps.length > i + offsetCount;
+      <AnimatePresence>
+        {isCalculated && activeElement && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '24px', padding: '16px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', marginBottom: '24px', position: 'relative', zIndex: 1 }}
+            >
+              <div style={{ position: 'relative', width: '280px', height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+                  <svg style={{ width: '100%', height: '100%', overflow: 'visible' }} viewBox="0 0 320 320">
                       
-                      return (
-                          <g key={`shell-wrapper-${i}`} className={isBuildStepReached ? 'animate-in zoom-in duration-700' : ''}>
-                              {/* The Orbit Line itself remains static */}
-                              {isBuildStepReached && (
-                                <circle cx="160" cy="160" r={r} className="fill-none stroke-violet-500/20 stroke-[1.5] border-dashed" strokeDasharray="6 6" />
-                              )}
-                              {/* The group containing electrons rotates */}
-                              <g 
-                                style={getSpinStyle(i, isBuildStepReached && isFinal)} 
-                                className="transform-gpu" // Hardware acceleration boost
+                      {/* Static Nucleus */}
+                      <circle cx="160" cy="160" r="18" fill="rgba(255,255,255,0.2)" stroke="#fff" strokeWidth="2" />
+                      <text x="160" y="164" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="900" fontStyle="italic">{activeElement.sym}</text>
+                      
+                      {/* Orbit Shells and Electrons */}
+                      {config.map((count, i) => {
+                          const radii = [40, 60, 80, 100, 120, 140, 160];
+                          const r = radii[i];
+                          const delay = (i + 1) * 0.3; // Staggered reveal
+                          
+                          return (
+                              <motion.g 
+                                key={`shell-${i}`} 
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: delay, type: 'spring', damping: 15 }}
                               >
-                                  {isBuildStepReached && renderElectrons(count, r)}
-                              </g>
-                          </g>
-                      );
-                  })}
-              </svg>
-           </div>
-        </div>
-      )}
+                                  {/* The Orbit Line itself remains static */}
+                                  <circle cx="160" cy="160" r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeDasharray="4 4" />
+                                  
+                                  {/* The group containing electrons rotates */}
+                                  <g style={getSpinStyle(i)}>
+                                      {renderElectrons(count, r)}
+                                  </g>
+                              </motion.g>
+                          );
+                      })}
+                  </svg>
+              </div>
+            </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Dynamic Build Steps */}
-      <div className="space-y-3 relative z-10 mb-6">
-        {steps.map((step, index) => {
-          const isCurrent = index === steps.length - 1;
-          return (
-            <div key={index} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-500 animate-in fade-in slide-in-from-top-4
-                ${isCurrent && isFinal ? 'bg-violet-500/10 border-violet-500/40 shadow-[0_0_15px_rgba(139,92,246,0.15)]' : 'bg-background border-border'}`}
-            >
-              <span className={`text-[10px] font-bold uppercase tracking-wider mb-1 text-center ${isCurrent && isFinal ? 'text-violet-500' : 'text-text/40'}`}>
-                {step.title}
-              </span>
-              <span className={`text-sm font-black italic tracking-tight text-center ${isCurrent && isFinal ? 'text-violet-500' : 'text-text'}`}>
-                {step.desc}
-              </span>
-            </div>
-          );
-        })}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative', zIndex: 1 }}>
+        <AnimatePresence>
+          {isCalculated && steps.map((step, index) => {
+            const isLast = index === steps.length - 1;
+            return (
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.3 }}
+                style={{ 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', borderRadius: '20px', 
+                  background: 'rgba(255,255,255,0.15)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', opacity: 0.8, textAlign: 'center' }}>
+                  {step.title}
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 900, fontStyle: 'italic', letterSpacing: '0.5px', textAlign: 'center' }}>
+                  {step.desc}
+                </span>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
       {/* Final Dashboard */}
-      {isFinal && activeElement && (
-        <div className="mt-4 p-5 rounded-2xl bg-card border-2 border-violet-500/50 shadow-[0_0_20px_rgba(139,92,246,0.15)] animate-in zoom-in duration-500 relative z-10">
-            <div className="flex items-center justify-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-violet-500" />
-                <h4 className="text-sm font-black italic uppercase tracking-widest text-text">{activeElement.name} Data</h4>
-                <Sparkles className="w-5 h-5 text-violet-500" />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-2 mb-2">
-                <div className="bg-background border border-border p-2 rounded-xl text-center">
-                    <p className="text-[9px] font-bold text-text/40 uppercase mb-1">Atomic (Z)</p>
-                    <p className="text-sm font-black italic text-violet-500">{activeElement.z}</p>
+      <AnimatePresence>
+        {isCalculated && activeElement && (
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: steps.length * 0.3 + 0.2, type: 'spring' }}
+                style={{ marginTop: '24px', padding: '20px', background: '#fff', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative', zIndex: 1 }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+                    <Sparkles size={16} color="#6d28d9" fill="#6d28d9" />
+                    <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '1px', color: '#6d28d9' }}>{activeElement.name} Data</h4>
+                    <Sparkles size={16} color="#6d28d9" fill="#6d28d9" />
                 </div>
-                <div className="bg-background border border-border p-2 rounded-xl text-center">
-                    <p className="text-[9px] font-bold text-text/40 uppercase mb-1">Mass (A)</p>
-                    <p className="text-sm font-black italic text-violet-500">{activeElement.mass}</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '12px 4px', borderRadius: '16px', textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', color: '#8b5cf6' }}>Atomic (Z)</p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#6d28d9' }}>{activeElement.z}</p>
+                    </div>
+                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '12px 4px', borderRadius: '16px', textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', color: '#8b5cf6' }}>Mass (A)</p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#6d28d9' }}>{activeElement.mass}</p>
+                    </div>
+                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '12px 4px', borderRadius: '16px', textAlign: 'center' }}>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', color: '#8b5cf6' }}>Electrons</p>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: 900, fontStyle: 'italic', color: '#6d28d9' }}>{activeElement.z}</p>
+                    </div>
                 </div>
-                <div className="bg-background border border-border p-2 rounded-xl text-center">
-                    <p className="text-[9px] font-bold text-text/40 uppercase mb-1">Electrons</p>
-                    <p className="text-sm font-black italic text-violet-500">{activeElement.z}</p>
+                
+                <div style={{ background: 'rgba(109, 40, 217, 0.05)', border: '1px solid rgba(109, 40, 217, 0.2)', padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '1px' }}>Configuration</p>
+                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 900, fontStyle: 'italic', tracking: 'widest', color: '#4c1d95' }}>[{config.join(', ')}]</p>
                 </div>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-                <div className="bg-violet-500/10 border border-violet-500/30 p-3 rounded-xl flex justify-between items-center">
-                    <p className="text-[10px] font-bold text-violet-500 uppercase">Configuration</p>
-                    <p className="text-lg font-black italic tracking-widest text-text">[{config.join(', ')}]</p>
-                </div>
-            </div>
-        </div>
-      )}
+            </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

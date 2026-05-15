@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { FileDown, Download, ChevronLeft, Loader2, Library } from 'lucide-react';
@@ -11,26 +11,6 @@ export default function PDFVault() {
   const { t } = useLanguage();
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const backPressCount = useRef(0);
-
-  // Hardware back button protection (unchanged)
-  useEffect(() => {
-    window.history.pushState({ dummy: true }, '', window.location.href);
-    const handleHardwareBack = () => {
-      if (backPressCount.current === 0) {
-        backPressCount.current = 1;
-        window.history.pushState({ dummy: true }, '', window.location.href);
-        router.push(`/Materials/${className}`);
-        setTimeout(() => {
-          backPressCount.current = 0;
-        }, 2000);
-      }
-    };
-    window.addEventListener('popstate', handleHardwareBack);
-    return () => {
-      window.removeEventListener('popstate', handleHardwareBack);
-    };
-  }, [router, className]);
 
   useEffect(() => {
     async function fetchMaterials() {
@@ -55,153 +35,111 @@ export default function PDFVault() {
     else window.open(`https://drive.google.com/uc?export=download&id=${idOrLink}`, '_blank');
   };
 
-  const subjectAccents: Record<string, { color: string; glow: string; bg: string; border: string }> = {
-    english:          { color: '#a855f7', glow: 'rgba(168,85,247,0.25)', bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.2)' },
-    science:          { color: '#10b981', glow: 'rgba(16,185,129,0.25)', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
-    mathematics:      { color: '#3b82f6', glow: 'rgba(59,130,246,0.25)', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)' },
-    'social-studies': { color: '#f97316', glow: 'rgba(249,115,22,0.25)', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.2)' },
+  const subjectAccents: Record<string, { color: string; gradient: string }> = {
+    english:          { color: '#8e2de2', gradient: 'linear-gradient(135deg, #8e2de2, #4a00e0)' },
+    science:          { color: '#10b981', gradient: 'linear-gradient(135deg, #22c55e, #059669)' },
+    mathematics:      { color: '#3a7bd5', gradient: 'linear-gradient(135deg, #00d2ff, #3a7bd5)' },
+    'social-studies': { color: '#f09819', gradient: 'linear-gradient(135deg, #f09819, #edde5d)' },
   };
 
   const cleanSubjectKey = decodeURIComponent(subject as string).toLowerCase();
-  const ac = subjectAccents[cleanSubjectKey] || subjectAccents['mathematics'];
+  const ac = subjectAccents[cleanSubjectKey] || { color: '#3a7bd5', gradient: 'linear-gradient(135deg, #00d2ff, #3a7bd5)' };
   const subjectLabel = decodeURIComponent(subject as string);
 
   return (
-    <main className="min-h-screen pb-32 font-sans bg-background text-text">
-      {/* Ambient orbs (preserved with dynamic accent glow) */}
-      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div
-          className="absolute -top-[8%] -right-[12%] w-80 h-80 rounded-full blur-[60px] transition-all duration-500"
-          style={{ background: `radial-gradient(circle, ${ac.glow.replace('0.25', '0.09')} 0%, transparent 70%)` }}
-        />
-        <div className="absolute bottom-[15%] -left-[10%] w-64 h-64 rounded-full bg-blue-500/5 blur-[60px]" />
+    <div style={{ minHeight: '100svh', background: 'var(--background)', color: 'var(--text)', padding: '40px 20px 120px', maxWidth: '500px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      
+      <div style={{ position: 'fixed', inset: 0, zIndex: -10, pointerEvents: 'none', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-10%', right: '-10%', width: '320px', height: '320px', borderRadius: '50%', background: `radial-gradient(circle, ${ac.color}15 0%, transparent 70%)`, filter: 'blur(60px)', transition: 'background 0.5s ease' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '-10%', width: '260px', height: '260px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.03) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       </div>
 
-      <div className="max-w-md mx-auto px-5 pt-28">
-        {/* Back button */}
-        <button
-          onClick={() => router.push(`/Materials/${className}`)}
-          className="flex items-center gap-1.5 mb-10 active:scale-95 transition-transform text-[10px] font-extrabold tracking-[0.18em] uppercase text-text/40 border-none bg-transparent p-0"
-        >
-          <ChevronLeft size={15} strokeWidth={3} /> {t('backTo')} {className}
-        </button>
+      <button
+        onClick={() => router.back()} // Naturally drops back to SubjectVault
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '40px', fontSize: '10px', fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', color: '#94a3b8', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+      >
+        <ChevronLeft size={16} strokeWidth={3} /> {t('backTo') || 'BACK TO'} {className}
+      </button>
 
-        {/* Header section */}
-        <div className="mb-8">
-          <h1 className="text-5xl font-black italic uppercase tracking-[-0.03em] leading-[0.92] text-text">
-            {subjectLabel}{' '}
-            <span className="text-4xl" style={{ color: ac.color, textShadow: `0 0 30px ${ac.glow}` }}>
-              {t('vault')}
-            </span>
-          </h1>
-          <div className="flex items-center gap-2.5 mt-2.5">
-            <div className="w-7 h-0.5 rounded-full" style={{ background: ac.color, opacity: 0.5 }} />
-            <p className="text-[9px] font-extrabold tracking-[0.22em] uppercase text-text/30">
-              {t('standard')} {className} · {pdfs.length} {t('resources')}
-            </p>
-          </div>
+      <div style={{ marginBottom: '36px' }}>
+        <h1 style={{ margin: 0, fontSize: '44px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '-1px', lineHeight: 0.92, color: 'var(--text)' }}>
+          {subjectLabel}{' '}
+          <span style={{ color: ac.color }}>
+            {t('vault') || 'VAULT'}
+          </span>
+        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+          <div style={{ width: '28px', height: '3px', borderRadius: '2px', background: ac.color, opacity: 0.5 }} />
+          <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, letterSpacing: '2.5px', textTransform: 'uppercase', color: '#94a3b8' }}>
+            {t('standard') || 'STANDARD'} {className} · {pdfs.length} {t('resources') || 'RESOURCES'}
+          </p>
         </div>
-
-        {/* Loading state */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full animate-ping" style={{ border: `2px solid ${ac.glow}` }} />
-              <div
-                className="relative w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm"
-                style={{ background: ac.bg, border: `1px solid ${ac.border}` }}
-              >
-                <Loader2 className="w-5 h-5 animate-spin" style={{ color: ac.color }} />
-              </div>
-            </div>
-            <p className="text-[9px] font-black tracking-[0.28em] uppercase opacity-60" style={{ color: ac.color }}>
-              {t('openingVault')}
-            </p>
-          </div>
-
-        ) : pdfs.length === 0 ? (
-          /* Empty state */
-          <div className="text-center py-16 px-6 rounded-3xl bg-card border border-dashed border-border opacity-70">
-            <Library className="w-11 h-11 text-text/20 mx-auto mb-3.5" />
-            <p className="text-[10px] font-black tracking-[0.2em] uppercase text-text/40">
-              {t('noFilesUploaded')}
-            </p>
-          </div>
-
-        ) : (
-          /* PDF list */
-          <div className="flex flex-col gap-3">
-            {pdfs.map((pdf, index) => (
-              <div
-                key={pdf.id}
-                className="group relative rounded-2xl bg-card border border-border p-4 flex items-center justify-between gap-3 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-opacity-50 hover:-translate-y-0.5"
-                style={{
-                  animation: 'fadeSlideIn 0.35s ease both',
-                  animationDelay: `${index * 0.06}s`,
-                }}
-              >
-                {/* Left accent bar */}
-                <div
-                  className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-full transition-all group-hover:top-1/5 group-hover:bottom-1/5"
-                  style={{ background: ac.color, boxShadow: `0 0 10px ${ac.glow}` }}
-                />
-
-                {/* Large background number */}
-                <div
-                  className="absolute right-14 top-1/2 -translate-y-1/2 text-5xl font-black italic opacity-[0.04] pointer-events-none select-none"
-                  style={{ color: ac.color }}
-                >
-                  {String(index + 1).padStart(2, '0')}
-                </div>
-
-                {/* PDF info */}
-                <div className="flex items-center gap-3.5 flex-1 min-w-0 pl-2.5">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md"
-                    style={{ background: ac.bg, border: `1px solid ${ac.border}`, boxShadow: `0 4px 14px ${ac.glow}` }}
-                  >
-                    <FileDown size={20} style={{ color: ac.color }} />
-                  </div>
-
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-black italic uppercase tracking-[-0.01em] leading-tight text-text truncate mb-1">
-                      {pdf.title}
-                    </h4>
-                    <p className="text-[8px] font-black tracking-[0.15em] uppercase text-text/30">
-                      {pdf.size} · {new Date(pdf.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Download button */}
-                <button
-                  onClick={() => handleDownload(pdf.drive_id)}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 hover:scale-105"
-                  style={{
-                    background: `linear-gradient(135deg, ${ac.color}, ${ac.color}cc)`,
-                    boxShadow: `0 6px 20px ${ac.glow}`,
-                  }}
-                >
-                  <Download size={18} className="text-white" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      <style jsx>{`
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', padding: '60px 0', gap: '16px' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--card)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Loader2 className="animate-spin" size={24} color={ac.color} />
+          </div>
+          <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, letterSpacing: '2px', textTransform: 'uppercase', color: '#94a3b8' }}>
+            {t('openingVault') || 'OPENING VAULT...'}
+          </p>
+        </div>
+      ) : pdfs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 24px', borderRadius: '32px', background: 'var(--card)', border: '2px dashed var(--border)', opacity: 0.7 }}>
+          <Library size={42} color="#cbd5e1" style={{ margin: '0 auto 16px' }} />
+          <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#94a3b8' }}>
+            {t('noFilesUploaded') || 'NO FILES UPLOADED YET'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {pdfs.map((pdf, index) => (
+            <div
+              key={pdf.id}
+              style={{
+                background: 'var(--card)', borderRadius: '24px', border: '1px solid var(--border)', padding: '16px 20px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden',
+                animation: 'fadeSlideIn 0.35s ease both', animationDelay: `${index * 0.05}s`
+              }}
+            >
+              <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '4px', borderRadius: '0 4px 4px 0', background: ac.gradient }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, paddingLeft: '6px' }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FileDown size={22} color={ac.color} />
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {pdf.title}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '9px', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#94a3b8' }}>
+                    {pdf.size} · {new Date(pdf.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleDownload(pdf.drive_id)}
+                style={{ width: '46px', height: '46px', borderRadius: '16px', background: ac.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: 'none', cursor: 'pointer', boxShadow: '0 6px 15px rgba(0,0,0,0.1)', transition: 'transform 0.2s' }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.92)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <Download size={20} color="#fff" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style>{`
         @keyframes fadeSlideIn {
-          from {
-            opacity: 0;
-            transform: translateY(14px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(14px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </main>
+    </div>
   );
 }

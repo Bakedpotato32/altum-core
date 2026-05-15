@@ -3,52 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --background: #050508;
-  --card: #0f0f12;
-  --text: #ffffff;
-  --text-muted: #71717a;
-  --border: rgba(255, 255, 255, 0.05);
+  --background: #f8fafc;
+  --card: #ffffff;
+  --text: #0f172a;
+  --border: #e2e8f0;
+  --subtext: #64748b;
   --accent: #3b82f6;
 }
 
-.light-mode {
-  --background: #f4f7f6;
-  --card: #ffffff;
-  --text: #09090b;
-  --text-muted: #71717a;
-  --border: rgba(0, 0, 0, 0.06);
-  --accent: #2563eb;
-}
-
-html, body {
-  background-color: var(--background) !important;
+body {
+  background-color: var(--background);
   color: var(--text);
   margin: 0;
-  padding: 0;
-  /* 🚀 2026 Standard: svh prevents squashing on mobile address bars & TV browsers */
-  min-height: 100svh;
-  height: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
+  /* Prevents the 'pull-to-refresh' behavior on the whole body which can break fixed headers */
+  overscroll-behavior-y: none; 
 }
 
-/* 🦊 Specific fix for the Winner's Academy login shift */
-.login-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100svh;
-  width: 100%;
-  background-color: var(--background);
+/* Global Fixes for Mobile App Feel */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
-/* Force hide scrollbars */
+*:focus {
+  outline: none;
+}
+
+/* Hide Scrollbars Everywhere */
 *::-webkit-scrollbar {
   display: none !important;
 }
-
-/* Smooth transitions for theme switching */
-div, section, nav, header {
-  transition: background-color 0.4s ease, border-color 0.4s ease;
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }

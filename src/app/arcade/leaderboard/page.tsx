@@ -1,27 +1,28 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ChevronLeft, Trophy, Medal, Crown, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, Trophy, Crown, Loader2, Medal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { 
   SnakeLogo, FlappyLogo, TetrisLogo, DashLogo, BreakoutLogo, SpaceLogo,
   TowerLogo, CrossyLogo, DefenderLogo, CombatLogo, RunnerLogo, SlicerLogo 
 } from '@/components/ArcadeIcons';
 
+// Upgraded ARCADE_GAMES with the vivid gradients matching the Arcade Lobby
 const ARCADE_GAMES = [
-  { id: 'snake', name: 'Snake', icon: SnakeLogo, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', glow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]' },
-  { id: 'flappy', name: 'Flappy', icon: FlappyLogo, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/30', glow: 'shadow-[0_0_15px_rgba(139,92,246,0.2)]' },
-  { id: 'tetris', name: 'Tetris', icon: TetrisLogo, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30', glow: 'shadow-[0_0_15px_rgba(59,130,246,0.2)]' },
-  { id: 'dino', name: 'Dash', icon: DashLogo, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-[0_0_15px_rgba(245,158,11,0.2)]' },
-  { id: 'breakout', name: 'Breakout', icon: BreakoutLogo, color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/30', glow: 'shadow-[0_0_15px_rgba(244,63,94,0.2)]' },
-  { id: 'space', name: 'Space', icon: SpaceLogo, color: 'text-cyan-400', bg: 'bg-cyan-400/10', border: 'border-cyan-400/30', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.2)]' },
-  
-  { id: 'tower', name: 'Tower', icon: TowerLogo, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/30', glow: 'shadow-[0_0_15px_rgba(250,204,21,0.2)]' },
-  { id: 'crossy', name: 'Crossy', icon: CrossyLogo, color: 'text-teal-400', bg: 'bg-teal-400/10', border: 'border-teal-400/30', glow: 'shadow-[0_0_15px_rgba(45,212,191,0.2)]' },
-  { id: 'defender', name: 'Defender', icon: DefenderLogo, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/30', glow: 'shadow-[0_0_15px_rgba(129,140,248,0.2)]' },
-  { id: 'combat', name: 'Combat', icon: CombatLogo, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-[0_0_15px_rgba(239,68,68,0.2)]' },
-  { id: 'runner', name: 'Runner', icon: RunnerLogo, color: 'text-fuchsia-400', bg: 'bg-fuchsia-400/10', border: 'border-fuchsia-400/30', glow: 'shadow-[0_0_15px_rgba(232,121,249,0.2)]' },
-  { id: 'slicer', name: 'Slicer', icon: SlicerLogo, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30', glow: 'shadow-[0_0_15px_rgba(249,115,22,0.2)]' },
+  { id: 'snake', name: 'Snake', icon: SnakeLogo, color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #047857)' },
+  { id: 'flappy', name: 'Flappy', icon: FlappyLogo, color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' },
+  { id: 'tetris', name: 'Tetris', icon: TetrisLogo, color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' },
+  { id: 'dino', name: 'Dash', icon: DashLogo, color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #b45309)' },
+  { id: 'breakout', name: 'Breakout', icon: BreakoutLogo, color: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e, #be123c)' },
+  { id: 'space', name: 'Space', icon: SpaceLogo, color: '#06b6d4', gradient: 'linear-gradient(135deg, #06b6d4, #0369a1)' },
+  { id: 'tower', name: 'Tower', icon: TowerLogo, color: '#eab308', gradient: 'linear-gradient(135deg, #eab308, #a16207)' },
+  { id: 'crossy', name: 'Crossy', icon: CrossyLogo, color: '#14b8a6', gradient: 'linear-gradient(135deg, #14b8a6, #0f766e)' },
+  { id: 'defender', name: 'Defender', icon: DefenderLogo, color: '#6366f1', gradient: 'linear-gradient(135deg, #6366f1, #4338ca)' },
+  { id: 'combat', name: 'Combat', icon: CombatLogo, color: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444, #b91c1c)' },
+  { id: 'runner', name: 'Runner', icon: RunnerLogo, color: '#d946ef', gradient: 'linear-gradient(135deg, #d946ef, #a21caf)' },
+  { id: 'slicer', name: 'Slicer', icon: SlicerLogo, color: '#f97316', gradient: 'linear-gradient(135deg, #f97316, #c2410c)' },
 ];
 
 export default function ArcadeLeaderboard() {
@@ -68,93 +69,237 @@ export default function ArcadeLeaderboard() {
   const activeGameInfo = ARCADE_GAMES.find(g => g.id === activeTab) || ARCADE_GAMES[0];
 
   return (
-    <div className="min-h-screen pb-40 font-sans bg-[var(--background)] text-[var(--text)] px-5 pt-20 relative overflow-hidden">
+    <div style={{ 
+      padding: '40px 20px 120px', 
+      maxWidth: '500px', 
+      margin: '0 auto', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      background: '#fff', 
+      minHeight: '100svh' 
+    }}>
       
-      {/* Dynamic Background Blur mapped to the active tab's specific color */}
-      <div className="fixed inset-0 -z-10 pointer-events-none transition-colors duration-700 ease-in-out">
-        <div className={`absolute top-[-10%] right-[-10%] w-[320px] h-[320px] rounded-full ${activeGameInfo.bg} blur-[80px]`} />
-      </div>
+      {/* Hide Scrollbar Style */}
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
-      <button onClick={() => router.back()} className="flex items-center gap-1.5 mb-6 active:scale-95 transition-transform text-[10px] font-black tracking-[0.18em] uppercase text-zinc-500 hover:text-[var(--text)]">
-        <ChevronLeft size={16} strokeWidth={3} /> Arcade Lobby
-      </button>
-
-      <div className="mb-8 text-center flex flex-col items-center">
-        <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(234,179,8,0.2)] relative">
-          <Crown size={32} className="text-yellow-500 drop-shadow-md" />
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <button 
+          onClick={() => router.push('/arcade')}
+          style={{
+            width: '48px', 
+            height: '48px', 
+            borderRadius: '16px', 
+            background: '#f8fafc',
+            border: '2px solid #f1f5f9', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            cursor: 'pointer', 
+            flexShrink: 0,
+            transition: 'all 0.2s ease'
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <ChevronLeft size={26} color="#334155" strokeWidth={2.5} />
+        </button>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+            <Trophy size={14} color="#f59e0b" strokeWidth={3} />
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 900, color: '#f59e0b', letterSpacing: '1px', textTransform: 'uppercase' }}>
+              GLOBAL RANKINGS
+            </p>
+          </div>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#0f172a', lineHeight: 1 }}>
+            Hall of <span style={{ color: '#f59e0b' }}>Fame</span>
+          </h1>
         </div>
-        <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none mb-2 text-yellow-500 drop-shadow-[0_0_15px_rgba(234,179,8,0.4)]">
-          Hall of Fame
-        </h1>
-        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Global Rankings</p>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4 mb-2 hide-scrollbar">
+      {/* Game Selection Horizontal Menu */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '16px', marginBottom: '12px' }} className="hide-scrollbar">
         {ARCADE_GAMES.map((game) => {
           const isActive = activeTab === game.id;
           const Icon = game.icon;
           return (
-            <button
+            <motion.button
               key={game.id}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setActiveTab(game.id)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black italic uppercase tracking-widest text-[10px] transition-all duration-300 ease-out whitespace-nowrap border ${
-                isActive 
-                ? `${game.bg} ${game.border} ${game.color} ${game.glow}` 
-                : 'bg-[var(--card)] border-[var(--border)] text-zinc-500 hover:bg-zinc-500/5 hover:text-zinc-400'
-              }`}
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                borderRadius: '18px',
+                background: isActive ? game.gradient : '#f8fafc',
+                border: isActive ? 'none' : '1px solid #e2e8f0',
+                color: isActive ? '#fff' : '#64748b',
+                cursor: 'pointer',
+                boxShadow: isActive ? `0 8px 20px ${game.color}40` : 'none',
+                transition: 'all 0.3s ease'
+              }}
             >
-              <Icon className="w-4 h-4" /> {game.name}
-            </button>
+              {/* Ensure Icon renders properly (some icons might expect a stroke/fill via className, so forcing color works nicely) */}
+              <div style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? '#fff' : game.color }}>
+                <Icon className="w-full h-full" />
+              </div>
+              <span style={{ fontSize: '12px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {game.name}
+              </span>
+            </motion.button>
           );
         })}
       </div>
 
-      <div className="min-h-[400px] relative">
-        <div className={`transition-opacity duration-300 ${isFetching ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-          {leaderboard.length === 0 && !isFetching ? (
-            <div className="text-center py-16 bg-[var(--card)]/40 border border-dashed border-[var(--border)] rounded-3xl mt-2">
-              <activeGameInfo.icon className={`w-10 h-10 mx-auto mb-3 opacity-30 ${activeGameInfo.color}`} />
-              <p className="text-xs font-black uppercase tracking-widest text-zinc-500 opacity-60">No scores posted yet.</p>
+      {/* Content Area */}
+      <div style={{ position: 'relative', minHeight: '400px' }}>
+        {isFetching ? (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '16px' }}>
+            <Loader2 className="animate-spin" size={32} color={activeGameInfo.color} />
+            <p style={{ margin: 0, fontSize: '10px', fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: activeGameInfo.color }}>
+              Fetching Scores
+            </p>
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '16px', background: '#f8fafc', border: '2px dashed #cbd5e1', borderRadius: '32px' }}>
+            <div style={{ width: '48px', height: '48px', opacity: 0.3, color: '#94a3b8' }}>
+              <activeGameInfo.icon className="w-full h-full" />
             </div>
-          ) : (
-            <div className="space-y-3 mt-2">
-              {leaderboard.map((entry, index) => (
-                <div key={index} className={`bg-[var(--card)]/80 backdrop-blur-xl border rounded-[24px] p-3 flex items-center justify-between shadow-sm transition-all duration-300 ${index === 0 ? `border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] bg-gradient-to-r from-[var(--card)] to-yellow-500/5` : index === 1 ? 'border-zinc-300/40 dark:border-zinc-500/40' : index === 2 ? 'border-amber-700/40' : 'border-[var(--border)]'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 flex justify-center font-black italic text-lg shrink-0">
-                      {index === 0 ? <Medal size={24} className="text-yellow-500" /> : 
-                       index === 1 ? <Medal size={24} className="text-zinc-400" /> : 
-                       index === 2 ? <Medal size={24} className="text-amber-700" /> : 
-                       <span className="text-zinc-500 text-sm">#{index + 1}</span>}
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-[var(--border)] flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                      {entry.avatar_url ? (
-                        <img src={entry.avatar_url} alt={entry.student_name} className="w-full h-full object-cover" />
+            <p style={{ margin: 0, fontSize: '12px', fontWeight: 900, letterSpacing: '1px', textTransform: 'uppercase', color: '#94a3b8', textAlign: 'center' }}>
+              No scores posted yet.
+            </p>
+          </motion.div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <AnimatePresence>
+              {leaderboard.map((entry, index) => {
+                const isFirst = index === 0;
+                const isSecond = index === 1;
+                const isThird = index === 2;
+                const isTop3 = index < 3;
+
+                // Styling logic for different ranks matching the global Leaderboard
+                let cardBackground = '#f8fafc';
+                let cardBorder = '1px solid #e2e8f0';
+                let textColor = '#0f172a';
+                let subTextColor = '#64748b';
+                let watermark = '';
+                let scoreColor = activeGameInfo.color;
+
+                if (isFirst) {
+                  cardBackground = 'linear-gradient(135deg, #f09819, #edde5d)';
+                  cardBorder = 'none';
+                  textColor = '#fff';
+                  subTextColor = 'rgba(255,255,255,0.8)';
+                  scoreColor = '#fff';
+                  watermark = '🥇';
+                } else if (isSecond) {
+                  cardBackground = 'linear-gradient(135deg, #94a3b8, #cbd5e1)';
+                  cardBorder = 'none';
+                  textColor = '#fff';
+                  subTextColor = 'rgba(255,255,255,0.8)';
+                  scoreColor = '#fff';
+                  watermark = '🥈';
+                } else if (isThird) {
+                  cardBackground = 'linear-gradient(135deg, #f97316, #fb923c)';
+                  cardBorder = 'none';
+                  textColor = '#fff';
+                  subTextColor = 'rgba(255,255,255,0.8)';
+                  scoreColor = '#fff';
+                  watermark = '🥉';
+                }
+
+                return (
+                  <motion.div
+                    key={`${activeTab}-${index}-${entry.student_id}`}
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: index * 0.08, duration: 0.4, type: 'spring', damping: 20 }}
+                    style={{ 
+                      position: 'relative', 
+                      background: cardBackground, 
+                      border: cardBorder, 
+                      borderRadius: '24px', 
+                      padding: isFirst ? '20px' : '14px 18px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '16px', 
+                      overflow: 'hidden',
+                      boxShadow: isFirst ? '0 15px 35px rgba(240, 152, 25, 0.3)' : isSecond ? '0 10px 25px rgba(148, 163, 184, 0.3)' : isThird ? '0 10px 25px rgba(249, 115, 22, 0.3)' : '0 4px 12px rgba(0,0,0,0.02)'
+                    }}
+                  >
+                    {/* Background Watermark for Top 3 */}
+                    {isTop3 && (
+                      <span style={{ position: 'absolute', right: '-10px', top: '50%', transform: 'translateY(-50%)', fontSize: isFirst ? '90px' : '70px', opacity: 0.15, pointerEvents: 'none' }}>
+                        {watermark}
+                      </span>
+                    )}
+
+                    {/* Rank Icon / Number */}
+                    <div style={{ width: '32px', display: 'flex', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
+                      {isFirst ? (
+                        <Crown size={28} color="#fff" fill="rgba(255,255,255,0.5)" />
+                      ) : isSecond ? (
+                        <Medal size={24} color="#fff" />
+                      ) : isThird ? (
+                        <Medal size={24} color="#fff" />
                       ) : (
-                        <span className="text-sm font-black italic text-zinc-500">{entry.student_name[0]}</span>
+                        <span style={{ fontSize: '16px', fontWeight: 900, fontStyle: 'italic', color: '#94a3b8' }}>#{index + 1}</span>
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <h3 className={`text-sm font-black italic uppercase tracking-tight leading-none truncate ${index === 0 ? 'text-yellow-600 dark:text-yellow-500' : 'text-[var(--text)]'}`}>
-                        {entry.student_name}
-                      </h3>
-                      <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest mt-1 truncate">Class {entry.student_class}</p>
+
+                    {/* Avatar */}
+                    <div style={{ flexShrink: 0, zIndex: 1, position: 'relative' }}>
+                      <div style={{ 
+                        width: isFirst ? '56px' : '46px', 
+                        height: isFirst ? '56px' : '46px', 
+                        borderRadius: '16px', 
+                        padding: '3px', 
+                        background: isTop3 ? 'rgba(255,255,255,0.3)' : '#e2e8f0',
+                        backdropFilter: 'blur(5px)'
+                      }}>
+                        <div style={{ width: '100%', height: '100%', borderRadius: '12px', overflow: 'hidden', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {entry.avatar_url ? (
+                            <img src={entry.avatar_url} alt={entry.student_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ fontSize: isFirst ? '22px' : '18px', fontWeight: 900, fontStyle: 'italic', color: isTop3 ? '#f59e0b' : '#64748b' }}>
+                              {entry.student_name[0]}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isFirst && <div style={{ position: 'absolute', inset: 0, borderRadius: '16px', border: '2px solid rgba(255,255,255,0.8)' }} className="animate-ping pointer-events-none" />}
                     </div>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <span className={`text-2xl font-black italic tracking-tighter ${index === 0 ? 'text-yellow-500' : activeGameInfo.color}`}>
-                      {entry.score}
-                    </span>
-                    <p className="text-[7px] font-black text-zinc-500 uppercase tracking-widest">Points</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        {isFetching && (
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <Loader2 size={28} className={`animate-spin ${activeGameInfo.color} drop-shadow-lg`} />
+
+                    {/* Name and Class */}
+                    <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
+                      <h3 style={{ margin: 0, fontSize: isFirst ? '20px' : '16px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {entry.student_name.split(' ')[0]}
+                      </h3>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '9px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: subTextColor }}>
+                        CLASS {entry.student_class}
+                      </p>
+                    </div>
+
+                    {/* Score */}
+                    <div style={{ textAlign: 'right', flexShrink: 0, zIndex: 1 }}>
+                      <span style={{ fontSize: isFirst ? '32px' : '24px', fontWeight: 900, fontStyle: 'italic', lineHeight: 1, color: scoreColor }}>
+                        {entry.score}
+                      </span>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '8px', fontWeight: 900, color: subTextColor, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        Points
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
