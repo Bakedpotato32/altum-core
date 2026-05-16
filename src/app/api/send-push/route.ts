@@ -2,14 +2,7 @@ import { NextResponse } from 'next/server';
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-// 1. Configure the Web Push Engine
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:test@test.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
-// 2. Initialize Supabase
+// 1. Initialize Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -17,13 +10,20 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
+    // MOVE THIS INSIDE: Now it only runs when a push is actually sent, skipping the build-time crash!
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:test@test.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!
+    );
+
     const { userId, broadcast, targetClass, title, body, url } = await request.json();
 
     if (!title || !body) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // 3. Build the query to find who we are sending this to
+    // 2. Build the query to find who we are sending this to
     let query = supabase.from('students').select('push_subscription').not('push_subscription', 'is', null);
 
     if (userId) {
@@ -46,11 +46,10 @@ export async function POST(request: Request) {
       url: url || '/' 
     });
 
-    // 4. Blast the notification to everyone!
-    // We use Promise.all so they all send at the same time. The .catch ensures that if one student's phone is dead, it doesn't break the whole broadcast.
+    // 3. Blast the notification!
     const pushPromises = students.map((student) => {
       return webpush.sendNotification(student.push_subscription, payload).catch(err => {
-        console.error('Failed to send to a user (they may have cleared their browser data)', err);
+        console.error('Failed to send to a user', err);
       });
     });
 
