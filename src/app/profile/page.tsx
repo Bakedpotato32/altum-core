@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Calendar as CalIcon, BarChart3, User, ChevronRight, Loader2, ChevronLeft, LogOut, X, AlertTriangle } from 'lucide-react';
+import { Camera, Calendar as CalIcon, BarChart3, User, ChevronRight, Loader2, ChevronLeft, LogOut, X, AlertTriangle, BellRing } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -13,6 +13,7 @@ export default function Profile() {
   const [mounted, setMounted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false); // Push Notification state
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,11 +65,56 @@ export default function Profile() {
     img.src = URL.createObjectURL(file);
   };
 
+  // --- ENABLE PUSH NOTIFICATIONS ---
+  const enableNotifications = async () => {
+    setIsSubscribing(true);
+    try {
+      // 1. Ask the user for permission
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        // 2. Register the Service Worker
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        
+        // 3. Get the subscription from the browser using your Public Key
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          alert("Error: VAPID Key is missing from environment variables.");
+          setIsSubscribing(false);
+          return;
+        }
+
+        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+        
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey
+        });
+
+        // Convert the subscription to a raw JSON object for Supabase
+        const subscriptionJson = JSON.parse(JSON.stringify(subscription));
+
+        // 4. Save it to Supabase!
+        const { error } = await supabase
+          .from('students')
+          .update({ push_subscription: subscriptionJson })
+          .eq('id', student.id);
+
+        if (error) throw error;
+        alert("Notifications Enabled! 🚀");
+      } else {
+        alert("You blocked notifications! You can change this in your browser settings.");
+      }
+    } catch (error) {
+      console.error("Error setting up push:", error);
+      alert("Something went wrong setting up notifications. Make sure you are using HTTPS.");
+    }
+    setIsSubscribing(false);
+  };
+
   // --- SAFE LOGOUT LOGIC ---
   const executeLogout = () => {
-    // 1. Wipe local storage so the auto-login hook ignores this user
     localStorage.clear();
-    // 2. Force them back to the login page (using replace so they can't hit the back button)
     router.replace('/login');
   };
 
@@ -177,7 +223,18 @@ export default function Profile() {
             index={1}
           />
 
-          {/* New Logout Card */}
+          {/* New Push Notifications Card */}
+          <ProfileCard
+            onClick={enableNotifications}
+            icon={isSubscribing ? <Loader2 size={26} color="white" className="animate-spin" /> : <BellRing size={26} color="white" />}
+            gradient="linear-gradient(135deg, #8b5cf6, #6d28d9)"
+            title="ALERTS"
+            subtitle="ENABLE PUSH NOTIFICATIONS"
+            watermark="🔔"
+            index={2}
+          />
+
+          {/* Logout Card */}
           <ProfileCard
             onClick={() => setShowLogoutModal(true)}
             icon={<LogOut size={26} color="white" />}
@@ -185,7 +242,7 @@ export default function Profile() {
             title={t('logout') || 'LOGOUT'}
             subtitle="SWITCH ACCOUNT OR DEVICE"
             watermark="🚪"
-            index={2}
+            index={3}
           />
         </div>
       </div>
@@ -269,4 +326,20 @@ function ProfileCard({ onClick, icon, gradient, title, subtitle, watermark, inde
       </span>
     </motion.div>
   );
+}
+
+// Helper function to format the VAPID key for the browser
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }

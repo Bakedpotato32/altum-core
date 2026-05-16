@@ -26,8 +26,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isLogin = pathname === '/login' || pathname === '/';
   const isKidsGame = pathname.startsWith('/kids/') || pathname === '/kids/alphabet' || pathname === '/kids/colors' || pathname === '/kids/numbers' || pathname === '/kids/theater';
   
-  // NEW: Detect if we are anywhere inside the Arcade (menu or playing a game)
+  // NEW: Detect if we are anywhere inside the Arcade OR the Admin section
   const isArcade = pathname.startsWith('/arcade');
+  const isAdmin = pathname.startsWith('/admin');
+  
+  // Combine conditions to hide the bottom navigation bar
+  const hideBottomNav = isArcade || isAdmin;
 
   if (!mounted) return null;
 
@@ -77,14 +81,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* SCROLLABLE MAIN CONTENT
-          If we are in the Arcade, we remove the 130px bottom padding so the game uses the full screen.
+          If the nav is hidden (Arcade or Admin), we remove the 130px bottom padding so the page uses the full screen.
         */}
-        <main className={`flex-1 w-full overflow-y-auto overflow-x-hidden no-scrollbar pt-2 relative scroll-smooth ${isArcade ? 'pb-4' : 'pb-[130px]'}`}>
+        <main className={`flex-1 w-full overflow-y-auto overflow-x-hidden no-scrollbar pt-2 relative scroll-smooth ${hideBottomNav ? 'pb-4' : 'pb-[130px]'}`}>
           {children}
         </main>
 
-        {/* FLOATING BOTTOM NAV - Hidden when in Arcade */}
-        {!isArcade && (
+        {/* FLOATING BOTTOM NAV - Hidden when hideBottomNav is true */}
+        {!hideBottomNav && (
           <nav 
             className="absolute left-5 right-5 h-[72px] bg-white/95 backdrop-blur-lg rounded-[28px] flex justify-around items-center border border-slate-100 shadow-[0_15px_40px_rgba(0,0,0,0.08)] z-[1000] px-2"
             style={{ 

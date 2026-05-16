@@ -63,7 +63,6 @@ function StatCard({ icon, label, value, gradient, delay, pulse }: StatCardProps)
   );
 }
 
-// THE 1:1 CUBE CARD
 function AdminCard({ onClick, icon, title, subtitle, gradient, watermark, delay }: AdminCardProps) {
   return (
     <motion.div 
@@ -71,7 +70,7 @@ function AdminCard({ onClick, icon, title, subtitle, gradient, watermark, delay 
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       style={{ 
-        aspectRatio: '1/1', // Forces a perfect square
+        aspectRatio: '1/1', 
         background: gradient, 
         borderRadius: '32px', 
         padding: '20px', 
@@ -85,20 +84,15 @@ function AdminCard({ onClick, icon, title, subtitle, gradient, watermark, delay 
         transition: 'transform 0.2s ease'
       }}
     >
-      {/* Background Watermark */}
       <span style={{ position: 'absolute', right: '-15px', bottom: '-20px', fontSize: '100px', opacity: 0.15, pointerEvents: 'none', lineHeight: 1 }}>
         {watermark}
       </span>
-
-      {/* Top: Icon */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 1 }}>
         <div style={{ width: '52px', height: '52px', background: 'rgba(255,255,255,0.25)', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.3)' }}>
           {React.cloneElement(icon as React.ReactElement, { color: 'white', size: 26 })}
         </div>
         <ChevronRight size={24} color="white" style={{ opacity: 0.7 }} />
       </div>
-
-      {/* Bottom: Text */}
       <div style={{ zIndex: 1 }}>
         <h4 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>
           {title}
@@ -197,7 +191,31 @@ export default function AdminDashboard() {
     const role = localStorage.getItem('role');
     const master = isMasterAdmin(role, assignedClass);
     const noticeKey = master ? 'global_notice' : `notice_class_${sanitizeClass(assignedClass)}`;
+    
+    // Save to Database
     await supabase.from('config').upsert({ key: noticeKey, value: notice });
+    
+    // --- TRIGGER THE PUSH NOTIFICATION ---
+    try {
+      // Create a short preview text for the notification body (max 50 chars)
+      const previewText = notice.length > 50 ? notice.substring(0, 50) + '...' : notice;
+      
+      await fetch('/api/send-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          broadcast: master, // True if principal, false if teacher
+          targetClass: master ? null : assignedClass, // Targets the specific class if teacher
+          title: master ? '📢 Global Broadcast' : `📢 Class ${assignedClass} Notice`,
+          body: previewText,
+          url: '/dashboard' // Clicking takes them to the dashboard to read the full notice
+        })
+      });
+    } catch (err) {
+      console.error("Failed to send push notification", err);
+    }
+    // ------------------------------------
+
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);

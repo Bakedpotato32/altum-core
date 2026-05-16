@@ -132,7 +132,7 @@ export default function GlobalChat() {
         setImageFile(null);
         setReplyingTo(null);
 
-        await supabase.from('global_chat').insert([{
+        const { error } = await supabase.from('global_chat').insert([{
             sender_id: myProfile.id,
             sender_name: myProfile.name,
             sender_batch: myProfile.batch,
@@ -143,6 +143,43 @@ export default function GlobalChat() {
             reply_to_name: replyData?.sender_name || null,
             reply_to_msg: replyData?.message || null
         }]);
+
+        // --- TRIGGER PUSH NOTIFICATIONS ---
+        if (!error) {
+            try {
+                const previewText = textToSend.length > 40 ? textToSend.substring(0, 40) + '...' : textToSend;
+
+                if (textToSend.includes('@everyone')) {
+                    // 1. Broadcast to Everyone
+                    fetch('/api/send-push', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            broadcast: true,
+                            title: '💬 Global Hub: @everyone',
+                            body: `${myProfile.name}: ${previewText || 'Sent an attachment'}`,
+                            url: '/ai-chat'
+                        })
+                    }).catch(err => console.error("Broadcast push failed:", err));
+                    
+                } else if (replyData?.sender_id && replyData.sender_id !== myProfile.id) {
+                    // 2. Ping the specific person being replied to
+                    fetch('/api/send-push', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: replyData.sender_id,
+                            title: '💬 New Reply',
+                            body: `${myProfile.name} replied to you: ${previewText || 'Sent an attachment'}`,
+                            url: '/ai-chat'
+                        })
+                    }).catch(err => console.error("Reply push failed:", err));
+                }
+            } catch (err) {
+                console.error("Push error:", err);
+            }
+        }
+        // ----------------------------------
 
         setIsUploading(false);
     };
