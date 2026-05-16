@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Calendar as CalIcon, BarChart3, User, ChevronRight, Loader2, ChevronLeft } from 'lucide-react';
+import { Camera, Calendar as CalIcon, BarChart3, User, ChevronRight, Loader2, ChevronLeft, LogOut, X, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/lib/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
@@ -12,6 +12,7 @@ export default function Profile() {
   const [student, setStudent] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,6 +62,14 @@ export default function Profile() {
       }, 'image/jpeg', 0.8);
     };
     img.src = URL.createObjectURL(file);
+  };
+
+  // --- SAFE LOGOUT LOGIC ---
+  const executeLogout = () => {
+    // 1. Wipe local storage so the auto-login hook ignores this user
+    localStorage.clear();
+    // 2. Force them back to the login page (using replace so they can't hit the back button)
+    router.replace('/login');
   };
 
   if (!mounted || !student) {
@@ -167,8 +176,62 @@ export default function Profile() {
             watermark="📊"
             index={1}
           />
+
+          {/* New Logout Card */}
+          <ProfileCard
+            onClick={() => setShowLogoutModal(true)}
+            icon={<LogOut size={26} color="white" />}
+            gradient="linear-gradient(135deg, #ef4444, #dc2626)"
+            title={t('logout') || 'LOGOUT'}
+            subtitle="SWITCH ACCOUNT OR DEVICE"
+            watermark="🚪"
+            index={2}
+          />
         </div>
       </div>
+
+      {/* --- LOGOUT CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)' }}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              style={{ width: '100%', maxWidth: '360px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '32px', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.2)', textAlign: 'center' }}
+            >
+              <div style={{ width: '64px', height: '64px', margin: '0 auto 16px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={32} color="#ef4444" strokeWidth={2.5} />
+              </div>
+
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', color: 'var(--text)' }}>
+                Leaving <span style={{ color: '#ef4444' }}>Core?</span>
+              </h2>
+              <p style={{ margin: '0 0 24px 0', fontSize: '12px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                You will need your Student ID to log back in.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
+                  onClick={executeLogout}
+                  style={{ width: '100%', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#ffffff', padding: '18px', borderRadius: '20px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer', boxShadow: '0 8px 25px rgba(239, 68, 68, 0.3)' }}
+                >
+                  <LogOut size={18} strokeWidth={2.5} /> Confirm Logout
+                </motion.button>
+                
+                <button 
+                  onClick={() => setShowLogoutModal(false)} 
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', padding: '12px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
