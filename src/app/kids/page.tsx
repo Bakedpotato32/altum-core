@@ -23,17 +23,22 @@ export default function KidsHub() {
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       
-      {/* --- PLAYFUL BACKGROUND --- */}
+      {/* --- PLAYFUL BACKGROUND (Optimized for Smooth Scrolling) --- */}
+      {/* We removed the framer-motion animation here because animating heavy blurs kills mobile GPUs. */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 8, repeat: Infinity }}
-          style={{ position: 'absolute', top: '10%', left: '-10%', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(255, 65, 108, 0.15)', filter: 'blur(80px)' }} 
+        <div 
+          style={{ 
+            position: 'absolute', top: '10%', left: '-10%', width: '300px', height: '300px', 
+            borderRadius: '50%', background: 'rgba(255, 65, 108, 0.15)', 
+            filter: 'blur(80px)', transform: 'translateZ(0)', willChange: 'transform'
+          }} 
         />
-        <motion.div 
-          animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 10, repeat: Infinity, delay: 1 }}
-          style={{ position: 'absolute', bottom: '10%', right: '-10%', width: '350px', height: '350px', borderRadius: '50%', background: 'rgba(54, 209, 220, 0.15)', filter: 'blur(100px)' }} 
+        <div 
+          style={{ 
+            position: 'absolute', bottom: '10%', right: '-10%', width: '350px', height: '350px', 
+            borderRadius: '50%', background: 'rgba(54, 209, 220, 0.15)', 
+            filter: 'blur(100px)', transform: 'translateZ(0)', willChange: 'transform'
+          }} 
         />
       </div>
 
@@ -48,7 +53,7 @@ export default function KidsHub() {
             padding: '10px 20px', background: '#ffffff', border: '1px solid #e2e8f0', 
             borderRadius: '20px', fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', 
             letterSpacing: '1px', color: '#94a3b8', boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-            cursor: 'pointer'
+            cursor: 'pointer', transform: 'translateZ(0)' // Hardware acceleration
           }}
         >
           <ChevronLeft size={18} strokeWidth={3} /> {t('exitZone') || 'EXIT ZONE'}
@@ -67,7 +72,7 @@ export default function KidsHub() {
             <motion.div 
               animate={{ y: [0, -10, 0], rotate: [0, 20, 0] }} 
               transition={{ repeat: Infinity, duration: 2 }}
-              style={{ position: 'absolute', right: '-40px', top: '-10px' }}
+              style={{ position: 'absolute', right: '-40px', top: '-10px', willChange: 'transform' }}
             >
               <Sparkles size={32} color="#FFD200" fill="#FFD200" />
             </motion.div>
@@ -80,7 +85,7 @@ export default function KidsHub() {
         {/* --- LIST OF ADVENTURES --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* TRACE IT CARD (AT THE VERY TOP) */}
+          {/* TRACE IT CARD */}
           <KidsCard 
             onClick={() => router.push('/kids/trace-it')}
             gradient="linear-gradient(135deg, #0EA5E9, #2563EB)"
@@ -185,7 +190,6 @@ export default function KidsHub() {
   );
 }
 
-// Fixed Types for the Card Component
 interface KidsCardProps {
   onClick: () => void;
   gradient: string;
@@ -205,7 +209,8 @@ function KidsCard({ onClick, gradient, shadow, icon, emoji, title, subtitle }: K
         cursor: 'pointer', borderRadius: '35px', background: gradient, 
         padding: '24px', display: 'flex', alignItems: 'center', 
         justifyContent: 'space-between', boxShadow: `0 15px 35px ${shadow}`,
-        position: 'relative', overflow: 'hidden'
+        position: 'relative', overflow: 'hidden',
+        transform: 'translateZ(0)' // Prevents repainting issues during scroll
       }}
     >
       {/* Background Emoji */}
@@ -241,8 +246,8 @@ function KidsCard({ onClick, gradient, shadow, icon, emoji, title, subtitle }: K
 
       <motion.div 
         animate={{ scale: [1, 1.2, 1] }} 
-        transition={{ repeat: Infinity, duration: 1.5 }}
-        style={{ position: 'relative', zIndex: 1 }}
+        transition={{ repeat: Infinity, duration: 2 }} // Slowed it down slightly for performance
+        style={{ position: 'relative', zIndex: 1, willChange: 'transform' }} // Added hardware hint
       >
         <Star size={24} color="#fff" fill="#fff" style={{ opacity: 0.5 }} />
       </motion.div>
